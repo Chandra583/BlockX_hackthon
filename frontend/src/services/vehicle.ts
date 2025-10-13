@@ -4,6 +4,7 @@ import { apiService } from './api';
 export interface Vehicle {
   id: string;
   vin: string;
+  vehicleNumber: string;
   make: string;
   model: string;
   year: number;
@@ -35,6 +36,7 @@ export interface Vehicle {
 export interface VehicleRegistrationData {
   vehicleId?: string;
   vin: string;
+  vehicleNumber: string;
   make: string;
   model: string;
   year: number;
@@ -101,6 +103,7 @@ export interface BlockchainVehicleRegistration {
   data: {
     vehicleId: string;
     vin: string;
+    vehicleNumber: string;
     make: string;
     model: string;
     year: number;
@@ -171,6 +174,20 @@ export class VehicleService {
   // ========================================
   
   /**
+   * Test database connection
+   */
+  static async testDatabase(): Promise<any> {
+    return await apiService.get('/vehicles/test');
+  }
+
+  /**
+   * Validate if vehicle number is already registered
+   */
+  static async validateVehicleNumber(vehicleNumber: string): Promise<any> {
+    return await apiService.get(`/vehicles/validate-vehicle-number/${encodeURIComponent(vehicleNumber)}`);
+  }
+
+  /**
    * Get all vehicles for the current user
    */
   static async getUserVehicles(params?: VehicleSearchParams): Promise<VehicleListResponse> {
@@ -227,6 +244,7 @@ export class VehicleService {
     const registrationData = {
       vehicleId: vehicleData.vehicleId || `vehicle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       vin: vehicleData.vin,
+      vehicleNumber: vehicleData.vehicleNumber,
       make: vehicleData.make,
       model: vehicleData.model,
       year: vehicleData.year,
@@ -371,8 +389,15 @@ export class VehicleService {
   /**
    * Format mileage for display
    */
-  static formatMileage(mileage: number): string {
-    return mileage.toLocaleString() + ' miles';
+  static formatMileage(mileage?: number | null): string {
+    if (mileage === null || mileage === undefined || Number.isNaN(mileage)) {
+      return '0 miles';
+    }
+    try {
+      return `${Number(mileage).toLocaleString()} miles`;
+    } catch {
+      return `${mileage} miles`;
+    }
   }
   
   /**

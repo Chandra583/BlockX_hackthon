@@ -159,6 +159,26 @@ export class BlockchainService {
   }
   
   /**
+   * Get wallet transactions directly from Solana blockchain
+   */
+  static async getWalletTransactions(params?: {
+    limit?: number;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const url = `/blockchain/wallet/transactions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiService.get(url);
+  }
+
+  /**
    * Get transaction history for user
    */
   static async getTransactionHistory(params?: {
@@ -226,7 +246,50 @@ export class BlockchainService {
    * Get mileage history from blockchain
    */
   static async getMileageHistory(vehicleId: string): Promise<any> {
-    return await apiService.get(`/blockchain/vehicle/${vehicleId}/mileage-history`);
+    try {
+      const response = await apiService.get(`/blockchain/vehicle/${vehicleId}/mileage-history`);
+      return {
+        success: true,
+        data: response.data || [],
+        message: 'Mileage history retrieved successfully'
+      };
+    } catch (error: any) {
+      console.error('Failed to get mileage history:', error);
+      throw {
+        success: false,
+        message: error.response?.data?.message || 'Failed to retrieve mileage history',
+        error: error
+      };
+    }
+  }
+
+  /**
+   * Get comprehensive vehicle blockchain data
+   */
+  static async getVehicleBlockchainData(vehicleId: string): Promise<any> {
+    try {
+      const [vehicleHistory, mileageHistory] = await Promise.all([
+        this.getVehicleHistory(vehicleId),
+        this.getMileageHistory(vehicleId)
+      ]);
+
+      return {
+        success: true,
+        data: {
+          vehicleHistory: vehicleHistory.data?.history || [],
+          mileageHistory: mileageHistory.data || [],
+          totalTransactions: (vehicleHistory.data?.history?.length || 0) + (mileageHistory.data?.length || 0),
+          lastUpdate: vehicleHistory.data?.history?.[0]?.timestamp || mileageHistory.data?.[0]?.timestamp || null
+        }
+      };
+    } catch (error: any) {
+      console.error('Failed to get vehicle blockchain data:', error);
+      throw {
+        success: false,
+        message: error.message || 'Failed to retrieve vehicle blockchain data',
+        error: error
+      };
+    }
   }
   
   // ========================================
@@ -254,8 +317,33 @@ export class BlockchainService {
   /**
    * Backup mileage history to Arweave
    */
-  static async backupMileageToArweave(vehicleId: string): Promise<any> {
-    return await apiService.post(`/blockchain/arweave/mileage-history`, { vehicleId });
+  static async backupMileageToArweave(vehicleId: string, options?: {
+    includeMetadata?: boolean;
+    compression?: boolean;
+  }): Promise<any> {
+    try {
+      const payload = {
+        vehicleId,
+        includeMetadata: options?.includeMetadata ?? true,
+        compression: options?.compression ?? true,
+        timestamp: new Date().toISOString()
+      };
+
+      const response = await apiService.post(`/blockchain/arweave/mileage-history`, payload);
+      
+      return {
+        success: true,
+        data: response.data,
+        message: 'Mileage history backed up to Arweave successfully'
+      };
+    } catch (error: any) {
+      console.error('Failed to backup mileage to Arweave:', error);
+      throw {
+        success: false,
+        message: error.response?.data?.message || 'Failed to backup mileage history to Arweave',
+        error: error
+      };
+    }
   }
   
   /**
@@ -422,6 +510,187 @@ export class BlockchainService {
         url: 'https://faucet.quicknode.com/solana/devnet'
       }
     ];
+  }
+
+  // ========================================
+  // ENHANCED UTILITY METHODS
+  // ========================================
+
+  /**
+   * Validate vehicle data before blockchain registration
+   */
+  static validateVehicleData(vehicleData: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!vehicleData.vehicleId) errors.push('Vehicle ID is required');
+    if (!vehicleData.vin || vehicleData.vin.length !== 17) errors.push('Valid VIN (17 characters) is required');
+    if (!vehicleData.make) errors.push('Vehicle make is required');
+    if (!vehicleData.model) errors.push('Vehicle model is required');
+    if (!vehicleData.year || vehicleData.year < 1900 || vehicleData.year > new Date().getFullYear() + 1) {
+      errors.push('Valid vehicle year is required');
+    }
+    if (vehicleData.initialMileage < 0) errors.push('Initial mileage cannot be negative');
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Validate mileage data before blockchain recording
+   */
+  static validateMileageData(mileageData: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!mileageData.vehicleId) errors.push('Vehicle ID is required');
+    if (typeof mileageData.mileage !== 'number' || mileageData.mileage < 0) {
+      errors.push('Valid mileage value is required');
+    }
+    if (!mileageData.location) errors.push('Location is required');
+    if (!mileageData.source) errors.push('Mileage source is required');
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Get blockchain integration status summary
+   */
+  static async getIntegrationStatus(): Promise<any> {
+    try {
+      const [blockchainStatus, walletStatus] = await Promise.all([
+        this.getBlockchainStatus().catch(() => null),
+        this.hasWallet().catch(() => false)
+      ]);
+
+      return {
+        success: true,
+        data: {
+          hasWallet: walletStatus,
+          solanaOnline: blockchainStatus?.data?.solana?.status === 'online',
+          arweaveOnline: blockchainStatus?.data?.arweave?.status === 'online',
+          readyForTransactions: walletStatus && blockchainStatus?.data?.solana?.status === 'online',
+          lastChecked: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: 'Failed to check integration status',
+        error: error
+      };
+    }
+  }
+
+  /**
+   * Estimate total cost for vehicle registration including all fees
+   */
+  static estimateVehicleRegistrationCost(): {
+    solanaFee: number;
+    arweaveStorageFee: number;
+    totalEstimate: number;
+    currency: string;
+  } {
+    const solanaFee = this.estimateTransactionFee('vehicle_registration');
+    const arweaveStorageFee = 0.0001; // Estimated AR cost for vehicle data storage
+    
+    return {
+      solanaFee,
+      arweaveStorageFee,
+      totalEstimate: solanaFee + arweaveStorageFee,
+      currency: 'SOL/AR equivalent'
+    };
+  }
+
+  /**
+   * Format blockchain error for user display
+   */
+  static formatBlockchainError(error: any): string {
+    if (error.response?.data?.message) {
+      return error.response.data.message;
+    }
+    
+    if (error.message) {
+      // Handle common blockchain errors
+      if (error.message.includes('insufficient funds')) {
+        return 'Insufficient balance for transaction. Please fund your wallet.';
+      }
+      if (error.message.includes('network')) {
+        return 'Network connection issue. Please check your internet connection.';
+      }
+      if (error.message.includes('timeout')) {
+        return 'Transaction timed out. Please try again.';
+      }
+      return error.message;
+    }
+    
+    return 'An unexpected error occurred. Please try again.';
+  }
+
+  /**
+   * Check if blockchain services are ready for production use
+   */
+  static async isReadyForProduction(): Promise<{
+    ready: boolean;
+    checks: { name: string; status: boolean; message: string }[];
+  }> {
+    const checks = [];
+    let allReady = true;
+
+    try {
+      // Check wallet existence
+      const hasWallet = await this.hasWallet();
+      checks.push({
+        name: 'Wallet Setup',
+        status: hasWallet,
+        message: hasWallet ? 'Wallet configured' : 'Wallet needs to be created'
+      });
+      if (!hasWallet) allReady = false;
+
+      // Check blockchain status
+      const status = await this.getBlockchainStatus();
+      const solanaOnline = status.data?.solana?.status === 'online';
+      const arweaveOnline = status.data?.arweave?.status === 'online';
+      
+      checks.push({
+        name: 'Solana Network',
+        status: solanaOnline,
+        message: solanaOnline ? 'Solana network accessible' : 'Solana network unavailable'
+      });
+      
+      checks.push({
+        name: 'Arweave Network',
+        status: arweaveOnline,
+        message: arweaveOnline ? 'Arweave network accessible' : 'Arweave network unavailable'
+      });
+
+      if (!solanaOnline || !arweaveOnline) allReady = false;
+
+      // Check wallet balance if wallet exists
+      if (hasWallet) {
+        const wallet = await this.getWallet();
+        const hasBalance = wallet.data?.balance > 0;
+        checks.push({
+          name: 'Wallet Balance',
+          status: hasBalance,
+          message: hasBalance ? `Balance: ${this.formatSOLBalance(wallet.data.balance)}` : 'Wallet needs funding'
+        });
+        if (!hasBalance) allReady = false;
+      }
+
+    } catch (error) {
+      checks.push({
+        name: 'System Check',
+        status: false,
+        message: 'Failed to perform readiness check'
+      });
+      allReady = false;
+    }
+
+    return { ready: allReady, checks };
   }
 }
 

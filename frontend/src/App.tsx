@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import SessionWarning from './components/common/SessionWarning';
 import { config } from './config/env';
+import { Toaster } from 'react-hot-toast';
 
 // Import admin components
 import { UserList } from './components/admin';
@@ -82,6 +83,32 @@ function App() {
       
       {/* Global Session Warning Component */}
       <SessionWarning />
+      
+      {/* Toast Notifications */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#4ade80',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 4000,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </div>
   );
 }

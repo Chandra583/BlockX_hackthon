@@ -21,6 +21,10 @@ const vehicleRegistrationSchema = z.object({
     .min(17, 'VIN must be exactly 17 characters')
     .max(17, 'VIN must be exactly 17 characters')
     .regex(/^[A-HJ-NPR-Z0-9]{17}$/, 'VIN contains invalid characters'),
+  vehicleNumber: z.string()
+    .min(1, 'Vehicle number is required')
+    .max(20, 'Vehicle number cannot exceed 20 characters')
+    .regex(/^[A-Z0-9]{4,20}$/, 'Vehicle number must contain 4-20 alphanumeric characters'),
   make: z.string()
     .min(1, 'Make is required')
     .max(50, 'Make cannot exceed 50 characters'),
@@ -42,7 +46,7 @@ const vehicleRegistrationSchema = z.object({
 type VehicleRegistrationFormData = z.infer<typeof vehicleRegistrationSchema>;
 
 interface VehicleRegistrationFormProps {
-  onSuccess?: (result: any) => void;
+  onSuccess?: (result: BlockchainRegistrationResult) => void;
   onCancel?: () => void;
 }
 
@@ -52,6 +56,7 @@ interface BlockchainRegistrationResult {
   data: {
     vehicleId: string;
     vin: string;
+    vehicleNumber: string;
     make: string;
     model: string;
     year: number;
@@ -70,6 +75,11 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationResult, setRegistrationResult] = useState<BlockchainRegistrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vehicleNumberValidation, setVehicleNumberValidation] = useState<{
+    isValidating: boolean;
+    isRegistered: boolean | null;
+    message: string;
+  }>({ isValidating: false, isRegistered: null, message: '' });
   const { user } = useAppSelector((state) => state.auth);
 
   const {
@@ -82,6 +92,7 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
     resolver: zodResolver(vehicleRegistrationSchema),
     defaultValues: {
       vin: '',
+      vehicleNumber: '',
       make: '',
       model: '',
       year: new Date().getFullYear(),
@@ -94,11 +105,43 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
   });
 
   const watchedVIN = watch('vin');
+  const watchedVehicleNumber = watch('vehicleNumber');
 
   // Auto-format VIN to uppercase
   const handleVINChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
     setValue('vin', value);
+  };
+
+  // Auto-format vehicle number to uppercase and validate
+  const handleVehicleNumberChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    setValue('vehicleNumber', value);
+    
+    // Validate vehicle number if it's not empty and has at least 4 characters
+    if (value.length >= 4) {
+      setVehicleNumberValidation({ isValidating: true, isRegistered: null, message: 'Checking availability...' });
+      
+      try {
+        const validation = await VehicleService.validateVehicleNumber(value);
+        setVehicleNumberValidation({
+          isValidating: false,
+          isRegistered: validation.data.isRegistered,
+          message: validation.data.isRegistered 
+            ? `❌ Vehicle number ${value} is already registered` 
+            : `✅ Vehicle number ${value} is available`
+        });
+      } catch (error) {
+        console.error('Vehicle number validation error:', error);
+        setVehicleNumberValidation({
+          isValidating: false,
+          isRegistered: null,
+          message: '⚠️ Could not validate vehicle number'
+        });
+      }
+    } else {
+      setVehicleNumberValidation({ isValidating: false, isRegistered: null, message: '' });
+    }
   };
 
   const onSubmit = async (data: VehicleRegistrationFormData) => {
@@ -113,6 +156,7 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
       const registrationData = {
         vehicleId,
         vin: data.vin,
+        vehicleNumber: data.vehicleNumber,
         make: data.make,
         model: data.model,
         year: data.year,
@@ -124,6 +168,9 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
       };
 
       console.log('Registering vehicle on blockchain:', registrationData);
+      console.log('Form data received:', data);
+      console.log('Vehicle number from form:', data.vehicleNumber);
+      console.log('Current form values:', { vin: watchedVIN, vehicleNumber: watchedVehicleNumber });
 
       // Call the blockchain registration API using VehicleService
       const result = await VehicleService.registerVehicleOnBlockchain(registrationData);
@@ -132,13 +179,18 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
       setRegistrationResult(result);
       onSuccess?.(result);
       
-    } catch (err: any) {
-      console.error('Vehicle registration failed:', err);
+    } catch (error: unknown) {
+      console.error('Vehicle registration failed:', error);
       
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err.message) {
-        setError(err.message);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        if (err.response?.data?.message) {
+          setError(err.response.data.message);
+        } else {
+          setError('Failed to register vehicle on blockchain. Please try again.');
+        }
+      } else if (error instanceof Error) {
+        setError(error.message);
       } else {
         setError('Failed to register vehicle on blockchain. Please try again.');
       }
@@ -165,6 +217,10 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
             <div>
               <span className="text-gray-500">VIN:</span>
               <p className="font-mono">{registrationResult.data.vin}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Vehicle Number:</span>
+              <p className="font-mono font-semibold text-green-600">{registrationResult.data.vehicleNumber || 'N/A'}</p>
             </div>
             <div>
               <span className="text-gray-500">Vehicle:</span>
@@ -206,10 +262,12 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
             View on Solana Explorer
           </a>
           <button
-            onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            onClick={() => {
+              onCancel?.();
+            }}
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            Close
+            Done
           </button>
         </div>
       </div>
@@ -275,6 +333,53 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
           </div>
           {errors.vin && (
             <p className="mt-2 text-sm text-red-600">{errors.vin.message}</p>
+          )}
+        </div>
+
+        {/* Vehicle Number Input */}
+        <div>
+          <label htmlFor="vehicleNumber" className="block text-sm font-medium text-gray-700 mb-2">
+            Vehicle Number (Indian Format) *
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Car className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              id="vehicleNumber"
+              type="text"
+              maxLength={20}
+              {...register('vehicleNumber')}
+              onChange={handleVehicleNumberChange}
+              className={`input-field pl-10 font-mono ${errors.vehicleNumber ? 'border-red-500' : ''}`}
+              placeholder="e.g., KA01AB1234"
+              disabled={isSubmitting}
+            />
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <span className="text-xs text-gray-500">{watchedVehicleNumber.length}/20</span>
+            </div>
+          </div>
+          {errors.vehicleNumber && (
+            <p className="mt-2 text-sm text-red-600">{errors.vehicleNumber.message}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Format: State Code + District Code + Series + Number (e.g., KA01AB1234)
+          </p>
+          {watchedVehicleNumber && (
+            <p className="mt-1 text-xs text-green-600">
+              ✓ Vehicle Number: {watchedVehicleNumber}
+            </p>
+          )}
+          {vehicleNumberValidation.message && (
+            <p className={`mt-1 text-xs ${
+              vehicleNumberValidation.isRegistered === true 
+                ? 'text-red-600' 
+                : vehicleNumberValidation.isRegistered === false 
+                ? 'text-green-600' 
+                : 'text-yellow-600'
+            }`}>
+              {vehicleNumberValidation.isValidating ? '⏳ ' : ''}{vehicleNumberValidation.message}
+            </p>
           )}
         </div>
 

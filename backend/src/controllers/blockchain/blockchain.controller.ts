@@ -115,7 +115,9 @@ export class BlockchainController {
         throw new UnauthorizedError('User authentication required');
       }
 
-      const { vehicleId, vin, make, model, year, initialMileage } = req.body;
+      const { vehicleId, vin, make, model, year, initialMileage, vehicleNumber } = req.body;
+      
+      logger.info(`🚗 Vehicle registration request:`, { vehicleId, vin, make, model, year, initialMileage, vehicleNumber });
       
       // Validate required fields
       if (!vehicleId || !vin || !make || !model || !year || initialMileage === undefined) {
@@ -149,21 +151,65 @@ export class BlockchainController {
       const blockchainRecord = await getSolanaService().registerVehicle(
         vehicleData.vehicleId,
         vehicleData.vin,
+        req.body.vehicleNumber || `TEMP${Date.now()}`,
         vehicleData.initialMileage,
         wallet
       );
 
-      // Note: In a full implementation, we would save this to the database
-      // For now, we'll just return the blockchain registration result
+      // Save vehicle to database
+      logger.info(`💾 Saving vehicle to database: ${vehicleData.vin}`);
+      
+      const newVehicle = new Vehicle({
+        vin: vehicleData.vin,
+        vehicleNumber: req.body.vehicleNumber || `TEMP${Date.now()}`, // Use provided vehicle number or generate temp
+        ownerId: userId,
+        make: vehicleData.make,
+        vehicleModel: vehicleData.model,
+        year: vehicleData.year,
+        color: req.body.color || 'Unknown',
+        bodyType: req.body.bodyType || 'other',
+        fuelType: req.body.fuelType || 'gasoline',
+        transmission: req.body.transmission || 'automatic',
+        currentMileage: vehicleData.initialMileage,
+        lastMileageUpdate: new Date(),
+        blockchainHash: blockchainRecord.transactionHash,
+        blockchainAddress: blockchainRecord.blockchainAddress,
+        verificationStatus: 'verified',
+        trustScore: 0,
+        isForSale: false,
+        listingStatus: 'not_listed',
+        condition: 'good',
+        features: [],
+        description: '',
+        accidentHistory: [],
+        serviceHistory: [],
+        mileageHistory: [{
+          mileage: vehicleData.initialMileage,
+          recordedBy: userId,
+          source: 'owner',
+          timestamp: new Date(),
+          location: req.body.location || 'Unknown',
+          verified: true
+        }]
+      });
 
-      logger.info(`✅ Vehicle ${vehicleData.vin} registered on blockchain: ${blockchainRecord.transactionHash}`);
+      try {
+        await newVehicle.save();
+        logger.info(`✅ Vehicle saved to database with ID: ${newVehicle._id}`);
+      } catch (dbError) {
+        logger.error(`❌ Database save failed:`, dbError);
+        throw dbError;
+      }
+
+      logger.info(`✅ Vehicle ${vehicleData.vin} registered on blockchain and saved to database: ${blockchainRecord.transactionHash}`);
 
       res.status(201).json({
         success: true,
         message: 'Vehicle registered on blockchain successfully',
         data: {
-          vehicleId: vehicleData.vehicleId,
+          vehicleId: newVehicle._id.toString(),
           vin: vehicleData.vin,
+          vehicleNumber: blockchainRecord.vehicleNumber,
           make: vehicleData.make,
           model: vehicleData.model,
           year: vehicleData.year,
@@ -698,6 +744,70 @@ export class BlockchainController {
       res.status(500).json({
         success: false,
         message: 'Failed to estimate Arweave cost',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Get wallet transactions directly from Solana blockchain
+   * GET /api/blockchain/wallet/transactions
+   */
+  static async getWalletTransactions(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new UnauthorizedError('User authentication required');
+      }
+
+      const limit = parseInt(req.query.limit as string) || 50;
+
+      // Get user's wallet address (safer method)
+      const walletAddress = await walletService.getUserWalletAddress(userId);
+      if (!walletAddress) {
+        logger.warn(`❌ No wallet found for user ${userId}`);
+        res.status(400).json({
+          success: false,
+          message: 'No blockchain wallet found. Please create a wallet first.',
+          code: 'WALLET_REQUIRED'
+        });
+        return;
+      }
+
+      logger.info(`✅ Found wallet address for user ${userId}: ${walletAddress}`);
+
+      // Validate wallet address format
+      if (!walletAddress || walletAddress.length < 32) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid wallet address format.',
+          code: 'INVALID_WALLET_ADDRESS'
+        });
+        return;
+      }
+
+      logger.info(`🔍 Fetching transactions for wallet: ${walletAddress}`);
+
+      // Get transactions from Solana blockchain
+      const transactions = await getSolanaService().getWalletTransactions(walletAddress, limit);
+
+      logger.info(`✅ Retrieved ${transactions.length} wallet transactions for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Wallet transactions retrieved successfully',
+        data: {
+          transactions,
+          total: transactions.length,
+          walletAddress: walletAddress,
+          network: process.env.NODE_ENV === 'production' ? 'mainnet' : 'devnet'
+        }
+      });
+    } catch (error) {
+      logger.error('❌ Failed to get wallet transactions:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get wallet transactions',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

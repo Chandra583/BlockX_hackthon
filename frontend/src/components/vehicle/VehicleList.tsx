@@ -12,7 +12,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Loader2
+  Loader2,
+  Hash
 } from 'lucide-react';
 import { VehicleService, type Vehicle } from '../../services/vehicle';
 import { BlockchainService } from '../../services/blockchain';
@@ -21,6 +22,7 @@ interface VehicleListProps {
   onVehicleSelect?: (vehicle: Vehicle) => void;
   onEditVehicle?: (vehicle: Vehicle) => void;
   onDeleteVehicle?: (vehicle: Vehicle) => void;
+  onViewBlockchainHistory?: (vehicle: Vehicle) => void;
   showActions?: boolean;
   className?: string;
 }
@@ -35,6 +37,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   onVehicleSelect,
   onEditVehicle,
   onDeleteVehicle,
+  onViewBlockchainHistory,
   showActions = true,
   className = ''
 }) => {
@@ -49,9 +52,19 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       setLoading(true);
       setError(null);
       
+      // Test database connection first
+      try {
+        const dbTest = await VehicleService.testDatabase();
+        console.log('Database test result:', dbTest);
+      } catch (dbError) {
+        console.error('Database test failed:', dbError);
+      }
+      
       // Get user's vehicles
       const response = await VehicleService.getUserVehicles();
+      console.log('Vehicle API response:', response);
       const vehiclesData = response.data.vehicles;
+      console.log('Vehicles data:', vehiclesData);
       
       // For each vehicle, fetch blockchain history
       const vehiclesWithBlockchain = await Promise.all(
@@ -213,6 +226,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                       {VehicleService.getVehicleDisplayName(vehicle)}
                     </h3>
                     <p className="text-sm text-gray-500 font-mono">{vehicle.vin}</p>
+                    <p className="text-sm text-gray-600 font-mono">{vehicle.vehicleNumber}</p>
                   </div>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(vehicle)}`}>
@@ -296,6 +310,18 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   >
                     <Edit className="w-4 h-4" />
                   </button>
+                  {onViewBlockchainHistory && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewBlockchainHistory(vehicle);
+                      }}
+                      className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                      title="View blockchain history"
+                    >
+                      <Hash className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

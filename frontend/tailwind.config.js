@@ -27,9 +27,27 @@ export default {
         service: '#ea580c',    // Orange for service
         insurance: '#2563eb',  // Blue for insurance
         government: '#ca8a04', // Yellow for government
+        // Solana colors
+        solana: {
+          purple: '#7c3aed',
+          cyan: '#06b6d4',
+          gradient: 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+      },
+      backgroundImage: {
+        'solana-gradient': 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)',
+      },
+      animation: {
+        'spin-slow': 'spin 2s linear infinite',
+        'bounce-subtle': 'bounce 1s infinite',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      focus: {
+        outline: '2px solid #7c3aed',
+        'outline-offset': '2px',
       },
     },
   },

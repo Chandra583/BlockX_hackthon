@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 // Simplified Vehicle Document Interface
 export interface IVehicleDocument extends Document {
   vin: string;
+  vehicleNumber: string;
   ownerId: mongoose.Types.ObjectId;
   make: string;
   vehicleModel: string;
@@ -287,6 +288,20 @@ const VehicleSchema = new Schema({
       message: 'VIN must be 17 characters long and contain only valid characters'
     }
   },
+  vehicleNumber: {
+    type: String,
+    required: [true, 'Vehicle number is required'],
+    uppercase: true,
+    trim: true,
+    maxlength: [20, 'Vehicle number cannot exceed 20 characters'],
+    validate: {
+      validator: function(v: string) {
+        // More flexible validation - allow various formats
+        return /^[A-Z0-9]{4,20}$/.test(v);
+      },
+      message: 'Vehicle number must contain 4-20 alphanumeric characters'
+    }
+  },
   ownerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -367,8 +382,8 @@ const VehicleSchema = new Schema({
   },
   listingStatus: {
     type: String,
-    enum: ['active', 'sold', 'pending', 'inactive', 'draft', 'expired'],
-    default: 'inactive'
+    enum: ['active', 'sold', 'pending', 'inactive', 'draft', 'expired', 'not_listed'],
+    default: 'not_listed'
   },
   description: {
     type: String,

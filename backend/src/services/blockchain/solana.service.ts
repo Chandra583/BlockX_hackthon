@@ -21,6 +21,7 @@ export interface SolanaWallet {
 export interface VehicleBlockchainRecord {
   vehicleId: string;
   vin: string;
+  vehicleNumber: string;
   currentMileage: number;
   lastUpdate: Date;
   transactionHash: string;
@@ -148,6 +149,7 @@ export class SolanaService {
   async registerVehicle(
     vehicleId: string,
     vin: string,
+    vehicleNumber: string,
     initialMileage: number,
     ownerWallet: SolanaWallet
   ): Promise<VehicleBlockchainRecord> {
@@ -159,6 +161,7 @@ export class SolanaService {
       const vehicleData = {
         vehicleId,
         vin,
+        vehicleNumber,
         mileage: initialMileage,
         timestamp: Date.now(),
         action: 'REGISTER_VEHICLE'
@@ -186,6 +189,7 @@ export class SolanaService {
       const record: VehicleBlockchainRecord = {
         vehicleId,
         vin,
+        vehicleNumber,
         currentMileage: initialMileage,
         lastUpdate: new Date(),
         transactionHash: signature,
@@ -310,6 +314,96 @@ export class SolanaService {
     } catch (error) {
       logger.error(`❌ Failed to get vehicle history for ${vehicleId}:`, error);
       throw new Error(`History lookup failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get all transactions for a wallet address from Solana blockchain
+   */
+  async getWalletTransactions(walletAddress: string, limit: number = 50): Promise<any[]> {
+    try {
+      // Validate wallet address format
+      if (!walletAddress || walletAddress.length < 32) {
+        throw new Error('Invalid wallet address format');
+      }
+
+      logger.info(`🔍 Creating PublicKey for wallet: ${walletAddress}`);
+      const publicKey = new PublicKey(walletAddress);
+      logger.info(`✅ PublicKey created successfully`);
+      
+      // Get confirmed signatures for the wallet
+      const signatures = await this.connection.getSignaturesForAddress(publicKey, {
+        limit: limit
+      });
+
+      // Get transaction details for each signature
+      const transactions = await Promise.all(
+        signatures.map(async (signatureInfo) => {
+          try {
+            const transaction = await this.connection.getTransaction(signatureInfo.signature, {
+              commitment: 'confirmed',
+              maxSupportedTransactionVersion: 0
+            });
+
+            if (!transaction) return null;
+
+            // Extract memo data if it's a memo transaction
+            let memoData = null;
+            if (transaction.meta?.logMessages) {
+              for (const log of transaction.meta.logMessages) {
+                if (log.includes('Program MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr invoke')) {
+                  // This is a memo transaction, try to extract the data
+                  try {
+                    const memoLog = transaction.meta.logMessages.find(l => l.includes('Memo:'));
+                    if (memoLog) {
+                      const memoText = memoLog.split('Memo: ')[1];
+                      memoData = JSON.parse(memoText);
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors
+                  }
+                  break;
+                }
+              }
+            }
+
+            return {
+              signature: signatureInfo.signature,
+              slot: signatureInfo.slot,
+              blockTime: signatureInfo.blockTime,
+              confirmationStatus: signatureInfo.confirmationStatus,
+              err: signatureInfo.err,
+              memo: signatureInfo.memo,
+              memoData: memoData,
+              fee: transaction.meta?.fee || 0,
+              explorerUrl: `https://explorer.solana.com/tx/${signatureInfo.signature}${this.isDevnet ? '?cluster=devnet' : ''}`
+            };
+          } catch (error) {
+            logger.warn(`Failed to get transaction details for ${signatureInfo.signature}:`, error);
+            return {
+              signature: signatureInfo.signature,
+              slot: signatureInfo.slot,
+              blockTime: signatureInfo.blockTime,
+              confirmationStatus: signatureInfo.confirmationStatus,
+              err: signatureInfo.err,
+              memo: signatureInfo.memo,
+              error: 'Failed to fetch transaction details',
+              explorerUrl: `https://explorer.solana.com/tx/${signatureInfo.signature}${this.isDevnet ? '?cluster=devnet' : ''}`
+            };
+          }
+        })
+      );
+
+      // Filter out null results and sort by block time (newest first)
+      const validTransactions = transactions
+        .filter(tx => tx !== null)
+        .sort((a, b) => (b.blockTime || 0) - (a.blockTime || 0));
+
+      logger.info(`📋 Retrieved ${validTransactions.length} transactions for wallet ${walletAddress}`);
+      return validTransactions;
+    } catch (error) {
+      logger.error(`❌ Failed to get wallet transactions for ${walletAddress}:`, error);
+      throw new Error(`Failed to fetch wallet transactions: ${error.message}`);
     }
   }
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { BlockchainController } from '../../controllers/blockchain/blockchain.controller';
 import { authenticate, authorize } from '../../middleware/auth.middleware';
+import { AuthenticatedRequest } from '../../types/auth.types';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 
@@ -123,6 +124,16 @@ router.get('/verify/:transactionHash',
  */
 router.get('/status', 
   BlockchainController.getNetworkStatus
+);
+
+/**
+ * @route   GET /api/blockchain/wallet/transactions
+ * @desc    Get wallet transactions directly from Solana blockchain
+ * @access  Private (All authenticated users)
+ */
+router.get('/wallet/transactions', 
+  authenticate, 
+  BlockchainController.getWalletTransactions
 );
 
 /**

@@ -15,6 +15,81 @@ const router = Router();
 router.use(authenticate);
 
 /**
+ * GET /api/vehicles/validate-vehicle-number/:vehicleNumber
+ * Check if vehicle number is already registered
+ * Access: All authenticated users
+ */
+router.get('/validate-vehicle-number/:vehicleNumber', async (req: any, res: any) => {
+  try {
+    const { vehicleNumber } = req.params;
+    
+    if (!vehicleNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vehicle number is required'
+      });
+    }
+
+    const existingVehicle = await Vehicle.findOne({ 
+      vehicleNumber: vehicleNumber.toUpperCase() 
+    });
+
+    logger.info(`🔍 Vehicle number validation: ${vehicleNumber} - ${existingVehicle ? 'EXISTS' : 'AVAILABLE'}`);
+
+    res.status(200).json({
+      success: true,
+      message: existingVehicle ? 'Vehicle number already registered' : 'Vehicle number is available',
+      data: {
+        vehicleNumber: vehicleNumber.toUpperCase(),
+        isRegistered: !!existingVehicle,
+        existingVehicle: existingVehicle ? {
+          id: existingVehicle._id,
+          vin: existingVehicle.vin,
+          make: existingVehicle.make,
+          model: existingVehicle.vehicleModel,
+          year: existingVehicle.year
+        } : null
+      }
+    });
+  } catch (error) {
+    logger.error('❌ Vehicle number validation failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to validate vehicle number',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/vehicles/test
+ * Test database connection
+ * Access: All authenticated users
+ */
+router.get('/test', async (req: any, res: any) => {
+  try {
+    const totalVehicles = await Vehicle.countDocuments();
+    logger.info(`🧪 Database test - Total vehicles: ${totalVehicles}`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Database connection test successful',
+      data: {
+        totalVehicles,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    logger.error('❌ Database test failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection test failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/vehicles
  * Get user's own vehicles
  * Access: All authenticated users
@@ -24,6 +99,8 @@ router.get('/',
   async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
+      logger.info(`👤 User ID from request: ${userId} (type: ${typeof userId})`);
+      
       if (!userId) {
         return res.status(401).json({
           success: false,
@@ -32,11 +109,18 @@ router.get('/',
       }
 
       // Get user's vehicles from database
+      logger.info(`🔍 Fetching vehicles for user: ${userId}`);
+      
+      // Debug: Check total vehicles in database
+      const totalVehicles = await Vehicle.countDocuments();
+      logger.info(`📊 Total vehicles in database: ${totalVehicles}`);
+      
       const vehicles = await Vehicle.find({ ownerId: userId })
         .sort({ createdAt: -1 })
         .select('-__v');
 
       logger.info(`✅ Retrieved ${vehicles.length} vehicles for user ${userId}`);
+      logger.info(`📋 Vehicle details:`, vehicles.map(v => ({ id: v._id, vin: v.vin, make: v.make, model: v.vehicleModel })));
 
       res.status(200).json({
         success: true,
@@ -45,6 +129,7 @@ router.get('/',
           vehicles: vehicles.map(vehicle => ({
             id: vehicle._id,
             vin: vehicle.vin,
+            vehicleNumber: vehicle.vehicleNumber,
             make: vehicle.make,
             model: vehicle.vehicleModel,
             year: vehicle.year,

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
   Car, 
   DollarSign, 
@@ -20,6 +21,14 @@ import {
 import { VehicleRegistrationForm, VehicleList } from '../vehicle';
 import { WalletDisplay, TransactionHistory } from '../blockchain';
 import { MileageUpdateForm } from '../mileage/MileageUpdateForm';
+import { ArweaveUpload } from '../arweave';
+import { EnhancedTransactionHistory } from '../blockchain/EnhancedTransactionHistory';
+import { HeaderHero } from './HeaderHero';
+import { MetricsGrid } from './MetricsGrid';
+import { WalletCard } from '../blockchain/WalletCard';
+import { ThemeToggle } from '../common/ThemeToggle';
+import { MetricCardSkeleton, WalletCardSkeleton } from '../common/LoadingSkeleton';
+import toast from 'react-hot-toast';
 
 interface OwnerDashboardProps {
   user: {
@@ -36,28 +45,41 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
   const [showMileageUpdate, setShowMileageUpdate] = useState(false);
   const [showVehicleList, setShowVehicleList] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [showArweaveUpload, setShowArweaveUpload] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [walletAddress] = useState('GbzsmT6yK1WCY5YLMUk27nGZsen2zdTnwG4KkLhvuZjN'); // Mock wallet address
+
+  // Simulate loading
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   const ownerStats = [
     {
       title: 'My Vehicles',
-      value: '12',
+      value: 12,
       change: '+2 this month',
-      changeType: 'positive',
+      changeType: 'positive' as const,
       icon: Car,
       description: 'Total owned vehicles'
     },
     {
       title: 'Total Earnings',
-      value: '$48,250',
+      value: 48250,
       change: '+18.7%',
-      changeType: 'positive',
+      changeType: 'positive' as const,
       icon: DollarSign,
       description: 'From vehicle sales'
     },
     {
       title: 'Active Listings',
-      value: '8',
+      value: 8,
       change: '+3 new',
-      changeType: 'positive',
+      changeType: 'positive' as const,
       icon: Eye,
       description: 'Currently for sale'
     },
@@ -65,79 +87,9 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
       title: 'Verified Status',
       value: '100%',
       change: 'All verified',
-      changeType: 'neutral',
+      changeType: 'neutral' as const,
       icon: CheckCircle,
       description: 'Vehicle verification'
-    }
-  ];
-
-  const myVehicles = [
-    {
-      id: 1,
-      make: 'Toyota',
-      model: 'Camry',
-      year: 2022,
-      vin: 'JTD3***7890',
-      status: 'active',
-      price: '$28,500',
-      views: 247,
-      inquiries: 12,
-      lastUpdated: '2 days ago'
-    },
-    {
-      id: 2,
-      make: 'Honda',
-      model: 'Civic',
-      year: 2021,
-      vin: 'JHM2***4567',
-      status: 'sold',
-      price: '$24,800',
-      views: 189,
-      inquiries: 8,
-      lastUpdated: '1 week ago'
-    },
-    {
-      id: 3,
-      make: 'Tesla',
-      model: 'Model 3',
-      year: 2023,
-      vin: '5YJ3***1234',
-      status: 'draft',
-      price: '$42,990',
-      views: 0,
-      inquiries: 0,
-      lastUpdated: 'Today'
-    }
-  ];
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'inquiry',
-      message: 'New inquiry for 2022 Toyota Camry',
-      timestamp: '30 minutes ago',
-      vehicle: 'Toyota Camry'
-    },
-    {
-      id: 2,
-      type: 'view',
-      message: 'Your Honda Civic listing was viewed 15 times',
-      timestamp: '2 hours ago',
-      vehicle: 'Honda Civic'
-    },
-    {
-      id: 3,
-      type: 'verification',
-      message: 'Vehicle verification completed for Tesla Model 3',
-      timestamp: '5 hours ago',
-      vehicle: 'Tesla Model 3'
-    },
-    {
-      id: 4,
-      type: 'price_change',
-      message: 'Price updated for Toyota Camry',
-      timestamp: '1 day ago',
-      vehicle: 'Toyota Camry'
     }
   ];
 
@@ -175,6 +127,14 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
       onClick: () => setShowTransactionHistory(true)
     },
     {
+      title: 'Upload to Arweave',
+      description: 'Store documents permanently on Arweave',
+      icon: FileText,
+      action: 'Upload Documents',
+      color: 'bg-green-500',
+      onClick: () => setShowArweaveUpload(true)
+    },
+    {
       title: 'Update Prices',
       description: 'Adjust pricing for active listings',
       icon: DollarSign,
@@ -197,323 +157,239 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
     }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'sold': return 'bg-gray-100 text-gray-800';
-      case 'draft': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const recentActivity = [
+    {
+      id: 1,
+      type: 'vehicle_registration',
+      description: 'New vehicle registered on blockchain',
+      vehicle: 'Toyota Camry',
+      time: '2 hours ago'
+    },
+    {
+      id: 2,
+      type: 'mileage_update',
+      description: 'Mileage updated for Honda Civic',
+      vehicle: 'Honda Civic',
+      time: '1 day ago'
+    },
+    {
+      id: 3,
+      type: 'price_change',
+      description: 'Price updated for Ford Mustang',
+      vehicle: 'Ford Mustang',
+      time: '3 days ago'
     }
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'inquiry': return <FileText className="w-4 h-4" />;
-      case 'view': return <Eye className="w-4 h-4" />;
-      case 'verification': return <Shield className="w-4 h-4" />;
-      case 'price_change': return <DollarSign className="w-4 h-4" />;
-      default: return <Activity className="w-4 h-4" />;
-    }
-  };
+  ];
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case 'inquiry': return 'text-blue-600 bg-blue-50';
-      case 'view': return 'text-green-600 bg-green-50';
-      case 'verification': return 'text-purple-600 bg-purple-50';
-      case 'price_change': return 'text-orange-600 bg-orange-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'vehicle_registration': return 'bg-green-500';
+      case 'mileage_update': return 'bg-blue-500';
+      case 'price_change': return 'bg-orange-500';
+      default: return 'bg-gray-500';
     }
   };
 
   return (
     <div className="space-y-8">
-      {/* Header with Role Indication */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center mb-2">
-              <Key className="w-8 h-8 mr-3" />
-              <span className="px-3 py-1 bg-purple-800/30 rounded-full text-sm font-medium">
-                OWNER ACCESS
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold mb-2">
-              Welcome back, {user.firstName}!
-            </h1>
-            <p className="text-purple-100 text-lg">Vehicle Owner Dashboard</p>
-            <p className="text-purple-50 text-sm mt-1">
-              Manage your vehicle listings and track your sales performance
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-purple-200 text-sm">Logged in as</p>
-            <p className="font-semibold">{user.email}</p>
-            <p className="text-purple-200 text-sm">Role: {user.role.toUpperCase()}</p>
-          </div>
-        </div>
+      {/* Header with Theme Toggle */}
+      <div className="flex justify-between items-center">
+        <HeaderHero 
+          user={user} 
+          onAddVehicle={() => setShowVehicleRegistration(true)}
+        />
+        <ThemeToggle />
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {ownerStats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <p className="text-xs text-gray-500">{stat.description}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <Icon className="w-6 h-6 text-gray-600" />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center">
-                <span className={`text-sm font-medium ${
-                  stat.changeType === 'positive' ? 'text-green-600' : 
-                  stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
-                }`}>
-                  {stat.change}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Blockchain Wallet */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Blockchain Wallet</h2>
-        <WalletDisplay 
-          showCreateButton={true}
-          onWalletCreated={(wallet) => {
-            console.log('Wallet created:', wallet);
-          }}
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+      {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {quickActions.map((action, index) => {
-            const Icon = action.icon;
-            return (
-              <div key={index} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-                <div className="text-center">
-                  <div className={`inline-flex p-3 rounded-lg ${action.color} mb-4`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">{action.title}</h3>
-                  <p className="text-sm text-gray-600 mb-4">{action.description}</p>
-                  <button 
-                    className="btn-primary text-sm w-full"
+          {[...Array(4)].map((_, index) => (
+            <MetricCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <MetricsGrid metrics={ownerStats} />
+      )}
+
+      {/* Wallet Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {isLoading ? (
+          <WalletCardSkeleton />
+        ) : (
+          <WalletCard walletAddress={walletAddress} />
+        )}
+        
+        {/* Quick Actions Grid */}
+        <div className="lg:col-span-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {quickActions.slice(0, 4).map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <motion.button
+                    key={index}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={action.onClick}
+                    className={`p-4 rounded-lg text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-solana-purple focus:ring-offset-2 ${action.color} text-white hover:opacity-90`}
                   >
-                    {action.action}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    <div className="flex items-center space-x-3">
+                      <Icon className="w-6 h-6" />
+                      <div>
+                        <h4 className="font-medium">{action.title}</h4>
+                        <p className="text-sm opacity-90">{action.description}</p>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* My Vehicles & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* My Vehicles */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">My Vehicles</h2>
-              <Car className="w-5 h-5 text-gray-500" />
-            </div>
-          </div>
-          <div className="p-6 space-y-4">
-            {myVehicles.map((vehicle) => (
-              <div key={vehicle.id} className="flex items-center space-x-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50">
-                <div className="w-20 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <Car className="w-8 h-8 text-gray-400" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h3 className="font-medium text-gray-900">
-                      {vehicle.year} {vehicle.make} {vehicle.model}
-                    </h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(vehicle.status)}`}>
-                      {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">VIN: {vehicle.vin}</p>
-                  <div className="grid grid-cols-3 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium text-green-600">{vehicle.price}</span>
-                    </div>
-                    <div>
-                      {vehicle.views} views
-                    </div>
-                    <div>
-                      {vehicle.inquiries} inquiries
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <button className="p-2 text-gray-400 hover:text-gray-600">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                </div>
+      {/* Recent Activity */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Recent Activity
+        </h3>
+        <div className="space-y-4">
+          {recentActivity.map((activity, index) => (
+            <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className={`w-2 h-2 rounded-full ${getActivityColor(activity.type)}`} />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{activity.description}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{activity.vehicle}</p>
               </div>
-            ))}
-          </div>
-          <div className="p-6 border-t border-gray-200">
-            <button className="btn-secondary w-full">
-              <Car className="w-4 h-4 mr-2" />
-              Manage All Vehicles
-            </button>
-          </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</span>
+            </div>
+          ))}
         </div>
+      </motion.div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-              <Activity className="w-5 h-5 text-gray-500" />
-            </div>
-          </div>
-          <div className="p-6 space-y-4">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3">
-                <div className={`p-2 rounded-full ${getActivityColor(activity.type)}`}>
-                  {getActivityIcon(activity.type)}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-500">{activity.vehicle}</span>
-                    <span className="text-xs text-gray-500">{activity.timestamp}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="p-6 border-t border-gray-200">
-            <button className="btn-secondary w-full">
-              <Clock className="w-4 h-4 mr-2" />
-              View All Activity
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Performance Metrics</h2>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-900">87%</p>
-              <p className="text-sm text-gray-600">Listing success rate</p>
-            </div>
-            <div className="text-center">
-              <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-900">24</p>
-              <p className="text-sm text-gray-600">Avg. days to sell</p>
-            </div>
-            <div className="text-center">
-              <Eye className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-900">1,247</p>
-              <p className="text-sm text-gray-600">Total views this month</p>
-            </div>
-            <div className="text-center">
-              <Shield className="w-8 h-8 text-green-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-900">5.0</p>
-              <p className="text-sm text-gray-600">Average rating</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Vehicle Registration Modal */}
+      {/* Modals */}
       {showVehicleRegistration && (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-          <VehicleRegistrationForm
-            onSuccess={(result) => {
-              console.log('Vehicle registered successfully:', result);
-              // Keep modal open to show success state
-            }}
-            onCancel={() => setShowVehicleRegistration(false)}
-          />
-        </div>
-      </div>
-      )}
-
-      {/* Mileage Update Modal */}
-      {showMileageUpdate && (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-          <MileageUpdateForm
-            onSuccess={(result) => {
-              console.log('Mileage updated successfully:', result);
-              // Keep modal open to show success state
-            }}
-            onCancel={() => setShowMileageUpdate(false)}
-          />
-        </div>
-      </div>
-      )}
-
-      {/* Vehicle List Modal */}
-      {showVehicleList && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">My Vehicles</h2>
+          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Register New Vehicle</h2>
               <button
-                onClick={() => setShowVehicleList(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setShowVehicleRegistration(false)}
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <VehicleList
-              onVehicleSelect={(vehicle) => {
-                console.log('Vehicle selected:', vehicle);
-                // Handle vehicle selection
+            <VehicleRegistrationForm
+              onSuccess={(result) => {
+                // Let the VehicleRegistrationForm handle its own success modal
+                // Don't close immediately, let user see the success modal first
+                console.log('Vehicle registration successful:', result);
               }}
-              onEditVehicle={(vehicle) => {
-                console.log('Edit vehicle:', vehicle);
-                // Handle vehicle editing
-              }}
-              onDeleteVehicle={(vehicle) => {
-                console.log('Delete vehicle:', vehicle);
-                // Handle vehicle deletion
+              onCancel={() => {
+                setShowVehicleRegistration(false);
+                toast.success('Vehicle registered successfully!');
               }}
             />
           </div>
         </div>
       )}
 
-      {/* Transaction History Modal */}
-      {showTransactionHistory && (
+      {showMileageUpdate && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">Blockchain Transaction History</h2>
+          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Update Mileage</h2>
               <button
-                onClick={() => setShowTransactionHistory(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setShowMileageUpdate(false)}
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <TransactionHistory />
+            <MileageUpdateForm
+              onSuccess={() => {
+                setShowMileageUpdate(false);
+                toast.success('Mileage updated successfully!');
+              }}
+              onCancel={() => setShowMileageUpdate(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showVehicleList && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">My Vehicles</h2>
+              <button
+                onClick={() => setShowVehicleList(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <VehicleList
+              onVehicleSelect={(vehicle) => {
+                setSelectedVehicleId(vehicle.id);
+                setShowVehicleList(false);
+              }}
+              onEditVehicle={(vehicle) => {
+                console.log('Edit vehicle:', vehicle);
+              }}
+              onDeleteVehicle={(vehicle) => {
+                console.log('Delete vehicle:', vehicle);
+              }}
+              onViewBlockchainHistory={(vehicle) => {
+                setSelectedVehicleId(vehicle.id);
+                setShowTransactionHistory(true);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showTransactionHistory && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+            <EnhancedTransactionHistory 
+              vehicleId={selectedVehicleId}
+              onClose={() => {
+                setShowTransactionHistory(false);
+                setSelectedVehicleId(undefined);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showArweaveUpload && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <ArweaveUpload
+              vehicleId={selectedVehicleId}
+              onSuccess={(results) => {
+                console.log('Files uploaded to Arweave successfully:', results);
+                setShowArweaveUpload(false);
+                toast.success('Files uploaded to Arweave successfully!');
+              }}
+              onCancel={() => setShowArweaveUpload(false)}
+            />
           </div>
         </div>
       )}
@@ -521,4 +397,4 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
   );
 };
 
-export default OwnerDashboard; 
+export default OwnerDashboard;

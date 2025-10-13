@@ -5,6 +5,14 @@ import { connectDatabase } from './config/database';
 import { app } from './app';
 import { logger } from './utils/logger';
 
+// Import models to ensure they are registered with mongoose
+import './models/core/User.model';
+import './models/core/Vehicle.model';
+import './models/core/Transaction.model';
+import './models/core/MileageHistory.model';
+import './models/core/VehicleDocument.model';
+import './models/core/Device.model';
+
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 

@@ -127,12 +127,30 @@ export class WalletService {
       
       // Get user with wallet data (including encrypted private key)
       const user = await User.findById(userId).select('+blockchainWallet.encryptedPrivateKey');
-      if (!user || !user.blockchainWallet || !user.blockchainWallet.isActive) {
-        logger.info(`❌ No active wallet found for user ${userId}`);
+      logger.info(`🔍 User found: ${!!user}, has blockchainWallet: ${!!user?.blockchainWallet}`);
+      
+      if (!user) {
+        logger.info(`❌ User not found: ${userId}`);
+        return null;
+      }
+      
+      if (!user.blockchainWallet) {
+        logger.info(`❌ No blockchain wallet found for user ${userId}`);
+        return null;
+      }
+      
+      if (!user.blockchainWallet.isActive) {
+        logger.info(`❌ Wallet is not active for user ${userId}`);
         return null;
       }
 
       const wallet = user.blockchainWallet;
+      logger.info(`🔍 Wallet details: address=${wallet.walletAddress}, hasEncryptedKey=${!!wallet.encryptedPrivateKey}`);
+      
+      if (!wallet.encryptedPrivateKey) {
+        logger.error(`❌ No encrypted private key found for user ${userId}`);
+        return null;
+      }
       
       // Decrypt the private key
       const decryptedPrivateKey = this.decrypt(wallet.encryptedPrivateKey);
@@ -142,7 +160,7 @@ export class WalletService {
       const solanaService = getSolanaService();
       const currentBalance = await solanaService.getBalance(wallet.walletAddress);
       
-      logger.info(`✅ Wallet found for user ${userId}: ${wallet.walletAddress}`);
+      logger.info(`✅ Wallet found for user ${userId}: ${wallet.walletAddress} (Balance: ${currentBalance})`);
       
       return {
         publicKey: wallet.walletAddress,
@@ -165,6 +183,27 @@ export class WalletService {
     } catch (error) {
       logger.error(`❌ Failed to check wallet for user ${userId}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Get user's wallet address only (without private key)
+   */
+  async getUserWalletAddress(userId: string): Promise<string | null> {
+    try {
+      logger.info(`🔍 Looking up wallet address for user ${userId}`);
+      
+      const user = await User.findById(userId).select('blockchainWallet');
+      if (!user || !user.blockchainWallet || !user.blockchainWallet.isActive) {
+        logger.info(`❌ No active wallet found for user ${userId}`);
+        return null;
+      }
+
+      logger.info(`✅ Wallet address found for user ${userId}: ${user.blockchainWallet.walletAddress}`);
+      return user.blockchainWallet.walletAddress;
+    } catch (error) {
+      logger.error(`❌ Failed to get wallet address for user ${userId}:`, error);
+      return null;
     }
   }
 

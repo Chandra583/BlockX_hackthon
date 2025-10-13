@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { User } from '../../models/core/User.model';
-import { Vehicle } from '../../models/core/Vehicle.model';
-import { Transaction } from '../../models/core/Transaction.model';
 import { AuthService } from '../../services/core/auth.service';
 import { ApiError, HttpStatusCodes } from '../../utils/errors';
 import { logger } from '../../utils/logger';
@@ -375,6 +374,9 @@ export class AdminController {
    */
   static async getVehicleStats(req: Request, res: Response): Promise<void> {
     try {
+      // Get Vehicle model from mongoose
+      const Vehicle = mongoose.model('Vehicle');
+
       const totalVehicles = await Vehicle.countDocuments();
       const verifiedVehicles = await Vehicle.countDocuments({ verificationStatus: 'verified' });
       const pendingVehicles = await Vehicle.countDocuments({ verificationStatus: 'pending' });
@@ -422,6 +424,9 @@ export class AdminController {
    */
   static async getTransactionStats(req: Request, res: Response): Promise<void> {
     try {
+      // Get Transaction model from mongoose
+      const Transaction = mongoose.model('Transaction');
+
       const totalTransactions = await Transaction.countDocuments();
       const confirmedTransactions = await Transaction.countDocuments({ status: 'confirmed' });
       const pendingTransactions = await Transaction.countDocuments({ status: 'pending' });
