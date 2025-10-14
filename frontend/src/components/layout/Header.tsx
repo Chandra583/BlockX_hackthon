@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -19,6 +19,7 @@ import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { logout } from '../../store/slices/authSlice';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ROLE_LABELS } from '../../types/auth';
+import NotificationService from '../../services/notifications';
 
 export const Header: React.FC = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -28,6 +29,24 @@ export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loadingNotifications, setLoadingNotifications] = useState<boolean>(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!isAuthenticated) return;
+      try {
+        setLoadingNotifications(true);
+        const res = await NotificationService.getNotifications({ unread: true, limit: 1, page: 1 });
+        setUnreadCount(res.data.unreadCount || 0);
+      } catch (e) {
+        // ignore
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+    load();
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -106,9 +125,13 @@ export const Header: React.FC = () => {
           {/* Right side - Desktop */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             {/* Notifications */}
-            <button className="p-2 text-gray-500 hover:text-gray-700 relative">
+            <button className="p-2 text-gray-500 hover:text-gray-700 relative" aria-label="Notifications" onClick={() => navigate('/notifications')}>
               <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[0.75rem] h-3 px-0.5 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center">
+                  {Math.min(unreadCount, 9)}
+                </span>
+              )}
             </button>
 
             {/* User Profile Dropdown */}

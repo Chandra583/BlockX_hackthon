@@ -46,6 +46,8 @@ export const MetricCardSkeleton: React.FC<{ className?: string }> = ({
   );
 };
 
+
+
 export const WalletCardSkeleton: React.FC<{ className?: string }> = ({
   className = ''
 }) => {
@@ -87,4 +89,5 @@ export const WalletCardSkeleton: React.FC<{ className?: string }> = ({
 };
 
 export default Skeleton;
+
 

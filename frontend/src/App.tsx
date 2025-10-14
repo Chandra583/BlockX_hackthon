@@ -12,6 +12,10 @@ import { Toaster } from 'react-hot-toast';
 
 // Import admin components
 import { UserList } from './components/admin';
+import AdminVehiclesPage from './components/admin/vehicles/AdminVehiclesPage';
+import { Layout } from './components/layout/Layout';
+import InstallJobsDashboard from './components/provider/InstallJobsDashboard';
+import InstallJobsPage from './components/admin/InstallJobsPage';
 
 const HomePage = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -66,13 +70,53 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/provider/install-jobs" 
+          element={
+            <ProtectedRoute allowedRoles={['service']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <InstallJobsDashboard />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Admin Routes */}
         <Route 
           path="/admin/users" 
           element={
             <ProtectedRoute allowedRoles={['admin']}>
-              <UserList />
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <UserList />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/vehicles" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <AdminVehiclesPage />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/install-jobs" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <InstallJobsPage />
+                </div>
+              </Layout>
             </ProtectedRoute>
           } 
         />

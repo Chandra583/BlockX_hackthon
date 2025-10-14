@@ -88,12 +88,13 @@ router.get('/wallet',
 
 /**
  * @route   POST /api/blockchain/vehicle/register
- * @desc    Register a vehicle on the blockchain
- * @access  Private (Vehicle owners only)
+ * @desc    Register a vehicle on the blockchain (Admin only - Use admin approval endpoint instead)
+ * @access  Private (Admin only)
+ * @deprecated Use /api/admin/vehicles/:vehicleId/approve instead
  */
 router.post('/vehicle/register', 
   authenticate, 
-  authorize('owner', 'admin'), 
+  authorize('admin'), 
   BlockchainController.registerVehicle
 );
 

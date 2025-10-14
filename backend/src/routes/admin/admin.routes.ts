@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../../controllers/admin/admin.controller';
+import { InstallController } from '../../controllers/admin/install.controller';
 import { authenticate, requireAdmin, rateLimit } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -74,10 +75,48 @@ router.get('/users/:id/activity', adminRateLimit, AdminController.getUserActivit
 router.get('/vehicles/stats', adminRateLimit, AdminController.getVehicleStats);
 
 /**
+ * @route   GET /api/admin/vehicles
+ * @desc    List vehicles with optional status filter
+ * @access  Private (Admin only)
+ */
+router.get('/vehicles', adminRateLimit, AdminController.listVehicles);
+
+/**
  * @route   GET /api/admin/transactions/stats
  * @desc    Get blockchain transaction statistics
  * @access  Private (Admin only)
  */
 router.get('/transactions/stats', adminRateLimit, AdminController.getTransactionStats);
+
+/**
+ * @route   GET /api/admin/vehicles/pending
+ * @desc    Get pending vehicle registrations
+ * @access  Private (Admin only)
+ * @query   page, limit
+ */
+router.get('/vehicles/pending', adminRateLimit, AdminController.getPendingVehicles);
+
+/**
+ * @route   POST /api/admin/vehicles/:vehicleId/approve
+ * @desc    Approve vehicle registration and send to blockchain
+ * @access  Private (Admin only)
+ */
+router.post('/vehicles/:vehicleId/approve', strictAdminRateLimit, AdminController.approveVehicle);
+
+/**
+ * @route   POST /api/admin/vehicles/:vehicleId/reject
+ * @desc    Reject vehicle registration
+ * @access  Private (Admin only)
+ * @body    { reason }
+ */
+router.post('/vehicles/:vehicleId/reject', strictAdminRateLimit, AdminController.rejectVehicle);
+
+/**
+ * Install jobs management (provider assignment workflow)
+ */
+router.get('/install-jobs', adminRateLimit, InstallController.listInstallJobs);
+router.post('/install-jobs', strictAdminRateLimit, InstallController.createAndAssignInstallJob);
+router.post('/install-jobs/:jobId/assign', strictAdminRateLimit, InstallController.assignProvider);
+router.patch('/install-jobs/:jobId/status', strictAdminRateLimit, InstallController.updateStatus);
 
 export default router; 

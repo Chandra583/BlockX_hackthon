@@ -121,6 +121,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
   // Get vehicle status color
   const getStatusColor = (vehicle: VehicleWithBlockchain) => {
+    if (vehicle.verificationStatus === 'rejected') return 'text-red-700 bg-red-100';
     if (vehicle.isForSale) return 'text-green-600 bg-green-100';
     if (vehicle.verificationStatus === 'verified') return 'text-blue-600 bg-blue-100';
     if (vehicle.verificationStatus === 'pending') return 'text-yellow-600 bg-yellow-100';
@@ -129,6 +130,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 
   // Get vehicle status text
   const getStatusText = (vehicle: VehicleWithBlockchain) => {
+    if (vehicle.verificationStatus === 'rejected') return 'Rejected';
     if (vehicle.isForSale) return 'For Sale';
     if (vehicle.verificationStatus === 'verified') return 'Verified';
     if (vehicle.verificationStatus === 'pending') return 'Pending';
@@ -233,6 +235,11 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   {getStatusText(vehicle)}
                 </span>
               </div>
+              {vehicle.verificationStatus === 'rejected' && vehicle.rejectionReason && (
+                <div className="mt-2 p-2 border border-red-200 bg-red-50 rounded text-xs text-red-700">
+                  <strong>Rejected:</strong> {vehicle.rejectionReason}
+                </div>
+              )}
 
               {/* Vehicle Details */}
               <div className="space-y-2 mb-4">

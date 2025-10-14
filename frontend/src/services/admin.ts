@@ -221,8 +221,8 @@ export class AdminService {
     try {
       const response = await apiService.patch(`/admin/users/${userId}/status`, {
         status,
-        reason
-      });
+      reason
+    });
       return response.data;
     } catch (error) {
       console.error('Failed to update user status:', error);
@@ -281,6 +281,99 @@ export class AdminService {
       return response.data;
     } catch (error) {
       console.error('Failed to fetch vehicles:', error);
+      throw error;
+    }
+  }
+
+  // =====================================================
+  // INSTALL JOBS (DEVICE PROVIDER ASSIGNMENT)
+  // =====================================================
+
+  static async getInstallJobs(params?: { page?: number; limit?: number; status?: string; providerId?: string }): Promise<{
+    jobs: any[];
+    pagination: { currentPage: number; totalPages: number; total: number; limit: number };
+  }> {
+    try {
+      const response = await apiService.get('/admin/install-jobs', { params });
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch install jobs:', error);
+      throw error;
+    }
+  }
+
+  static async createInstallJob(payload: {
+    deviceId: string;
+    ownerId: string;
+    vehicleId?: string;
+    assignedProviderId?: string;
+    notes?: string;
+    location?: { address?: string; latitude?: number; longitude?: number };
+  }): Promise<any> {
+    try {
+      const response = await apiService.post('/admin/install-jobs', payload);
+      return response.data.data.job;
+    } catch (error) {
+      console.error('Failed to create install job:', error);
+      throw error;
+    }
+  }
+
+  static async assignInstallJob(jobId: string, providerId: string): Promise<any> {
+    try {
+      const response = await apiService.post(`/admin/install-jobs/${jobId}/assign`, { providerId });
+      return response.data.data.job;
+    } catch (error) {
+      console.error('Failed to assign provider:', error);
+      throw error;
+    }
+  }
+
+  static async updateInstallJobStatus(jobId: string, status: 'requested' | 'assigned' | 'accepted' | 'declined' | 'in_progress' | 'completed' | 'cancelled'): Promise<any> {
+    try {
+      const response = await apiService.patch(`/admin/install-jobs/${jobId}/status`, { status });
+      return response.data.data.job;
+    } catch (error) {
+      console.error('Failed to update install job status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending vehicles
+   */
+  static async getPendingVehicles(page: number = 1, limit: number = 10): Promise<any> {
+    try {
+      const response = await apiService.get('/admin/vehicles', { params: { status: 'pending', page, limit } });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch pending vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve vehicle (triggers blockchain)
+   */
+  static async approveVehicle(vehicleId: string): Promise<any> {
+    try {
+      const response = await apiService.post(`/admin/vehicles/${vehicleId}/approve`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to approve vehicle:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject vehicle registration
+   */
+  static async rejectVehicle(vehicleId: string, reason: string): Promise<any> {
+    try {
+      const response = await apiService.post(`/admin/vehicles/${vehicleId}/reject`, { reason });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to reject vehicle:', error);
       throw error;
     }
   }

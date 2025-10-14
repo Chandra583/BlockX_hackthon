@@ -71,9 +71,10 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
         ...dashboardStats?.data?.overview,
         ...vehicleStats?.data,
         ...transactionStats?.data,
+        vehiclesByStatus: vehicleStats?.data?.vehiclesByStatus || vehicleStats?.data?.vehiclesByStatus || [],
         roleDistribution: dashboardStats?.data?.roleDistribution || [],
         usersByStatus: dashboardStats?.data?.usersByStatus || []
-      };
+      } as any;
       
       setStats(combinedStats as any);
       setSystemStats(sysStats);
@@ -274,30 +275,38 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
       </div>
 
       {/* Vehicle Status Breakdown */}
-      {stats?.vehiclesByStatus && stats.vehiclesByStatus.length > 0 && (
+      {stats?.vehiclesByStatus && stats.vehiclesByStatus.length >= 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <Car className="w-5 h-5 mr-2" />
             Vehicle Status Breakdown
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {stats.vehiclesByStatus.map((item: any, index: number) => {
+            {(['verified','pending','rejected'] as const).map((statusKey, index) => {
+              const count = (stats.vehiclesByStatus.find((s: any) => s._id === statusKey)?.count) || 0;
               const statusColors: any = {
                 verified: { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' },
                 pending: { bg: 'bg-yellow-500', text: 'text-yellow-600', light: 'bg-yellow-50' },
                 rejected: { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-50' }
               };
-              const colors = statusColors[item._id] || statusColors.pending;
+              const colors = statusColors[statusKey] || statusColors.pending;
               
               return (
-                <div key={index} className={`border border-gray-200 rounded-lg p-4 ${colors.light}`}>
+                <button
+                  key={index}
+                  onClick={() => {
+                    // Navigate to admin vehicles list with filter
+                    window.location.href = `/admin/vehicles?status=${statusKey}`;
+                  }}
+                  className={`text-left border border-gray-200 rounded-lg p-4 ${colors.light} hover:opacity-90 transition`}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900 capitalize">{item._id}</h3>
+                    <h3 className="font-semibold text-gray-900 capitalize">{statusKey}</h3>
                     <div className={`w-3 h-3 rounded-full ${colors.bg}`}></div>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{item.count.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">{count.toLocaleString()}</p>
                   <p className="text-sm text-gray-600">vehicles</p>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -390,6 +399,15 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
             <TrendingUp className="w-8 h-8 text-green-600 mb-2" />
             <h3 className="font-semibold text-gray-900">Analytics</h3>
             <p className="text-sm text-gray-600 mt-1">View system performance metrics</p>
+          </button>
+
+          <button 
+            onClick={() => navigate('/admin/install-jobs')}
+            className="p-4 border-2 border-yellow-200 rounded-lg hover:bg-yellow-50 transition-colors text-left"
+          >
+            <Car className="w-8 h-8 text-yellow-600 mb-2" />
+            <h3 className="font-semibold text-gray-900">Install Jobs</h3>
+            <p className="text-sm text-gray-600 mt-1">Assign providers and track device installs</p>
           </button>
           
           <button 

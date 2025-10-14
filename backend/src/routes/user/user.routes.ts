@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UserController } from '../../controllers/user/user.controller';
-import { authenticate, rateLimit } from '../../middleware/auth.middleware';
+import { authenticate, rateLimit, requireServiceProvider } from '../../middleware/auth.middleware';
+import { ProviderInstallController } from '../../controllers/user/provider-install.controller';
 
 const router = Router();
 
@@ -80,5 +81,11 @@ router.get('/activity', userRateLimit, UserController.getActivityHistory);
  * @body    { password, reason? }
  */
 router.delete('/account', strictRateLimit, UserController.deleteAccount);
+
+// Provider install job endpoints
+router.get('/install-jobs', userRateLimit, requireServiceProvider, ProviderInstallController.listMyJobs);
+router.post('/install-jobs/:jobId/accept', strictRateLimit, requireServiceProvider, ProviderInstallController.acceptJob);
+router.post('/install-jobs/:jobId/decline', strictRateLimit, requireServiceProvider, ProviderInstallController.declineJob);
+router.patch('/install-jobs/:jobId/status', strictRateLimit, requireServiceProvider, ProviderInstallController.updateProgress);
 
 export default router; 

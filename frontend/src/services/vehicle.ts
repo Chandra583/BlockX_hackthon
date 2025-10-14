@@ -31,6 +31,8 @@ export interface Vehicle {
   // Verification status
   verificationStatus?: 'pending' | 'verified' | 'rejected';
   verificationDate?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
 }
 
 export interface VehicleRegistrationData {
@@ -238,11 +240,12 @@ export class VehicleService {
   // ========================================
   
   /**
-   * Register a vehicle on the blockchain
+   * Register a vehicle (creates pending record awaiting admin approval)
+   * NEW FLOW: Vehicle is saved to database with "pending" status
+   * Admin must approve before blockchain registration
    */
   static async registerVehicleOnBlockchain(vehicleData: VehicleRegistrationData): Promise<BlockchainVehicleRegistration> {
     const registrationData = {
-      vehicleId: vehicleData.vehicleId || `vehicle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       vin: vehicleData.vin,
       vehicleNumber: vehicleData.vehicleNumber,
       make: vehicleData.make,
@@ -253,9 +256,11 @@ export class VehicleService {
       bodyType: vehicleData.bodyType,
       fuelType: vehicleData.fuelType,
       transmission: vehicleData.transmission,
+      condition: 'good', // Default condition
     };
     
-    return await apiService.post<BlockchainVehicleRegistration>('/blockchain/vehicle/register', registrationData);
+    // NEW ENDPOINT: Register vehicle (pending admin verification)
+    return await apiService.post<BlockchainVehicleRegistration>('/vehicles/register', registrationData);
   }
   
   /**

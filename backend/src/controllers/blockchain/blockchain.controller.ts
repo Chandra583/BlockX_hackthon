@@ -3,6 +3,8 @@ import { AuthenticatedRequest } from '../../types/auth.types';
 import { getSolanaService } from '../../services/blockchain/solana.service';
 import { walletService } from '../../services/blockchain/wallet.service';
 import { getArweaveService } from '../../services/blockchain/arweave.service';
+import { Notification } from '../../models/core/Notification.model';
+import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
 import { 
   BadRequestError, 
@@ -196,6 +198,26 @@ export class BlockchainController {
       try {
         await newVehicle.save();
         logger.info(`✅ Vehicle saved to database with ID: ${newVehicle._id}`);
+
+        // Notify admins about new registration for review (legacy path still used)
+        try {
+          const admins = await User.find({ role: 'admin' }).select('_id');
+          if (admins.length) {
+            await Notification.insertMany(admins.map(a => ({
+              userId: a._id.toString(),
+              userRole: 'admin',
+              title: 'New Vehicle Registration',
+              message: `Vehicle ${newVehicle.vin} (${newVehicle.vehicleNumber}) submitted by user ${userId}.`,
+              type: 'update',
+              priority: 'medium',
+              channels: ['in_app'],
+              actionUrl: `/admin/vehicles?status=pending`,
+              actionLabel: 'Review'
+            })));
+          }
+        } catch (notifyErr) {
+          logger.warn('Failed to create admin notification for vehicle registration:', notifyErr);
+        }
       } catch (dbError) {
         logger.error(`❌ Database save failed:`, dbError);
         throw dbError;
@@ -306,6 +328,39 @@ export class BlockchainController {
       });
 
       await vehicle.save();
+
+      // Notify owner and admins about mileage update
+      try {
+        // owner
+        await Notification.create({
+          userId: userId,
+          userRole: 'owner',
+          title: 'Mileage Updated',
+          message: `Mileage updated to ${newMileage.toLocaleString()} for vehicle ${vehicle.vin}.`,
+          type: 'update',
+          priority: 'low',
+          channels: ['in_app'],
+          actionUrl: `/vehicles/${vehicle._id}`,
+          actionLabel: 'View details'
+        });
+        // admins summary (optional): only create one per update per simplicity
+        const admins = await User.find({ role: 'admin' }).select('_id');
+        if (admins.length) {
+          await Notification.insertMany(admins.map(a => ({
+            userId: a._id.toString(),
+            userRole: 'admin',
+            title: 'Vehicle Mileage Updated',
+            message: `Vehicle ${vehicle.vin} (${vehicle.vehicleNumber}) mileage updated to ${newMileage.toLocaleString()}.`,
+            type: 'update',
+            priority: 'low',
+            channels: ['in_app'],
+            actionUrl: `/admin/vehicles?search=${vehicle.vin}`,
+            actionLabel: 'Open'
+          })));
+        }
+      } catch (notifyErr) {
+        logger.warn('Failed to create mileage notifications:', notifyErr);
+      }
 
       logger.info(`✅ Mileage recorded on blockchain: ${vehicle.vin} ${vehicle.currentMileage}->${newMileage}`);
 

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { authenticate, authorize, rateLimit } from '../../middleware/auth.middleware';
 import { BlockchainController } from '../../controllers/blockchain/blockchain.controller';
 import Vehicle from '../../models/core/Vehicle.model';
+import { Notification } from '../../models/core/Notification.model';
+import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
 
 const router = Router();
@@ -141,6 +143,8 @@ router.get('/',
             currentMileage: vehicle.currentMileage,
             lastMileageUpdate: vehicle.lastMileageUpdate?.toISOString(),
             verificationStatus: vehicle.verificationStatus,
+            rejectionReason: vehicle.rejectionReason,
+            rejectedAt: vehicle.rejectedAt?.toISOString?.() || undefined,
             trustScore: vehicle.trustScore,
             isForSale: vehicle.isForSale,
             listingStatus: vehicle.listingStatus,
@@ -220,6 +224,8 @@ router.get('/:vehicleId',
           currentMileage: vehicle.currentMileage,
           lastMileageUpdate: vehicle.lastMileageUpdate,
           verificationStatus: vehicle.verificationStatus,
+          rejectionReason: vehicle.rejectionReason,
+          rejectedAt: vehicle.rejectedAt,
           trustScore: vehicle.trustScore,
           isForSale: vehicle.isForSale,
           listingStatus: vehicle.listingStatus,
@@ -249,7 +255,7 @@ router.get('/:vehicleId',
 
 /**
  * POST /api/vehicles/register
- * Register a new vehicle (integrates with blockchain)
+ * Register a new vehicle (pending admin verification before blockchain)
  * Access: All authenticated users
  */
 router.post('/register',
@@ -264,13 +270,13 @@ router.post('/register',
         });
       }
 
-      const { vin, make, model, year, initialMileage, color, bodyType, fuelType, transmission, engineSize, condition, features, description } = req.body;
+      const { vin, vehicleNumber, make, model, year, initialMileage, color, bodyType, fuelType, transmission, engineSize, condition, features, description } = req.body;
 
       // Validate required fields
-      if (!vin || !make || !model || !year || initialMileage === undefined) {
+      if (!vin || !vehicleNumber || !make || !model || !year || initialMileage === undefined) {
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields: vin, make, model, year, initialMileage'
+          message: 'Missing required fields: vin, vehicleNumber, make, model, year, initialMileage'
         });
       }
 
@@ -283,30 +289,105 @@ router.post('/register',
         });
       }
 
-      // Create vehicle data for blockchain registration
-      const vehicleData = {
-        vehicleId: new Date().getTime().toString(), // Generate a unique ID
+      // Check if vehicle number already exists
+      const existingVehicleNumber = await Vehicle.findOne({ vehicleNumber: vehicleNumber.toUpperCase() });
+      if (existingVehicleNumber) {
+        return res.status(409).json({
+          success: false,
+          message: 'Vehicle with this vehicle number already exists'
+        });
+      }
+
+      // Create new vehicle with 'pending' status (awaiting admin verification)
+      const newVehicle = new Vehicle({
         vin: vin.toUpperCase(),
+        vehicleNumber: vehicleNumber.toUpperCase(),
+        ownerId: userId,
         make,
-        model,
+        vehicleModel: model,
         year: parseInt(year),
-        initialMileage: parseInt(initialMileage),
         color: color || 'Unknown',
         bodyType: bodyType || 'other',
         fuelType: fuelType || 'gasoline',
         transmission: transmission || 'automatic',
-        engineSize,
+        engineSize: engineSize || '',
+        currentMileage: parseInt(initialMileage),
+        lastMileageUpdate: new Date(),
+        verificationStatus: 'pending', // Pending admin verification
+        trustScore: 50, // Initial trust score
+        isForSale: false,
+        listingStatus: 'not_listed',
         condition: condition || 'good',
         features: features || [],
-        description
-      };
+        description: description || '',
+        fraudAlerts: [],
+        accidentHistory: [],
+        serviceHistory: [],
+        mileageHistory: [{
+          mileage: parseInt(initialMileage),
+          recordedBy: userId,
+          recordedAt: new Date(),
+          source: 'owner',
+          verified: false
+        }]
+      });
 
-      // Register vehicle on blockchain and save to database
-      // This will use the blockchain controller's registerVehicle method
-      const blockchainResult = await BlockchainController.registerVehicle(req, res);
-      
-      // The blockchain controller will handle the response
-      return;
+      await newVehicle.save();
+
+      logger.info(`✅ Vehicle registered with pending status: ${newVehicle.vin} by user ${userId}`);
+
+      // Create notifications: owner (pending) and admins (review request)
+      try {
+        // Owner notification
+        await Notification.create({
+          userId,
+          userRole: 'owner',
+          title: 'Vehicle Submitted for Review',
+          message: `Your vehicle ${newVehicle.vin} (${newVehicle.vehicleNumber}) was submitted and is awaiting admin approval.`,
+          type: 'verification',
+          priority: 'medium',
+          channels: ['in_app'],
+          actionUrl: `/vehicles`,
+          actionLabel: 'View vehicles'
+        });
+
+        // Admin notifications
+        const admins = await User.find({ role: 'admin' }).select('_id');
+        if (admins.length) {
+          await Notification.insertMany(admins.map(a => ({
+            userId: a._id.toString(),
+            userRole: 'admin',
+            title: 'New Vehicle Registration Request',
+            message: `Vehicle ${newVehicle.vin} (${newVehicle.vehicleNumber}) requires review.`,
+            type: 'update',
+            priority: 'high',
+            channels: ['in_app'],
+            actionUrl: `/admin/vehicles?status=pending`,
+            actionLabel: 'Review now'
+          })));
+        }
+      } catch (notifyErr) {
+        logger.warn('⚠️ Failed to create registration notifications:', notifyErr);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Vehicle registered successfully. Awaiting admin verification before blockchain registration.',
+        data: {
+          vehicle: {
+            id: newVehicle._id,
+            vin: newVehicle.vin,
+            vehicleNumber: newVehicle.vehicleNumber,
+            make: newVehicle.make,
+            model: newVehicle.vehicleModel,
+            year: newVehicle.year,
+            color: newVehicle.color,
+            currentMileage: newVehicle.currentMileage,
+            verificationStatus: newVehicle.verificationStatus,
+            createdAt: newVehicle.createdAt
+          }
+        }
+      });
     } catch (error) {
       logger.error('❌ Failed to register vehicle:', error);
       res.status(500).json({

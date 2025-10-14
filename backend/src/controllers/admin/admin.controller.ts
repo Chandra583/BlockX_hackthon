@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { User } from '../../models/core/User.model';
+import { Notification } from '../../models/core/Notification.model';
 import { AuthService } from '../../services/core/auth.service';
 import { ApiError, HttpStatusCodes } from '../../utils/errors';
 import { logger } from '../../utils/logger';
@@ -61,6 +62,65 @@ export class AdminController {
       res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
         status: 'error',
         message: 'Failed to fetch dashboard data'
+      });
+    }
+  }
+
+  /**
+   * @desc    List vehicles with optional status filter
+   * @route   GET /api/admin/vehicles
+   * @access  Private (Admin only)
+   */
+  static async listVehicles(req: Request, res: Response): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+      const status = (req.query.status as string) || undefined; // pending | verified | rejected | flagged
+      const search = (req.query.search as string) || '';
+
+      const Vehicle = mongoose.model('Vehicle');
+
+      const filter: any = {};
+      if (status) filter.verificationStatus = status;
+      if (search) {
+        filter.$or = [
+          { vin: { $regex: search, $options: 'i' } },
+          { vehicleNumber: { $regex: search, $options: 'i' } },
+          { make: { $regex: search, $options: 'i' } },
+          { vehicleModel: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      const [vehicles, total] = await Promise.all([
+        Vehicle.find(filter)
+          .populate('ownerId', 'firstName lastName email')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Vehicle.countDocuments(filter)
+      ]);
+
+      res.status(HttpStatusCodes.OK).json({
+        status: 'success',
+        message: 'Vehicles retrieved successfully',
+        data: {
+          vehicles,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalVehicles: total,
+            limit,
+            hasNextPage: page < Math.ceil(total / limit),
+            hasPrevPage: page > 1
+          }
+        }
+      });
+    } catch (error) {
+      logger.error('Error listing vehicles:', error);
+      res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
+        status: 'error',
+        message: 'Failed to fetch vehicles'
       });
     }
   }
@@ -470,6 +530,285 @@ export class AdminController {
       res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
         status: 'error',
         message: 'Failed to fetch transaction statistics'
+      });
+    }
+  }
+
+  /**
+   * @desc    Get pending vehicle registrations
+   * @route   GET /api/admin/vehicles/pending
+   * @access  Private (Admin only)
+   */
+  static async getPendingVehicles(req: Request, res: Response): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+
+      const Vehicle = mongoose.model('Vehicle');
+
+      const pendingVehicles = await Vehicle.find({ verificationStatus: 'pending' })
+        .populate('ownerId', 'firstName lastName email phoneNumber')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const totalPending = await Vehicle.countDocuments({ verificationStatus: 'pending' });
+
+      res.status(HttpStatusCodes.OK).json({
+        status: 'success',
+        message: 'Pending vehicles retrieved successfully',
+        data: {
+          vehicles: pendingVehicles,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalPending / limit),
+            totalPending,
+            limit,
+            hasNextPage: page < Math.ceil(totalPending / limit),
+            hasPrevPage: page > 1
+          }
+        }
+      });
+    } catch (error) {
+      logger.error('Error fetching pending vehicles:', error);
+      res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
+        status: 'error',
+        message: 'Failed to fetch pending vehicles'
+      });
+    }
+  }
+
+  /**
+   * @desc    Approve vehicle registration and send to blockchain
+   * @route   POST /api/admin/vehicles/:vehicleId/approve
+   * @access  Private (Admin only)
+   */
+  static async approveVehicle(req: Request, res: Response): Promise<void> {
+    try {
+      const { vehicleId } = req.params;
+      const adminId = req.user?.id;
+
+      const Vehicle = mongoose.model('Vehicle');
+      
+      // Get vehicle
+      const vehicle = await Vehicle.findById(vehicleId).populate('ownerId');
+      if (!vehicle) {
+        res.status(HttpStatusCodes.NOT_FOUND).json({
+          status: 'error',
+          message: 'Vehicle not found'
+        });
+        return;
+      }
+
+      // Check if already verified
+      if (vehicle.verificationStatus === 'verified') {
+        res.status(HttpStatusCodes.BAD_REQUEST).json({
+          status: 'error',
+          message: 'Vehicle is already verified'
+        });
+        return;
+      }
+
+      // Check if not pending
+      if (vehicle.verificationStatus !== 'pending') {
+        res.status(HttpStatusCodes.BAD_REQUEST).json({
+          status: 'error',
+          message: 'Vehicle is not in pending status'
+        });
+        return;
+      }
+
+      // Import required services
+      const { walletService } = require('../../services/blockchain/wallet.service');
+      const { getSolanaService } = require('../../services/blockchain/solana.service');
+
+      // Get owner's wallet
+      const ownerWallet = await walletService.getUserWallet(vehicle.ownerId._id.toString());
+      if (!ownerWallet) {
+        res.status(HttpStatusCodes.BAD_REQUEST).json({
+          status: 'error',
+          message: 'Owner does not have a blockchain wallet. Please ask the owner to create a wallet first.'
+        });
+        return;
+      }
+
+      try {
+        // Register vehicle on blockchain using owner's wallet
+        const blockchainRecord = await getSolanaService().registerVehicle(
+          vehicle._id.toString(),
+          vehicle.vin,
+          vehicle.vehicleNumber,
+          vehicle.currentMileage,
+          ownerWallet
+        );
+
+      // Update vehicle with blockchain info and mark as verified
+        vehicle.blockchainHash = blockchainRecord.transactionHash;
+        vehicle.blockchainAddress = blockchainRecord.blockchainAddress;
+        vehicle.verificationStatus = 'verified';
+        vehicle.updatedAt = new Date();
+
+        await vehicle.save();
+
+        logger.info(`✅ Admin ${adminId} approved vehicle ${vehicleId} and registered on blockchain: ${blockchainRecord.transactionHash}`);
+
+      // Notify owner
+      try {
+        await Notification.create({
+          userId: vehicle.ownerId._id.toString(),
+          userRole: 'owner',
+          title: 'Vehicle Approved',
+          message: `Your vehicle ${vehicle.vin} (${vehicle.vehicleNumber}) has been approved and registered on Solana.`,
+          type: 'verification',
+          priority: 'high',
+          channels: ['in_app'],
+          actionUrl: `/vehicles/${vehicle._id}`,
+          actionLabel: 'View vehicle'
+        });
+      } catch (notifyErr) {
+        logger.warn('Failed to create approval notification:', notifyErr);
+      }
+
+        res.status(HttpStatusCodes.OK).json({
+          status: 'success',
+          message: 'Vehicle approved and registered on blockchain successfully',
+          data: {
+            vehicle: {
+              id: vehicle._id,
+              vin: vehicle.vin,
+              vehicleNumber: vehicle.vehicleNumber,
+              make: vehicle.make,
+              model: vehicle.vehicleModel,
+              year: vehicle.year,
+              verificationStatus: vehicle.verificationStatus,
+              blockchainHash: vehicle.blockchainHash,
+              blockchainAddress: vehicle.blockchainAddress,
+              explorerUrl: `https://explorer.solana.com/tx/${blockchainRecord.transactionHash}${process.env.NODE_ENV === 'production' ? '' : '?cluster=devnet'}`
+            },
+            owner: {
+              id: vehicle.ownerId._id,
+              name: `${vehicle.ownerId.firstName} ${vehicle.ownerId.lastName}`,
+              email: vehicle.ownerId.email,
+              walletAddress: ownerWallet.publicKey
+            }
+          }
+        });
+      } catch (blockchainError) {
+        logger.error('Blockchain registration failed:', blockchainError);
+        res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
+          status: 'error',
+          message: 'Failed to register vehicle on blockchain',
+          error: blockchainError instanceof Error ? blockchainError.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      logger.error('Error approving vehicle:', error);
+      res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
+        status: 'error',
+        message: 'Failed to approve vehicle'
+      });
+    }
+  }
+
+  /**
+   * @desc    Reject vehicle registration
+   * @route   POST /api/admin/vehicles/:vehicleId/reject
+   * @access  Private (Admin only)
+   */
+  static async rejectVehicle(req: Request, res: Response): Promise<void> {
+    try {
+      const { vehicleId } = req.params;
+      const { reason } = req.body;
+      const adminId = req.user?.id;
+
+      if (!reason) {
+        res.status(HttpStatusCodes.BAD_REQUEST).json({
+          status: 'error',
+          message: 'Rejection reason is required'
+        });
+        return;
+      }
+
+      const Vehicle = mongoose.model('Vehicle');
+      
+      // Get vehicle
+      const vehicle = await Vehicle.findById(vehicleId);
+      if (!vehicle) {
+        res.status(HttpStatusCodes.NOT_FOUND).json({
+          status: 'error',
+          message: 'Vehicle not found'
+        });
+        return;
+      }
+
+      // Check if already rejected
+      if (vehicle.verificationStatus === 'rejected') {
+        res.status(HttpStatusCodes.BAD_REQUEST).json({
+          status: 'error',
+          message: 'Vehicle is already rejected'
+        });
+        return;
+      }
+
+      // Check if not pending
+      if (vehicle.verificationStatus !== 'pending') {
+        res.status(HttpStatusCodes.BAD_REQUEST).json({
+          status: 'error',
+          message: 'Vehicle is not in pending status'
+        });
+        return;
+      }
+
+      // Update vehicle status to rejected
+      vehicle.verificationStatus = 'rejected';
+      vehicle.rejectionReason = reason;
+      vehicle.rejectedBy = adminId;
+      vehicle.rejectedAt = new Date();
+      vehicle.updatedAt = new Date();
+
+      await vehicle.save();
+
+      logger.info(`⛔ Admin ${adminId} rejected vehicle ${vehicleId}. Reason: ${reason}`);
+
+      // Notify owner with reason
+      try {
+        await Notification.create({
+          userId: vehicle.ownerId.toString(),
+          userRole: 'owner',
+          title: 'Vehicle Rejected',
+          message: `Your vehicle ${vehicle.vin} (${vehicle.vehicleNumber}) was rejected. Reason: ${reason}`,
+          type: 'verification',
+          priority: 'high',
+          channels: ['in_app'],
+          actionUrl: `/vehicles/${vehicle._id}`,
+          actionLabel: 'Fix & resubmit'
+        });
+      } catch (notifyErr) {
+        logger.warn('Failed to create rejection notification:', notifyErr);
+      }
+
+      res.status(HttpStatusCodes.OK).json({
+        status: 'success',
+        message: 'Vehicle registration rejected',
+        data: {
+          vehicle: {
+            id: vehicle._id,
+            vin: vehicle.vin,
+            vehicleNumber: vehicle.vehicleNumber,
+            make: vehicle.make,
+            model: vehicle.vehicleModel,
+            year: vehicle.year,
+            verificationStatus: vehicle.verificationStatus,
+            rejectionReason: reason
+          }
+        }
+      });
+    } catch (error) {
+      logger.error('Error rejecting vehicle:', error);
+      res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json({
+        status: 'error',
+        message: 'Failed to reject vehicle'
       });
     }
   }

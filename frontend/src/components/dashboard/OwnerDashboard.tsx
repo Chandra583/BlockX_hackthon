@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Car, 
@@ -28,7 +28,37 @@ import { MetricsGrid } from './MetricsGrid';
 import { WalletCard } from '../blockchain/WalletCard';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { MetricCardSkeleton, WalletCardSkeleton } from '../common/LoadingSkeleton';
+import { BlockchainService } from '../../services/blockchain';
 import toast from 'react-hot-toast';
+
+// Create Wallet Card Component
+const CreateWalletCard: React.FC<{ onCreateWallet: () => void }> = ({ onCreateWallet }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay: 0.2 }}
+    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col justify-center items-center text-center"
+  >
+    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full flex items-center justify-center mb-4">
+      <Key className="w-8 h-8 text-white" />
+    </div>
+    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      No Wallet Found
+    </h3>
+    <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+      Create a Solana wallet to start using blockchain features for your vehicles.
+    </p>
+    <motion.button
+      onClick={onCreateWallet}
+      className="btn-primary flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-lg shadow-md hover:opacity-90 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <Key className="w-5 h-5 mr-2" />
+      Create Wallet
+    </motion.button>
+  </motion.div>
+);
 
 interface OwnerDashboardProps {
   user: {
@@ -48,15 +78,61 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
   const [showArweaveUpload, setShowArweaveUpload] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const [walletAddress] = useState('GbzsmT6yK1WCY5YLMUk27nGZsen2zdTnwG4KkLhvuZjN'); // Mock wallet address
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [hasWallet, setHasWallet] = useState<boolean>(false);
+  const [walletLoading, setWalletLoading] = useState(true);
 
-  // Simulate loading
-  React.useEffect(() => {
+  // Fetch user's wallet on component mount
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        setWalletLoading(true);
+        const hasWalletResult = await BlockchainService.hasWallet();
+        setHasWallet(hasWalletResult);
+        
+        if (hasWalletResult) {
+          const walletData = await BlockchainService.getWallet();
+          if (walletData.success && walletData.data.walletAddress) {
+            setWalletAddress(walletData.data.walletAddress);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch wallet:', error);
+        setHasWallet(false);
+        setWalletAddress(null);
+      } finally {
+        setWalletLoading(false);
+      }
+    };
+
+    fetchWallet();
+  }, []);
+
+  // Simulate loading for other components
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Handle wallet creation
+  const handleCreateWallet = async () => {
+    try {
+      setWalletLoading(true);
+      const walletData = await BlockchainService.createWallet();
+      if (walletData.success && walletData.data.walletAddress) {
+        setWalletAddress(walletData.data.walletAddress);
+        setHasWallet(true);
+        toast.success('Wallet created successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to create wallet:', error);
+      toast.error('Failed to create wallet. Please try again.');
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   const ownerStats = [
     {
@@ -214,10 +290,12 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
 
       {/* Wallet Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {isLoading ? (
+        {isLoading || walletLoading ? (
           <WalletCardSkeleton />
-        ) : (
+        ) : hasWallet && walletAddress ? (
           <WalletCard walletAddress={walletAddress} />
+        ) : (
+          <CreateWalletCard onCreateWallet={handleCreateWallet} />
         )}
         
         {/* Quick Actions Grid */}

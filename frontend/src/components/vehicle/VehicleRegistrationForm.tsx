@@ -54,17 +54,30 @@ interface BlockchainRegistrationResult {
   success: boolean;
   message: string;
   data: {
-    vehicleId: string;
-    vin: string;
-    vehicleNumber: string;
-    make: string;
-    model: string;
-    year: number;
-    initialMileage: number;
-    transactionHash: string;
-    blockchainAddress: string;
-    network: string;
-    explorerUrl: string;
+    vehicle?: {
+      id: string;
+      vin: string;
+      vehicleNumber: string;
+      make: string;
+      model: string;
+      year: number;
+      color?: string;
+      currentMileage: number;
+      verificationStatus: 'pending' | 'verified' | 'rejected';
+      createdAt: string;
+    };
+    // Legacy blockchain fields (for verified vehicles)
+    vehicleId?: string;
+    vin?: string;
+    vehicleNumber?: string;
+    make?: string;
+    model?: string;
+    year?: number;
+    initialMileage?: number;
+    transactionHash?: string;
+    blockchainAddress?: string;
+    network?: string;
+    explorerUrl?: string;
   };
 }
 
@@ -201,14 +214,29 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
 
   // If registration was successful, show success state
   if (registrationResult) {
+    const vehicle = registrationResult.data.vehicle || registrationResult.data;
+    const isPending = vehicle.verificationStatus === 'pending';
+    
     return (
       <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
+            isPending ? 'bg-yellow-100' : 'bg-green-100'
+          }`}>
+            {isPending ? (
+              <AlertCircle className="w-8 h-8 text-yellow-600" />
+            ) : (
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            )}
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Vehicle Registered Successfully!</h2>
-          <p className="text-gray-600">Your vehicle has been registered on the blockchain</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {isPending ? 'Vehicle Submitted for Verification!' : 'Vehicle Registered on Blockchain!'}
+          </h2>
+          <p className="text-gray-600">
+            {isPending 
+              ? 'Your vehicle has been saved and is awaiting admin verification' 
+              : 'Your vehicle has been successfully registered on the blockchain'}
+          </p>
         </div>
 
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -216,58 +244,100 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-500">VIN:</span>
-              <p className="font-mono">{registrationResult.data.vin}</p>
+              <p className="font-mono">{vehicle.vin}</p>
             </div>
             <div>
               <span className="text-gray-500">Vehicle Number:</span>
-              <p className="font-mono font-semibold text-green-600">{registrationResult.data.vehicleNumber || 'N/A'}</p>
+              <p className="font-mono font-semibold text-green-600">{vehicle.vehicleNumber || 'N/A'}</p>
             </div>
             <div>
               <span className="text-gray-500">Vehicle:</span>
-              <p>{registrationResult.data.year} {registrationResult.data.make} {registrationResult.data.model}</p>
+              <p>{vehicle.year} {vehicle.make} {vehicle.model}</p>
             </div>
             <div>
               <span className="text-gray-500">Initial Mileage:</span>
-              <p>{registrationResult.data.initialMileage.toLocaleString()} miles</p>
+              <p>{(vehicle.currentMileage || vehicle.initialMileage || 0).toLocaleString()} miles</p>
             </div>
             <div>
-              <span className="text-gray-500">Network:</span>
-              <p className="capitalize">{registrationResult.data.network}</p>
+              <span className="text-gray-500">Status:</span>
+              <p className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                isPending 
+                  ? 'bg-yellow-100 text-yellow-800' 
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {isPending ? '⏳ Pending Admin Verification' : '✅ Verified & On Blockchain'}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-blue-50 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-3">Blockchain Information</h3>
-          <div className="space-y-2 text-sm">
-            <div>
-              <span className="text-blue-700">Transaction Hash:</span>
-              <p className="font-mono text-xs break-all">{registrationResult.data.transactionHash}</p>
-            </div>
-            <div>
-              <span className="text-blue-700">Blockchain Address:</span>
-              <p className="font-mono text-xs break-all">{registrationResult.data.blockchainAddress}</p>
+        {/* Show pending message or blockchain info */}
+        {isPending ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-medium mb-2">Awaiting Admin Verification</p>
+                <p className="mb-2">
+                  Your vehicle registration has been submitted successfully. An administrator will review 
+                  and verify your details before registering the vehicle on the Solana blockchain.
+                </p>
+                <p className="font-medium">What happens next:</p>
+                <ol className="list-decimal list-inside mt-1 space-y-1 ml-2">
+                  <li>Admin reviews your vehicle details</li>
+                  <li>If approved, vehicle is registered on blockchain using your wallet</li>
+                  <li>You'll be able to see the transaction in your wallet</li>
+                  <li>Status will change from "Pending" to "Verified"</li>
+                </ol>
+                <p className="mt-3 font-medium">
+                  You can check the status in your "My Vehicles" section.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-900 mb-3">Blockchain Information</h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-blue-700">Transaction Hash:</span>
+                <p className="font-mono text-xs break-all">{registrationResult.data.transactionHash}</p>
+              </div>
+              <div>
+                <span className="text-blue-700">Blockchain Address:</span>
+                <p className="font-mono text-xs break-all">{registrationResult.data.blockchainAddress}</p>
+              </div>
+              <div>
+                <span className="text-blue-700">Network:</span>
+                <p className="capitalize">{registrationResult.data.network}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <a
-            href={registrationResult.data.explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            View on Solana Explorer
-          </a>
+          {!isPending && registrationResult.data.explorerUrl && (
+            <a
+              href={registrationResult.data.explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              View on Solana Explorer
+            </a>
+          )}
           <button
             onClick={() => {
               onCancel?.();
             }}
-            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+              isPending 
+                ? 'bg-primary-600 text-white hover:bg-primary-700' 
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
           >
-            Done
+            {isPending ? 'View My Vehicles' : 'Done'}
           </button>
         </div>
       </div>
@@ -597,8 +667,15 @@ export const VehicleRegistrationForm: React.FC<VehicleRegistrationFormProps> = (
         <div className="flex items-start">
           <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
           <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Blockchain Registration</p>
-            <p>Your vehicle will be registered on the Solana blockchain for permanent, tamper-proof records. This process may take a few moments to complete.</p>
+            <p className="font-medium mb-1">Admin Verification Required</p>
+            <p className="mb-2">
+              Your vehicle details will be saved and submitted for admin verification. After approval, 
+              it will be registered on the Solana blockchain using your wallet.
+            </p>
+            <p className="text-xs">
+              ⏳ Status will be "Pending" until admin approves<br />
+              ✅ After approval, you'll see the blockchain transaction in your wallet
+            </p>
           </div>
         </div>
       </div>

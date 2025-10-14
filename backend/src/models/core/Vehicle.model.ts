@@ -368,6 +368,17 @@ const VehicleSchema = new Schema({
     enum: ['pending', 'verified', 'flagged', 'rejected', 'expired'],
     default: 'pending'
   },
+  rejectionReason: {
+    type: String,
+    maxlength: [500, 'Rejection reason cannot exceed 500 characters']
+  },
+  rejectedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  rejectedAt: {
+    type: Date
+  },
   trustScore: {
     type: Number,
     default: 100,
@@ -411,6 +422,14 @@ const VehicleSchema = new Schema({
   },
   insuranceExpiry: {
     type: Date
+  },
+  blockchainHash: {
+    type: String,
+    index: true
+  },
+  blockchainAddress: {
+    type: String,
+    index: true
   }
 }, {
   timestamps: true,
