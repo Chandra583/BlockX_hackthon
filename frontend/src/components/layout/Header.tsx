@@ -84,6 +84,10 @@ export const Header: React.FC = () => {
     { name: 'Reports', href: '/reports', resource: 'report', action: 'view' },
     { name: 'Users', href: '/users', resource: 'user', action: 'view' },
     { name: 'Settings', href: '/settings', resource: 'settings', action: 'view' },
+    // New feature links
+    { name: 'Marketplace', href: '/marketplace', resource: 'marketplace', action: 'view' },
+    { name: 'Service Providers', href: '/admin/service-providers', resource: 'admin', action: 'view' },
+    { name: 'Batch Processing', href: '/admin/batch-processing', resource: 'admin', action: 'view' },
   ];
 
   const visibleNavItems = navigationItems.filter(item => hasPermission(item.resource, item.action));

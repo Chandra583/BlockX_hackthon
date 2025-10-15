@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import { ApiError, ValidationError } from '../../utils/errors';
 import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITestResult } from '../../models';
+// import BatchProcessingService from '../../services/core/batchProcessing.service';
 import mongoose from 'mongoose';
 
 // Device data interface matching ESP32 data structure
@@ -154,6 +155,33 @@ export class DeviceController {
         logger.error('Error updating device:', updateError);
         throw new Error(`Failed to update device: ${updateError.message}`);
       }
+
+      // Process data through batch processing system for OBD data (temporarily disabled)
+      // if (deviceData.mileage && deviceData.dataSource === 'veepeak_obd') {
+      //   try {
+      //     logger.info('Processing data point through batch system:', { deviceID: deviceData.deviceID, mileage: deviceData.mileage });
+      //     await BatchProcessingService.processDataPoint({
+      //       deviceID: deviceData.deviceID,
+      //       vin: deviceData.vin,
+      //       mileage: deviceData.mileage,
+      //       rpm: deviceData.rpm,
+      //       speed: deviceData.speed,
+      //       engineTemp: deviceData.engineTemp,
+      //       fuelLevel: deviceData.fuelLevel,
+      //       batteryVoltage: deviceData.batteryVoltage,
+      //       dataQuality: deviceData.dataQuality,
+      //       odometerPID: deviceData.odometerPID,
+      //       timestamp: deviceData.timestamp,
+      //       location: deviceData.location,
+      //       tamperingDetected: false, // This would be determined by ESP32 validation
+      //       validationStatus: 'pending'
+      //     });
+      //     logger.info('Data point processed through batch system successfully');
+      //   } catch (batchError) {
+      //     logger.error('Failed to process data through batch system:', batchError);
+      //     // Continue with regular processing even if batch processing fails
+      //   }
+      // }
 
       // Create telemetry record
       try {

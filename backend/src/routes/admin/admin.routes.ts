@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { AdminController } from '../../controllers/admin/admin.controller';
-import { InstallController } from '../../controllers/admin/install.controller';
 import { authenticate, requireAdmin, rateLimit } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -110,13 +109,5 @@ router.post('/vehicles/:vehicleId/approve', strictAdminRateLimit, AdminControlle
  * @body    { reason }
  */
 router.post('/vehicles/:vehicleId/reject', strictAdminRateLimit, AdminController.rejectVehicle);
-
-/**
- * Install jobs management (provider assignment workflow)
- */
-router.get('/install-jobs', adminRateLimit, InstallController.listInstallJobs);
-router.post('/install-jobs', strictAdminRateLimit, InstallController.createAndAssignInstallJob);
-router.post('/install-jobs/:jobId/assign', strictAdminRateLimit, InstallController.assignProvider);
-router.patch('/install-jobs/:jobId/status', strictAdminRateLimit, InstallController.updateStatus);
 
 export default router; 

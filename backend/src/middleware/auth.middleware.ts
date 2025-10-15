@@ -456,4 +456,51 @@ export const rateLimit = (requests: number, windowMs: number) => {
     
     next();
   };
+};
+
+/**
+ * Optional authentication middleware
+ * Adds user info to request if token is present, but doesn't require it
+ */
+export const optionalAuth = async (req: any, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // No token provided, continue without authentication
+      return next();
+    }
+    
+    const token = JWTService.extractTokenFromHeader(authHeader);
+    
+    if (!token) {
+      // Invalid token format, continue without authentication
+      return next();
+    }
+    
+    try {
+      const decoded = JWTService.verifyAccessToken(token);
+      
+      // Find user and attach to request
+      const user = await User.findById(decoded.userId);
+      if (user && user.accountStatus === 'active' && !user.isLocked) {
+        req.user = {
+          id: user._id.toString(),
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName
+        };
+      }
+    } catch (tokenError) {
+      // Invalid token, but continue without authentication
+      logger.warn('Invalid token in optional auth:', tokenError.message);
+    }
+    
+    next();
+  } catch (error) {
+    // Error in middleware, but continue without authentication
+    logger.error('Error in optional auth middleware:', error);
+    next();
+  }
 }; 

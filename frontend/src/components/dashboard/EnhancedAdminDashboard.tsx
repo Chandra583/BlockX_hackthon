@@ -400,15 +400,6 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
             <h3 className="font-semibold text-gray-900">Analytics</h3>
             <p className="text-sm text-gray-600 mt-1">View system performance metrics</p>
           </button>
-
-          <button 
-            onClick={() => navigate('/admin/install-jobs')}
-            className="p-4 border-2 border-yellow-200 rounded-lg hover:bg-yellow-50 transition-colors text-left"
-          >
-            <Car className="w-8 h-8 text-yellow-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">Install Jobs</h3>
-            <p className="text-sm text-gray-600 mt-1">Assign providers and track device installs</p>
-          </button>
           
           <button 
             onClick={() => alert('Database Management - Coming Soon!')}

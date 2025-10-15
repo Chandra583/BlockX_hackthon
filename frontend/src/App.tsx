@@ -14,8 +14,10 @@ import { Toaster } from 'react-hot-toast';
 import { UserList } from './components/admin';
 import AdminVehiclesPage from './components/admin/vehicles/AdminVehiclesPage';
 import { Layout } from './components/layout/Layout';
-import InstallJobsDashboard from './components/provider/InstallJobsDashboard';
-import InstallJobsPage from './components/admin/InstallJobsPage';
+// New feature pages/components
+import ServiceProviderManagement from './components/admin/ServiceProviderManagement';
+import BatchProcessingDashboard from './components/admin/BatchProcessingDashboard';
+import VehicleMarketplace from './components/marketplace/VehicleMarketplace';
 
 const HomePage = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -70,18 +72,6 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/provider/install-jobs" 
-          element={
-            <ProtectedRoute allowedRoles={['service']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <InstallJobsDashboard />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
         
         {/* Admin Routes */}
         <Route 
@@ -97,24 +87,50 @@ function App() {
           } 
         />
         <Route 
-          path="/admin/vehicles" 
+          path="/admin/service-providers" 
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Layout>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <AdminVehiclesPage />
+                  <ServiceProviderManagement />
                 </div>
               </Layout>
             </ProtectedRoute>
           } 
         />
         <Route 
-          path="/admin/install-jobs" 
+          path="/admin/batch-processing" 
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Layout>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <InstallJobsPage />
+                  <BatchProcessingDashboard />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Marketplace (owner/buyer accessible) */}
+        <Route 
+          path="/marketplace" 
+          element={
+            <ProtectedRoute allowedRoles={['owner','buyer','admin']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <VehicleMarketplace />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/vehicles" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <AdminVehiclesPage />
                 </div>
               </Layout>
             </ProtectedRoute>

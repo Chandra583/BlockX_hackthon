@@ -6,6 +6,10 @@ import deviceRoutes from './device/device.routes';
 import blockchainRoutes from './blockchain/blockchain.routes';
 // Phase 2 routes - Vehicle Management
 import vehicleRoutes from './vehicle/vehicle.routes';
+// New routes - Service Providers, Batch Processing, Marketplace (temporarily disabled)
+// import serviceProviderRoutes from './admin/serviceProvider.routes';
+// import batchProcessingRoutes from './admin/batchProcessing.routes';
+// import marketplaceRoutes from './marketplace/marketplace.routes';
 // import mileageRoutes from './_mileage_disabled/mileage.routes';
 // import documentRoutes from './_document_disabled/document.routes';
 
@@ -22,6 +26,11 @@ router.use('/blockchain', blockchainRoutes);
 
 // Mount Phase 2 routes (Vehicle Management)
 router.use('/vehicles', vehicleRoutes);
+
+// Mount new feature routes (temporarily disabled for debugging)
+// router.use('/admin/service-providers', serviceProviderRoutes);
+// router.use('/admin/batch-processing', batchProcessingRoutes);
+// router.use('/marketplace', marketplaceRoutes);
 // router.use('/mileage', mileageRoutes);
 // router.use('/', documentRoutes); // Document routes use mixed paths
 

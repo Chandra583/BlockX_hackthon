@@ -4,10 +4,37 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IDevice extends Document {
   deviceID: string;
   deviceType: 'ESP32_Telematics' | 'OBD_Scanner' | 'GPS_Tracker' | 'Custom';
-  status: 'active' | 'inactive' | 'maintenance' | 'error';
+  status: 'active' | 'inactive' | 'maintenance' | 'error' | 'pending_installation' | 'installed';
   description?: string;
   owner?: mongoose.Types.ObjectId; // Reference to User
   vehicle?: mongoose.Types.ObjectId; // Reference to Vehicle
+  
+  // Service provider assignment
+  assignedServiceProvider?: mongoose.Types.ObjectId; // Reference to User (service provider)
+  installationStatus: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+  installationRequest?: {
+    requestedBy: mongoose.Types.ObjectId;
+    requestedAt: Date;
+    scheduledDate?: Date;
+    notes?: string;
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+  };
+  installationHistory?: Array<{
+    serviceProvider: mongoose.Types.ObjectId;
+    status: string;
+    timestamp: Date;
+    notes?: string;
+    photos?: string[];
+  }>;
+  
+  // Batch processing configuration
+  batchProcessing: {
+    enabled: boolean;
+    batchType: 'trip' | 'time' | 'daily';
+    batchSize: number;
+    lastBatchSubmission?: Date;
+    pendingDataCount: number;
+  };
   
   // Device configuration
   configuration: {
@@ -64,8 +91,8 @@ const DeviceSchema = new Schema<IDevice>({
   
   status: {
     type: String,
-    enum: ['active', 'inactive', 'maintenance', 'error'],
-    default: 'active'
+    enum: ['active', 'inactive', 'maintenance', 'error', 'pending_installation', 'installed'],
+    default: 'pending_installation'
   },
   
   description: {
@@ -81,6 +108,75 @@ const DeviceSchema = new Schema<IDevice>({
   vehicle: {
     type: Schema.Types.ObjectId,
     ref: 'Vehicle'
+  },
+  
+  // Service provider assignment fields
+  assignedServiceProvider: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  
+  installationStatus: {
+    type: String,
+    enum: ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'],
+    default: 'pending'
+  },
+  
+  installationRequest: {
+    requestedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    requestedAt: {
+      type: Date,
+      default: Date.now
+    },
+    scheduledDate: Date,
+    notes: String,
+    priority: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'urgent'],
+      default: 'medium'
+    }
+  },
+  
+  installationHistory: [{
+    serviceProvider: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    status: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    notes: String,
+    photos: [String]
+  }],
+  
+  // Batch processing configuration
+  batchProcessing: {
+    enabled: {
+      type: Boolean,
+      default: true
+    },
+    batchType: {
+      type: String,
+      enum: ['trip', 'time', 'daily'],
+      default: 'trip'
+    },
+    batchSize: {
+      type: Number,
+      default: 50,
+      min: 1,
+      max: 1000
+    },
+    lastBatchSubmission: Date,
+    pendingDataCount: {
+      type: Number,
+      default: 0
+    }
   },
   
   configuration: {
