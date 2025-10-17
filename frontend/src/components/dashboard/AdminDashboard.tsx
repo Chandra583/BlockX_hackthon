@@ -13,6 +13,8 @@ import {
   CheckCircle,
   Crown
 } from 'lucide-react';
+import MetricCard from './MetricCard';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
 interface AdminDashboardProps {
   user: {
@@ -24,8 +26,19 @@ interface AdminDashboardProps {
   };
 }
 
+type ChangeType = 'positive' | 'negative' | 'neutral';
+
+interface AdminStat {
+  title: string;
+  value: string;
+  change: string;
+  changeType: ChangeType;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+}
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
-  const adminStats = [
+  const adminStats: AdminStat[] = [
     {
       title: 'Total Users',
       value: '2,547',
@@ -158,60 +171,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   return (
     <div className="space-y-8">
-      {/* Header with Role Indication */}
-      <div className="bg-gradient-to-r from-red-600 to-pink-600 rounded-lg p-8 text-white">
+      {/* Header */}
+      <div className="rounded-2xl p-8 bg-gradient-to-br from-primary-600 to-indigo-600 text-white shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center mb-2">
-              <Crown className="w-8 h-8 mr-3" />
-              <span className="px-3 py-1 bg-red-800/30 rounded-full text-sm font-medium">
+              <Crown className="w-8 h-8 mr-3 text-yellow-300" />
+              <span className="px-3 py-1 bg-black/20 rounded-full text-sm font-medium tracking-wide">
                 ADMIN ACCESS
               </span>
             </div>
-            <h1 className="text-3xl font-bold mb-2">
-              Welcome back, {user.firstName}!
-            </h1>
-            <p className="text-red-100 text-lg">System Administrator Dashboard</p>
-            <p className="text-red-50 text-sm mt-1">
-              You have full administrative privileges on the VERIDRIVE platform
-            </p>
+            <h1 className="text-3xl font-bold mb-1">Welcome back, {user.firstName}!</h1>
+            <p className="text-white/80">System Administrator Dashboard</p>
           </div>
           <div className="text-right">
-            <p className="text-red-200 text-sm">Logged in as</p>
+            <p className="text-white/70 text-sm">Logged in as</p>
             <p className="font-semibold">{user.email}</p>
-            <p className="text-red-200 text-sm">Role: {user.role.toUpperCase()}</p>
+            <p className="text-white/70 text-sm">Role: {user.role.toUpperCase()}</p>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {adminStats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <p className="text-xs text-gray-500">{stat.description}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <Icon className="w-6 h-6 text-gray-600" />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center">
-                <span className={`text-sm font-medium ${
-                  stat.changeType === 'positive' ? 'text-green-600' : 
-                  stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
-                }`}>
-                  {stat.change}
-                </span>
-                <span className="text-sm text-gray-500 ml-2">vs last month</span>
-              </div>
-            </div>
-          );
-        })}
+        {adminStats.map((stat, index) => (
+          <MetricCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            change={stat.change}
+            changeType={stat.changeType}
+            icon={stat.icon}
+            description={stat.description}
+            delay={index * 0.05}
+          />
+        ))}
       </div>
 
       {/* Admin Actions */}
@@ -221,28 +215,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           {adminActions.map((action, index) => {
             const Icon = action.icon;
             return (
-              <div key={index} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
+              <button key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all text-left">
                 <div className="flex items-start space-x-4">
                   <div className={`p-3 rounded-lg ${action.color}`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">{action.title}</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{action.title}</h3>
                     <p className="text-sm text-gray-600 mb-4">{action.description}</p>
-                    <button className="btn-primary text-sm">
-                      {action.action}
-                    </button>
+                    <span className="inline-flex items-center text-sm text-primary-600">{action.action}</span>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* Recent System Activity */}
+      {/* Recent Activity + Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Recent System Activity</h2>
           </div>
@@ -260,61 +252,83 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             ))}
           </div>
           <div className="p-6 border-t border-gray-200">
-            <button className="btn-secondary w-full">
-              <Eye className="w-4 h-4 mr-2" />
-              View All Activities
-            </button>
+            <button className="btn-secondary w-full"><Eye className="w-4 h-4 mr-2" />View All Activities</button>
           </div>
         </div>
 
-        {/* System Status */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">System Status</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">User Growth</h2>
+          <div className="h-60">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={[{ m: 'Jan', v: 200 }, { m: 'Feb', v: 260 }, { m: 'Mar', v: 320 }, { m: 'Apr', v: 410 }, { m: 'May', v: 480 }]}> 
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">  
+                    
+
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+
+
+                <XAxis dataKey="m" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ stroke: '#E5E7EB' }} />
+                <Area type="monotone" dataKey="v" stroke="#6366F1" fillOpacity={1} fill="url(#colorUsers)" />
+              </AreaChart>      
+            </ResponsiveContainer>
+            
           </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">API Status</span>
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-sm text-green-600">Operational</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Database</span>
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-sm text-green-600">Healthy</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Background Jobs</span>
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-sm text-green-600">Running</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Email Service</span>
-              <div className="flex items-center">
-                <AlertTriangle className="w-4 h-4 text-yellow-600 mr-2" />
-                <span className="text-sm text-yellow-600">Limited</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Storage</span>
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-sm text-green-600">75% Available</span>
-              </div>
+        </div>
+      </div>
+
+      {/* System Status */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">System Status</h2>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">API Status</span>
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+              <span className="text-sm text-green-600">Operational</span>
             </div>
           </div>
-          <div className="p-6 border-t border-gray-200">
-            <button className="btn-secondary w-full">
-              <Settings className="w-4 h-4 mr-2" />
-              System Configuration
-            </button>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">Database</span>
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+              <span className="text-sm text-green-600">Healthy</span>
+            </div>
           </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">Background Jobs</span>
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+              <span className="text-sm text-green-600">Running</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">Email Service</span>
+            <div className="flex items-center">
+              <AlertTriangle className="w-4 h-4 text-yellow-600 mr-2" />
+              <span className="text-sm text-yellow-600">Limited</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">Storage</span>
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+              <span className="text-sm text-green-600">75% Available</span>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 border-t border-gray-200">
+          <button className="btn-secondary w-full">
+            <Settings className="w-4 h-4 mr-2" />
+            System Configuration
+          </button>
         </div>
       </div>
     </div>

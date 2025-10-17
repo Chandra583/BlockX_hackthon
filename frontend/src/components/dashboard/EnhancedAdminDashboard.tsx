@@ -16,6 +16,8 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 import AdminService, { type AdminStats } from '../../services/admin';
+import MetricCard from './MetricCard';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 
 interface EnhancedAdminDashboardProps {
   user: {
@@ -235,23 +237,16 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {adminStatCards.map((stat, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg ${stat.bgColor} bg-opacity-10`}>
-                <stat.icon className={`w-6 h-6 ${stat.bgColor.replace('bg-', 'text-')}`} />
-              </div>
-              <div className={`text-xs font-medium px-2 py-1 rounded-full ${
-                stat.changeType === 'positive' ? 'bg-green-100 text-green-800' :
-                stat.changeType === 'negative' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {stat.change}
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-            <p className="text-sm font-medium text-gray-700">{stat.title}</p>
-            <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
-          </div>
+          <MetricCard
+            key={index}
+            title={stat.title}
+            value={stat.value}
+            change={stat.change}
+            changeType={stat.changeType}
+            icon={stat.icon}
+            description={stat.description}
+            delay={index * 0.05}
+          />
         ))}
       </div>
 
@@ -295,7 +290,6 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
                 <button
                   key={index}
                   onClick={() => {
-                    // Navigate to admin vehicles list with filter
                     window.location.href = `/admin/vehicles?status=${statusKey}`;
                   }}
                   className={`text-left border border-gray-200 rounded-lg p-4 ${colors.light} hover:opacity-90 transition`}
@@ -323,21 +317,29 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {stats.transactionsByType.map((item: any, index: number) => {
               const typeColors: any = {
-                vehicle_registration: { bg: 'bg-blue-500', text: 'text-blue-600', light: 'bg-blue-50' },
-                mileage_update: { bg: 'bg-purple-500', text: 'text-purple-600', light: 'bg-purple-50' },
-                document_upload: { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' },
-                wallet_creation: { bg: 'bg-orange-500', text: 'text-orange-600', light: 'bg-orange-50' }
+                vehicle_registration: '#3B82F6',
+                mileage_update: '#8B5CF6',
+                document_upload: '#22C55E',
+                wallet_creation: '#F59E0B'
               };
-              const colors = typeColors[item._id] || { bg: 'bg-gray-500', text: 'text-gray-600', light: 'bg-gray-50' };
+              const color = typeColors[item._id] || '#9CA3AF';
               
               return (
-                <div key={index} className={`border border-gray-200 rounded-lg p-4 ${colors.light}`}>
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900 capitalize">{item._id.replace('_', ' ')}</h3>
-                    <div className={`w-3 h-3 rounded-full ${colors.bg}`}></div>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{item.count.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">transactions</p>
+                  <div className="h-28">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={[{x:1,y:item.count*0.6},{x:2,y:item.count*0.8},{x:3,y:item.count}]}> 
+                        <XAxis dataKey="x" hide />
+                        <YAxis hide />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="y" stroke={color} strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               );
             })}
@@ -352,17 +354,31 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
             <Users className="w-5 h-5 mr-2" />
             User Distribution by Role
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {stats.roleDistribution.map((item: any, index: number) => (
-              <div key={index} className="text-center">
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-2 ${AdminService.getRoleColor(item._id)}`}>
-                  <span className="text-2xl font-bold">{item.count}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie dataKey="count" data={stats.roleDistribution} nameKey="_id" innerRadius={60} outerRadius={90} paddingAngle={4}>
+                    {stats.roleDistribution.map((_: any, idx: number) => (
+                      <Cell key={`cell-${idx}`} fill={["#6366F1","#22C55E","#F59E0B","#EF4444","#06B6D4","#8B5CF6"][idx % 6]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {stats.roleDistribution.map((item: any, index: number) => (
+                <div key={index} className="text-center">
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-2 ${AdminService.getRoleColor(item._id)}`}>
+                    <span className="text-2xl font-bold">{item.count}</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 capitalize">
+                    {AdminService.formatRole(item._id)}
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-gray-700 capitalize">
-                  {AdminService.formatRole(item._id)}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

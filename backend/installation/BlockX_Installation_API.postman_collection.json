@@ -1,0 +1,319 @@
+{
+	"info": {
+		"_postman_id": "installation-requests-api",
+		"name": "BlockX Installation Requests API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": "API endpoints for device installation requests"
+	},
+	"item": [
+		{
+			"name": "Create Installation Request",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"ownerId\": \"{{ownerId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"notes\": \"Please install device as soon as possible\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/installation-requests",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"installation-requests"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Installation Requests",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/installation-requests?ownerId={{ownerId}}&status=requested",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"installation-requests"
+					],
+					"query": [
+						{
+							"key": "ownerId",
+							"value": "{{ownerId}}",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "requested",
+							"disabled": true
+						},
+						{
+							"key": "q",
+							"value": "search term",
+							"disabled": true
+						},
+						{
+							"key": "page",
+							"value": "1",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "20",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Owner's Vehicles",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/owners/{{ownerId}}/vehicles?q=ABC123",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"owners",
+						"{{ownerId}}",
+						"vehicles"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "ABC123",
+							"disabled": true
+						},
+						{
+							"key": "page",
+							"value": "1",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "20",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search Vehicles",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/vehicles/search?q=ABC123&ownerId={{ownerId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"vehicles",
+						"search"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "ABC123",
+							"disabled": true
+						},
+						{
+							"key": "ownerId",
+							"value": "{{ownerId}}",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Assign Installation Request",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{adminToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"serviceProviderId\": \"{{serviceProviderId}}\",\n  \"assignedBy\": \"{{adminId}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/installation-requests/{{requestId}}/assign",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"installation-requests",
+						"{{requestId}}",
+						"assign"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Complete Installation Request",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{serviceToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"completedBy\": \"{{serviceProviderId}}\",\n  \"installationPhotoUrl\": \"https://example.com/photo.jpg\",\n  \"notes\": \"Installation completed successfully\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/installation-requests/{{requestId}}/complete",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"installation-requests",
+						"{{requestId}}",
+						"complete"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Raw Installation Request",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/installation-requests/{{requestId}}/raw",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"installation-requests",
+						"{{requestId}}",
+						"raw"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "adminToken",
+			"value": ""
+		},
+		{
+			"key": "serviceToken",
+			"value": ""
+		},
+		{
+			"key": "ownerId",
+			"value": ""
+		},
+		{
+			"key": "vehicleId",
+			"value": ""
+		},
+		{
+			"key": "deviceId",
+			"value": ""
+		},
+		{
+			"key": "serviceProviderId",
+			"value": ""
+		},
+		{
+			"key": "adminId",
+			"value": ""
+		},
+		{
+			"key": "requestId",
+			"value": ""
+		}
+	]
+}

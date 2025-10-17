@@ -9,6 +9,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import SessionWarning from './components/common/SessionWarning';
 import { config } from './config/env';
 import { Toaster } from 'react-hot-toast';
+import { AppRouter } from './routes/AppRouter';
 
 // Import admin components
 import { UserList } from './components/admin';
@@ -73,7 +74,10 @@ function App() {
           } 
         />
         
-        {/* Admin Routes */}
+        {/* New App Router for enhanced navigation */}
+        <Route path="/*" element={<AppRouter />} />
+        
+        {/* Legacy Admin Routes */}
         <Route 
           path="/admin/users" 
           element={
