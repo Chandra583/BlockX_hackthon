@@ -3089,3 +3089,27 @@
 {"filter":{"_id":"68f382a07804725492ca437d"},"level":"error","message":"Authentication failed: No document found for query \"{ _id: new ObjectId('68f382a07804725492ca437d') }\" on model \"User\"","numAffected":0,"query":{"_id":"68f382a07804725492ca437d"},"result":{"$where":{"_id":"68f382a07804725492ca437d"},"acknowledged":true,"matchedCount":0,"modifiedCount":0,"upsertedCount":0,"upsertedId":null},"stack":"DocumentNotFoundError: No document found for query \"{ _id: new ObjectId('68f382a07804725492ca437d') }\" on model \"User\"\n    at C:\\Users\\Chandrashekar\\Desktop\\All_Blockchain_project\\BlockX-Hackathon\\backend\\node_modules\\mongoose\\lib\\model.js:545:17\n    at C:\\Users\\Chandrashekar\\Desktop\\All_Blockchain_project\\BlockX-Hackathon\\backend\\node_modules\\mongoose\\lib\\model.js:450:9\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","timestamp":"2025-10-18T12:05:55.169Z"}
 {"level":"info","message":"Token refreshed for user: admin@veridrive.com","timestamp":"2025-10-18T12:07:40.371Z"}
 {"level":"info","message":"Token refreshed for user: service@veridrive1.com","timestamp":"2025-10-18T12:08:24.665Z"}
+{"level":"info","message":"User logged in successfully: service@veridrive.com (service)","timestamp":"2025-10-18T13:38:59.305Z"}
+{"level":"info","message":"User logged in: service@veridrive.com","timestamp":"2025-10-18T13:38:59.305Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:38:59.562Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:39:00.119Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:39:01.814Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:39:01.886Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:39:01.887Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:39:02.661Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:39:02.744Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:39:02.745Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:39:15.991Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:39:15.991Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:13.334Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:13.406Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:40:13.406Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:14.140Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:14.209Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:40:14.209Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:22.668Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:22.775Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:40:22.775Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:23.650Z"}
+{"level":"info","message":"Authenticated user: service@veridrive.com (service)","timestamp":"2025-10-18T13:40:23.721Z"}
+{"level":"info","message":"Authorized user: service@veridrive.com for roles: service","timestamp":"2025-10-18T13:40:23.721Z"}
