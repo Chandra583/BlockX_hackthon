@@ -139,6 +139,13 @@ const SPInstalls: React.FC = () => {
             : install
         ));
         
+        // Show completion success with blockchain details
+        if (response.data.solanaTx) {
+          alert(`Installation Completed Successfully!\n\nBlockchain Transaction:\nSolana: ${response.data.solanaTx}\n\nView on Explorer: ${response.data.blockchainUrls?.solanaUrl || 'N/A'}`);
+        } else {
+          alert('Installation Completed Successfully!');
+        }
+        
         // Refresh the list to get updated data
         await fetchInstallAssignments();
         

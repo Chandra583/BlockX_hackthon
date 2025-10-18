@@ -27,6 +27,33 @@ export const startInstallation = async (req: Request, res: Response) => {
       });
     }
 
+    // Check if this deviceId is already in use by another active installation
+    const existingActiveInstallation = await InstallationRequest.findOne({
+      deviceId: deviceId.toString(),
+      status: { $in: ['in_progress', 'completed'] },
+      _id: { $ne: installId } // Exclude the current installation being started
+    });
+
+    if (existingActiveInstallation) {
+      return res.status(400).json({
+        success: false,
+        message: `Device ID '${deviceId}' is already assigned to an active or completed installation.`
+      });
+    }
+
+    // Also check if a TelemetryBatch already exists for this deviceId and is not associated with the current installId
+    const existingTelemetryBatch = await TelemetryBatch.findOne({
+      deviceId: deviceId.toString(),
+      installId: { $ne: installId } // Exclude telemetry batches for the current installation
+    });
+
+    if (existingTelemetryBatch) {
+      return res.status(400).json({
+        success: false,
+        message: `Device ID '${deviceId}' has existing telemetry data not associated with this installation. Please use a different device ID.`
+      });
+    }
+
     // Verify installation request exists and is assigned to caller
     const install = await InstallationRequest.findById(installId);
     if (!install) {
@@ -296,7 +323,15 @@ export const completeInstallation = async (req: Request, res: Response) => {
       data: {
         installId: install._id,
         status: install.status,
-        completedAt: install.completedAt
+        completedAt: install.completedAt,
+        deviceId: install.deviceId,
+        finalNotes: install.notes,
+        solanaTx: install.solanaTx,
+        arweaveTx: install.arweaveTx,
+        blockchainUrls: {
+          solanaUrl: install.solanaTx ? `https://explorer.solana.com/tx/${install.solanaTx}` : null,
+          arweaveUrl: install.arweaveTx ? `https://arweave.net/${install.arweaveTx}` : null
+        }
       }
     });
   } catch (error) {

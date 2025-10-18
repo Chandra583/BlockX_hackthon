@@ -103,6 +103,14 @@ export interface CompleteInstallResponse {
     installId: string;
     status: string;
     completedAt: string;
+    deviceId?: string;
+    finalNotes?: string;
+    solanaTx?: string;
+    arweaveTx?: string;
+    blockchainUrls?: {
+      solanaUrl?: string;
+      arweaveUrl?: string;
+    };
   };
 }
 

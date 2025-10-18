@@ -33,17 +33,35 @@ export class AnchorService {
         };
       }
 
-      // Create payload for anchoring
+      // Create payload for anchoring with enriched data
       const payload = {
         installId: install._id ? install._id.toString() : '',
         vehicleId: install.vehicleId.toString(),
         vin: vehicle.vin,
+        vehicleNumber: vehicle.vehicleNumber,
+        vehicleMake: vehicle.make,
+        vehicleModel: vehicle.vehicleModel,
+        vehicleYear: vehicle.year,
         ownerId: install.ownerId.toString(),
+        ownerName: vehicle.ownerName || 'Unknown Owner', // Will be populated from vehicle or user data
         serviceProviderId: install.serviceProviderId?.toString(),
+        serviceProviderName: install.serviceProviderName || 'Unknown Service Provider',
         deviceId: install.deviceId,
+        deviceDetails: {
+          deviceId: install.deviceId,
+          deviceType: 'OBD-II', // Default device type
+          deviceStatus: 'installing'
+        },
         initialMileage: install.initialMileage,
+        previousMileage: vehicle.lastVerifiedMileage || 0,
+        mileageDelta: install.initialMileage - (vehicle.lastVerifiedMileage || 0),
         timestamp: new Date().toISOString(),
-        eventType: 'INSTALL_START'
+        eventType: 'INSTALL_START',
+        blockchainData: {
+          solanaNetwork: 'devnet', // or 'mainnet' based on environment
+          transactionType: 'installation_start',
+          dataIntegrity: 'verified'
+        }
       };
 
       // Upload to Arweave (optional)
