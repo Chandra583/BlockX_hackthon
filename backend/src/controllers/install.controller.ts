@@ -99,17 +99,47 @@ export const startInstallation = async (req: Request, res: Response) => {
     }
 
     // Create telemetry batch snapshot
-    const telemetryBatch = new TelemetryBatch({
-      installId: install._id,
-      vehicleId: vehicle._id,
-      deviceId,
-      lastRecordedMileage: initialMileage,
-      distanceDelta: 0,
-      batchData: [],
-      recordedAt: new Date()
-    });
+    try {
+      const telemetryBatch = new TelemetryBatch({
+        installId: install._id,
+        vehicleId: vehicle._id,
+        deviceId: deviceId.toString(), // Ensure deviceId is a string
+        lastRecordedMileage: initialMileage,
+        distanceDelta: 0,
+        batchData: [],
+        recordedAt: new Date()
+      });
 
-    await telemetryBatch.save();
+      await telemetryBatch.save();
+      logger.info(`✅ TelemetryBatch created for install ${install._id} with device ${deviceId}`);
+    } catch (telemetryError) {
+      logger.error('❌ Failed to create TelemetryBatch:', telemetryError);
+      
+      // If it's a duplicate key error, try to find and remove the conflicting record
+      if (telemetryError.code === 11000) {
+        logger.info('🔧 Attempting to clean up conflicting TelemetryBatch records...');
+        await TelemetryBatch.deleteMany({
+          deviceId: null,
+          recordedAt: null
+        });
+        
+        // Try again
+        const telemetryBatch = new TelemetryBatch({
+          installId: install._id,
+          vehicleId: vehicle._id,
+          deviceId: deviceId.toString(),
+          lastRecordedMileage: initialMileage,
+          distanceDelta: 0,
+          batchData: [],
+          recordedAt: new Date()
+        });
+        
+        await telemetryBatch.save();
+        logger.info(`✅ TelemetryBatch created after cleanup for install ${install._id}`);
+      } else {
+        throw telemetryError;
+      }
+    }
 
     // Anchor install event
     const anchorResult = await anchorService.anchorInstallEvent(install, vehicle);
