@@ -97,7 +97,7 @@ export class AnchorService {
       const hash = this.createDeterministicHash(payload);
       
       // Anchor to Solana (choose signer: service, owner, or platform)
-      const solanaResult = await this.anchorToSolana(hash, payload);
+      const solanaResult = await this.anchorToSolana(hash, payload, ownerData, serviceProviderData);
       if (!solanaResult.success) {
         return solanaResult;
       }
@@ -155,7 +155,7 @@ export class AnchorService {
   /**
    * Anchor hash to Solana using memo transaction
    */
-  private async anchorToSolana(hash: string, payload: any): Promise<AnchorResult> {
+  private async anchorToSolana(hash: string, payload: any, ownerData?: any, serviceProviderData?: any): Promise<AnchorResult> {
     try {
       // Use service provider wallet for transaction signing
       const solanaData = {
