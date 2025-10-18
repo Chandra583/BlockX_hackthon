@@ -212,7 +212,14 @@ export class SolanaService {
     signerWallet: SolanaWallet
   ): Promise<any> {
     try {
-      const signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
+      let signerKeypair: Keypair;
+      if (signerWallet.secretKey && signerWallet.secretKey.length === 64) {
+        signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
+      } else if (signerWallet.secretKey && signerWallet.secretKey.length === 32) {
+        signerKeypair = Keypair.fromSeed(signerWallet.secretKey);
+      } else {
+        throw new Error('Invalid signer secret key length. Expected 32 or 64 bytes.');
+      }
       
       const installData = {
         ...installationData,

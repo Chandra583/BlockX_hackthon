@@ -200,8 +200,17 @@ export class AnchorService {
         if (payload.transactionDetails?.ownerWalletSecret) {
           try {
             const raw = payload.transactionDetails.ownerWalletSecret;
-            const parsed = Array.isArray(raw) ? raw : JSON.parse(raw);
-            signerSecretKey = new Uint8Array(parsed);
+            // Accept base58 string or JSON array
+            if (typeof raw === 'string') {
+              try {
+                const bs58 = (await import('bs58')).default;
+                signerSecretKey = new Uint8Array(bs58.decode(raw));
+              } catch {
+                signerSecretKey = new Uint8Array(JSON.parse(raw));
+              }
+            } else {
+              signerSecretKey = new Uint8Array(raw);
+            }
             logger.info('🔑 Using owner wallet for Solana transaction signing');
           } catch (error) {
             logger.warn('⚠️ Failed to parse owner wallet secret, using fallback');
@@ -240,7 +249,7 @@ export class AnchorService {
         logger.error('❌ Real Solana transaction failed, using fallback:', solanaError);
         
         // Fallback to mock transaction if real one fails
-        const mockTxId = `solana_tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+         const mockTxId = `mock_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         
         logger.info(`📋 Enriched payload (fallback):`, JSON.stringify(solanaData, null, 2));
         logger.info(`✅ Fallback Solana transaction: ${mockTxId}`);
