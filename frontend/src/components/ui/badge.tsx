@@ -104,3 +104,4 @@ export const TrustScoreBadge: React.FC<{
 
 export default Badge;
 
+
