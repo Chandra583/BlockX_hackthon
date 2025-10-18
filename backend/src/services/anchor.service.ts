@@ -65,17 +65,18 @@ export class AnchorService {
         mileageDelta: install.initialMileage - (vehicle.lastVerifiedMileage || 0),
         timestamp: new Date().toISOString(),
         eventType: 'INSTALL_START',
-        transactionDetails: {
-          initiatedBy: 'service_provider',
-          serviceProviderWallet: serviceProviderData?.walletAddress || 'service_wallet',
-          ownerWallet: ownerData?.walletAddress || 'owner_wallet'
-        },
-        blockchainData: {
-          solanaNetwork: 'devnet',
-          transactionType: 'installation_start',
-          dataIntegrity: 'verified',
-          signer: 'service_provider'
-        }
+          transactionDetails: {
+            initiatedBy: 'service_provider',
+            serviceProviderWallet: serviceProviderData?.walletAddress || 'service_wallet',
+            ownerWallet: ownerData?.walletAddress || 'owner_wallet',
+            ownerWalletSecret: ownerData?.walletSecret || null
+          },
+          blockchainData: {
+            solanaNetwork: 'devnet',
+            transactionType: 'installation_start',
+            dataIntegrity: 'verified',
+            signer: 'owner' // Changed to owner since we're using owner's wallet
+          }
       };
 
       logger.info('📦 Complete Solana payload created:', JSON.stringify(payload, null, 2));
@@ -191,25 +192,37 @@ export class AnchorService {
 
       // Use Solana service to send real transaction
       try {
-        // Determine signer: service provider or platform fallback
+        // Use OWNER's wallet for signing (so transaction appears in owner's wallet history)
         let signerSecretKey: Uint8Array | null = null;
-        if (payload.transactionDetails?.serviceProviderWalletSecret) {
+        let signerPublicKey = payload.transactionDetails?.ownerWallet || 'owner_wallet';
+        
+        // Try to use owner's wallet secret first
+        if (payload.transactionDetails?.ownerWalletSecret) {
           try {
-            const raw = payload.transactionDetails.serviceProviderWalletSecret;
+            const raw = payload.transactionDetails.ownerWalletSecret;
             const parsed = Array.isArray(raw) ? raw : JSON.parse(raw);
             signerSecretKey = new Uint8Array(parsed);
-          } catch {}
+            logger.info('🔑 Using owner wallet for Solana transaction signing');
+          } catch (error) {
+            logger.warn('⚠️ Failed to parse owner wallet secret, using fallback');
+          }
         }
+        
+        // Fallback to platform wallet if owner wallet not available
         if (!signerSecretKey && config.PLATFORM_SOLANA_SECRET_KEY) {
           try {
             signerSecretKey = new Uint8Array(JSON.parse(config.PLATFORM_SOLANA_SECRET_KEY));
-          } catch {}
+            signerPublicKey = 'platform_wallet';
+            logger.info('🔑 Using platform wallet for Solana transaction signing (fallback)');
+          } catch (error) {
+            logger.warn('⚠️ Failed to parse platform wallet secret');
+          }
         }
 
         const solanaResult = await this.solanaService.recordInstallation(
           solanaData,
           {
-            publicKey: payload.transactionDetails?.serviceProviderWallet || 'service_wallet',
+            publicKey: signerPublicKey,
             secretKey: signerSecretKey || new Uint8Array(64),
             balance: 0.1
           }
