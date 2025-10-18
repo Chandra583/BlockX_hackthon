@@ -156,24 +156,21 @@ export class AnchorService {
   private async anchorToSolana(hash: string, payload: any, ownerWallet: any): Promise<AnchorResult> {
     try {
       // Use owner's wallet for transaction signing
+      // Keep payload minimal to fit within Solana memo size limit (1232 bytes)
       const solanaData = {
         hash,
-        payload,
         timestamp: Date.now(),
-        action: 'ANCHOR_INSTALL',
-        signer: 'owner',
-        ownerWallet: payload.transactionDetails?.ownerWallet || 'owner_wallet',
-        visibility: {
-          ownerId: payload.ownerId,
-          ownerName: payload.ownerName,
-          serviceProviderId: payload.serviceProviderId,
-          serviceProviderName: payload.serviceProviderName,
-          vehicleId: payload.vehicleId,
-          vin: payload.vin,
-          vehicleNumber: payload.vehicleNumber,
-          deviceId: payload.deviceId,
-          initialMileage: payload.initialMileage
-        }
+        action: 'INSTALL_START',
+        installId: payload.installId,
+        vehicleId: payload.vehicleId,
+        vin: payload.vin,
+        vehicleNumber: payload.vehicleNumber,
+        ownerId: payload.ownerId,
+        ownerName: payload.ownerName,
+        serviceProviderId: payload.serviceProviderId,
+        deviceId: payload.deviceId,
+        mileage: payload.initialMileage,
+        signer: 'owner'
       };
 
       // Use Solana service to send real transaction with owner's wallet
