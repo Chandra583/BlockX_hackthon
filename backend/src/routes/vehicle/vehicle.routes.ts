@@ -174,84 +174,18 @@ router.get('/',
 );
 
 /**
- * GET /api/vehicles/:vehicleId
- * Get vehicle details by ID
- * Access: Vehicle owner, Admin
+ * GET /api/vehicles/register
+ * Handle GET requests to /register gracefully
+ * Access: All authenticated users
  */
-router.get('/:vehicleId',
-  rateLimit(100, 15 * 60 * 1000), // 100 requests per 15 minutes
-  async (req: any, res: any) => {
-    try {
-      const userId = req.user?.id;
-      const { vehicleId } = req.params;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'User authentication required'
-        });
-      }
-
-      // Get vehicle from database
-      const vehicle = await Vehicle.findOne({ 
-        _id: vehicleId, 
-        ownerId: userId 
-      });
-
-      if (!vehicle) {
-        return res.status(404).json({
-          success: false,
-          message: 'Vehicle not found or access denied'
-        });
-      }
-
-      logger.info(`✅ Retrieved vehicle ${vehicleId} for user ${userId}`);
-
-      res.status(200).json({
-        success: true,
-        message: 'Vehicle retrieved successfully',
-        data: {
-          id: vehicle._id,
-          vin: vehicle.vin,
-          make: vehicle.make,
-          model: vehicle.vehicleModel,
-          year: vehicle.year,
-          color: vehicle.color,
-          bodyType: vehicle.bodyType,
-          fuelType: vehicle.fuelType,
-          transmission: vehicle.transmission,
-          engineSize: vehicle.engineSize,
-          currentMileage: vehicle.currentMileage,
-          lastMileageUpdate: vehicle.lastMileageUpdate,
-          verificationStatus: vehicle.verificationStatus,
-          rejectionReason: vehicle.rejectionReason,
-          rejectedAt: vehicle.rejectedAt,
-          trustScore: vehicle.trustScore,
-          isForSale: vehicle.isForSale,
-          listingStatus: vehicle.listingStatus,
-          condition: vehicle.condition,
-          features: vehicle.features,
-          description: vehicle.description,
-          blockchainHash: vehicle.blockchainHash,
-          blockchainAddress: vehicle.blockchainAddress,
-          mileageHistory: vehicle.mileageHistory,
-          fraudAlerts: vehicle.fraudAlerts,
-          accidentHistory: vehicle.accidentHistory,
-          serviceHistory: vehicle.serviceHistory,
-          createdAt: vehicle.createdAt,
-          updatedAt: vehicle.updatedAt
-        }
-      });
-    } catch (error) {
-      logger.error('❌ Failed to get vehicle:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve vehicle',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  }
-);
+router.get('/register', async (req: any, res: any) => {
+  // Return 405 Method Not Allowed with a helpful message
+  return res.status(405).json({
+    success: false,
+    message: 'GET method not allowed for vehicle registration. Use POST method to register a vehicle.',
+    allowedMethods: ['POST']
+  });
+});
 
 /**
  * POST /api/vehicles/register
@@ -393,6 +327,86 @@ router.post('/register',
       res.status(500).json({
         success: false,
         message: 'Failed to register vehicle',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/vehicles/:vehicleId
+ * Get vehicle details by ID
+ * Access: Vehicle owner, Admin
+ */
+router.get('/:vehicleId',
+  rateLimit(100, 15 * 60 * 1000), // 100 requests per 15 minutes
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id;
+      const { vehicleId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User authentication required'
+        });
+      }
+
+      // Get vehicle from database
+      const vehicle = await Vehicle.findOne({ 
+        _id: vehicleId, 
+        ownerId: userId 
+      });
+
+      if (!vehicle) {
+        return res.status(404).json({
+          success: false,
+          message: 'Vehicle not found or access denied'
+        });
+      }
+
+      logger.info(`✅ Retrieved vehicle ${vehicleId} for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Vehicle retrieved successfully',
+        data: {
+          id: vehicle._id,
+          vin: vehicle.vin,
+          make: vehicle.make,
+          model: vehicle.vehicleModel,
+          year: vehicle.year,
+          color: vehicle.color,
+          bodyType: vehicle.bodyType,
+          fuelType: vehicle.fuelType,
+          transmission: vehicle.transmission,
+          engineSize: vehicle.engineSize,
+          currentMileage: vehicle.currentMileage,
+          lastMileageUpdate: vehicle.lastMileageUpdate,
+          verificationStatus: vehicle.verificationStatus,
+          rejectionReason: vehicle.rejectionReason,
+          rejectedAt: vehicle.rejectedAt,
+          trustScore: vehicle.trustScore,
+          isForSale: vehicle.isForSale,
+          listingStatus: vehicle.listingStatus,
+          condition: vehicle.condition,
+          features: vehicle.features,
+          description: vehicle.description,
+          blockchainHash: vehicle.blockchainHash,
+          blockchainAddress: vehicle.blockchainAddress,
+          mileageHistory: vehicle.mileageHistory,
+          fraudAlerts: vehicle.fraudAlerts,
+          accidentHistory: vehicle.accidentHistory,
+          serviceHistory: vehicle.serviceHistory,
+          createdAt: vehicle.createdAt,
+          updatedAt: vehicle.updatedAt
+        }
+      });
+    } catch (error) {
+      logger.error('❌ Failed to get vehicle:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve vehicle',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

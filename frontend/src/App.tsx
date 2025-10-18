@@ -9,7 +9,6 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import SessionWarning from './components/common/SessionWarning';
 import { config } from './config/env';
 import { Toaster } from 'react-hot-toast';
-import { AppRouter } from './routes/AppRouter';
 
 // Import admin components
 import { UserList } from './components/admin';
@@ -19,6 +18,17 @@ import { Layout } from './components/layout/Layout';
 import ServiceProviderManagement from './components/admin/ServiceProviderManagement';
 import BatchProcessingDashboard from './components/admin/BatchProcessingDashboard';
 import VehicleMarketplace from './components/marketplace/VehicleMarketplace';
+
+// New pages
+import DashboardHome from './pages/DashboardHome';
+import VehicleList from './pages/Vehicles/VehicleList';
+import VehicleDetails from './pages/Vehicles/VehicleDetails';
+import RegisterVehicle from './pages/Vehicles/RegisterVehicle';
+import DevicesList from './pages/Devices/DevicesList';
+import AdminInstalls from './pages/Admin/AdminInstalls';
+import SPInstalls from './pages/SP/SPInstalls';
+import History from './pages/History/History';
+import WalletPage from './pages/WalletPage';
 
 const HomePage = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -74,10 +84,79 @@ function App() {
           } 
         />
         
-        {/* New App Router for enhanced navigation */}
-        <Route path="/*" element={<AppRouter />} />
+        {/* New dashboard routes */}
+        <Route 
+          path="/dashboard/home" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DashboardHome />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/wallet" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <WalletPage />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/vehicles" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VehicleList />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/vehicles/:id" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VehicleDetails />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/vehicles/register" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RegisterVehicle />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/devices" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DevicesList />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/history" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <History />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
         
-        {/* Legacy Admin Routes */}
+        {/* Admin Routes */}
         <Route 
           path="/admin/users" 
           element={
@@ -109,6 +188,32 @@ function App() {
               <Layout>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                   <BatchProcessingDashboard />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/installs" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <AdminInstalls />
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Service Provider Routes */}
+        <Route 
+          path="/sp/installs" 
+          element={
+            <ProtectedRoute allowedRoles={['service']}>
+              <Layout>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <SPInstalls />
                 </div>
               </Layout>
             </ProtectedRoute>

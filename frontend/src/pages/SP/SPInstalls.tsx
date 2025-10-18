@@ -1,662 +1,307 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  Wrench, 
-  Search, 
-  Filter, 
-  Car,
-  MapPin,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  Eye,
-  Play,
-  Pause,
-  User,
-  Phone,
-  Calendar
-} from 'lucide-react';
-import { LoadingSpinner, EmptyState, Badge, Button, Card, Input, Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Smartphone, Search, Filter, Play, Check } from 'lucide-react';
+import InstallStartModal from '../../components/SP/InstallStartModal';
+import { ServiceInstallsService } from '../../services/serviceInstalls';
 
-interface AssignedInstall {
+interface InstallAssignment {
   id: string;
-  vehicleId: {
+  vehicleId: string;
+  vehicle: {
     id: string;
-    vin: string;
     make: string;
     model: string;
     year: number;
-    color: string;
+    vin: string;
+    lastVerifiedMileage?: number;
   };
-  ownerId: {
+  owner: {
     id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
-    phone: string;
   };
-  status: 'assigned' | 'in_progress' | 'completed';
-  requestedAt: string;
+  status: 'requested' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'flagged';
   assignedAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
-  notes?: string;
-  estimatedDuration?: number;
-  actualDuration?: number;
   deviceId?: string;
-  cost?: number;
-  priority: 'low' | 'medium' | 'high';
+  initialMileage?: number;
+  solanaTx?: string;
+  arweaveTx?: string;
 }
 
-export const SPInstalls: React.FC = () => {
-  const [assignedInstalls, setAssignedInstalls] = useState<AssignedInstall[]>([]);
+const SPInstalls: React.FC = () => {
+  const [installAssignments, setInstallAssignments] = useState<InstallAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [selectedInstall, setSelectedInstall] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('assigned');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedInstall, setSelectedInstall] = useState<InstallAssignment | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Load assigned installs
   useEffect(() => {
-    const loadAssignedInstalls = async () => {
-      try {
-        setLoading(true);
-        
-        // Mock assigned installs
-        const mockAssignedInstalls: AssignedInstall[] = [
-          {
-            id: 'install1',
-            vehicleId: {
-              id: 'v1',
-              vin: '1HGBH41JXMN109186',
-              make: 'Honda',
-              model: 'Civic',
-              year: 2021,
-              color: 'Silver'
-            },
-            ownerId: {
-              id: 'u1',
-              firstName: 'John',
-              lastName: 'Doe',
-              email: 'john@example.com',
-              phone: '+1-555-0123'
-            },
-            status: 'in_progress',
-            requestedAt: '2024-01-20T10:00:00Z',
-            assignedAt: '2024-01-20T11:00:00Z',
-            startedAt: '2024-01-20T14:00:00Z',
-            location: {
-              address: '123 Main St',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10001',
-              coordinates: {
-                latitude: 40.7128,
-                longitude: -74.0060
-              }
-            },
-            notes: 'Installation in progress',
-            estimatedDuration: 120,
-            actualDuration: 90,
-            deviceId: 'DEV-001',
-            cost: 150.00,
-            priority: 'high'
-          },
-          {
-            id: 'install2',
-            vehicleId: {
-              id: 'v2',
-              vin: '1FTFW1ET5DFC12345',
-              make: 'Ford',
-              model: 'F-150',
-              year: 2020,
-              color: 'Black'
-            },
-            ownerId: {
-              id: 'u2',
-              firstName: 'Jane',
-              lastName: 'Smith',
-              email: 'jane@example.com',
-              phone: '+1-555-0456'
-            },
-            status: 'assigned',
-            requestedAt: '2024-01-21T09:00:00Z',
-            assignedAt: '2024-01-21T10:00:00Z',
-            location: {
-              address: '456 Oak Ave',
-              city: 'Los Angeles',
-              state: 'CA',
-              zipCode: '90210'
-            },
-            notes: 'Regular device installation',
-            estimatedDuration: 90,
-            priority: 'medium'
-          },
-          {
-            id: 'install3',
-            vehicleId: {
-              id: 'v3',
-              vin: '5NPE34AF4HH123456',
-              make: 'Hyundai',
-              model: 'Elantra',
-              year: 2019,
-              color: 'White'
-            },
-            ownerId: {
-              id: 'u3',
-              firstName: 'Bob',
-              lastName: 'Johnson',
-              email: 'bob@example.com',
-              phone: '+1-555-0789'
-            },
-            status: 'completed',
-            requestedAt: '2024-01-19T08:00:00Z',
-            assignedAt: '2024-01-19T09:00:00Z',
-            startedAt: '2024-01-19T10:00:00Z',
-            completedAt: '2024-01-19T12:00:00Z',
-            location: {
-              address: '789 Pine St',
-              city: 'Chicago',
-              state: 'IL',
-              zipCode: '60601'
-            },
-            notes: 'Device installation completed successfully',
-            estimatedDuration: 120,
-            actualDuration: 120,
-            deviceId: 'DEV-002',
-            cost: 175.00,
-            priority: 'low'
-          }
-        ];
-
-        setAssignedInstalls(mockAssignedInstalls);
-      } catch (error) {
-        console.error('Failed to load assigned installs:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAssignedInstalls();
+    fetchInstallAssignments();
   }, []);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'in_progress':
-        return <Play className="w-4 h-4 text-blue-600" />;
-      case 'assigned':
-        return <Clock className="w-4 h-4 text-yellow-600" />;
-      default:
-        return <AlertTriangle className="w-4 h-4 text-gray-600" />;
+  const fetchInstallAssignments = async () => {
+    try {
+      setLoading(true);
+      const response = await ServiceInstallsService.getAssignedInstallations();
+      
+      if (response.success) {
+        
+        // Transform API response to match our component interface
+        const assignments: InstallAssignment[] = response.data.installations.map((install: any) => ({
+          id: install.id,
+          vehicleId: install.vehicleId,
+          vehicle: {
+            id: install.vehicle?._id || install.vehicle?.id || '',
+            make: install.vehicle?.make || '',
+            model: install.vehicle?.vehicleModel || install.vehicle?.model || '',
+            year: install.vehicle?.year || 0,
+            vin: install.vehicle?.vin || '',
+            lastVerifiedMileage: install.vehicle?.lastVerifiedMileage
+          },
+          owner: {
+            id: install.owner?._id || install.owner?.id || '',
+            name: `${install.owner?.firstName || ''} ${install.owner?.lastName || ''}`.trim() || install.owner?.name || '',
+            email: install.owner?.email || ''
+          },
+          status: install.status,
+          assignedAt: install.assignedAt || install.requestedAt || '',
+          deviceId: install.deviceId,
+          initialMileage: install.initialMileage
+        }));
+        setInstallAssignments(assignments);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch install assignments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartInstallation = (install: InstallAssignment) => {
+    setSelectedInstall(install);
+    setIsModalOpen(true);
+  };
+
+  const handleInstallSubmit = async (data: { deviceId: string; initialMileage: number }) => {
+    if (!selectedInstall) {
+      throw new Error('No installation selected');
+    }
+    
+    try {
+      const response = await ServiceInstallsService.startInstallation({
+        installId: selectedInstall.id,
+        deviceId: data.deviceId,
+        initialMileage: data.initialMileage
+      });
+      
+      if (response.success) {
+        // Update the local state to reflect the change
+        setInstallAssignments(prev => prev.map(install => 
+          install.id === selectedInstall.id 
+            ? { 
+                ...install, 
+                status: 'in_progress' as 'in_progress',
+                deviceId: data.deviceId,
+                initialMileage: data.initialMileage
+              } 
+            : install
+        ));
+        return {
+          solanaTx: response.data.solanaTx,
+          arweaveTx: response.data.arweaveTx
+        };
+      } else {
+        throw new Error(response.message || 'Failed to start installation');
+      }
+    } catch (error) {
+      console.error('Failed to start installation:', error);
+      throw error;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'assigned':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+      case 'flagged': return 'bg-red-100 text-red-800';
+      case 'assigned': return 'bg-blue-100 text-blue-800';
+      case 'requested': return 'bg-purple-100 text-purple-800';
+      case 'cancelled': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-blue-100 text-blue-800';
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'in_progress':
-        return 'In Progress';
-      case 'assigned':
-        return 'Assigned';
-      default:
-        return status;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const handleStartInstallation = async (installId: string, deviceId: string) => {
-    try {
-      // Mock start installation - replace with actual API call
-      console.log(`Starting installation ${installId} with device ${deviceId}`);
-      
-      // Update local state
-      setAssignedInstalls(prev => prev.map(install => 
-        install.id === installId 
-          ? { 
-              ...install, 
-              status: 'in_progress', 
-              startedAt: new Date().toISOString(),
-              deviceId 
-            }
-          : install
-      ));
-    } catch (error) {
-      console.error('Failed to start installation:', error);
-    }
-  };
-
-  const handleCompleteInstallation = async (installId: string) => {
-    try {
-      // Mock complete installation - replace with actual API call
-      console.log(`Completing installation ${installId}`);
-      
-      // Update local state
-      setAssignedInstalls(prev => prev.map(install => 
-        install.id === installId 
-          ? { 
-              ...install, 
-              status: 'completed', 
-              completedAt: new Date().toISOString()
-            }
-          : install
-      ));
-    } catch (error) {
-      console.error('Failed to complete installation:', error);
-    }
-  };
-
-  const filteredInstalls = assignedInstalls.filter(install => {
+  const filteredAssignments = installAssignments.filter(assignment => {
     const matchesSearch = 
-      install.vehicleId.vin.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.vehicleId.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.vehicleId.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.ownerId.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.ownerId.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.location.city.toLowerCase().includes(searchTerm.toLowerCase());
+      assignment.vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      assignment.owner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      assignment.owner.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesFilter = 
-      filterStatus === 'all' || 
-      install.status === filterStatus;
-
-    return matchesSearch && matchesFilter;
+    const matchesStatus = statusFilter === 'all' || assignment.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading assigned installs..." />
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+            <div className="flex justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+            </div>
+            <div className="mt-4 h-3 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Installations</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your assigned device installation requests
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4" />
-            <span>Schedule View</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search by VIN, make, model, owner, or location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Installation Assignments</h1>
+            <p className="text-gray-600">Manage your assigned device installations</p>
           </div>
         </div>
-        
-        <div className="flex gap-2">
+
+        {/* Search and Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Search by VIN, owner name, or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="block w-full sm:w-auto pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="all">All Status</option>
+            <option value="all">All Statuses</option>
+            <option value="requested">Requested</option>
             <option value="assigned">Assigned</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="flagged">Flagged</option>
           </select>
+          <button className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            <Filter className="w-5 h-5 mr-2" />
+            More Filters
+          </button>
         </div>
+
+        {/* Install Assignments List */}
+        {filteredAssignments.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <Smartphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No installation assignments found</h3>
+            <p className="text-gray-500">You have no assigned installations at this time.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vehicle
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Owner
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Device ID
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Assigned
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredAssignments.map((assignment, index) => (
+                    <motion.tr
+                      key={assignment.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {assignment.vehicle.year} {assignment.vehicle.make} {assignment.vehicle.model}
+                        </div>
+                        <div className="text-sm text-gray-500">{assignment.vehicle.vin}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{assignment.owner.name}</div>
+                        <div className="text-sm text-gray-500">{assignment.owner.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assignment.status)}`}>
+                          {assignment.status.charAt(0).toUpperCase() + assignment.status.slice(1).replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {assignment.deviceId || 'Not installed'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(assignment.assignedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {assignment.status === 'assigned' ? (
+                          <button
+                            onClick={() => handleStartInstallation(assignment)}
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                          >
+                            <Play className="w-4 h-4 mr-1" />
+                            Start
+                          </button>
+                        ) : assignment.status === 'in_progress' ? (
+                          <span className="text-gray-500">In Progress</span>
+                        ) : assignment.status === 'completed' ? (
+                          <div className="flex items-center text-green-600">
+                            <Check className="w-4 h-4 mr-1" />
+                            <span>Completed</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 capitalize">{assignment.status.replace('_', ' ')}</span>
+                        )}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="assigned">Assigned</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="assigned" className="space-y-6">
-          {/* Assigned Installs */}
-          {filteredInstalls.filter(install => install.status === 'assigned').length === 0 ? (
-            <EmptyState
-              icon={Wrench}
-              title="No assigned installs"
-              description="You don't have any assigned installation requests at the moment"
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredInstalls
-                .filter(install => install.status === 'assigned')
-                .map((install) => (
-                <Card key={install.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-primary-100 rounded-lg">
-                        <Wrench className="w-6 h-6 text-primary-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {install.vehicleId.year} {install.vehicleId.make} {install.vehicleId.model}
-                        </h3>
-                        <p className="text-sm text-gray-500">{install.vehicleId.vin}</p>
-                        <p className="text-sm text-gray-500">
-                          Owner: {install.ownerId.firstName} {install.ownerId.lastName}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <Badge 
-                        variant="outline" 
-                        className={`${getStatusColor(install.status)} text-sm`}
-                      >
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(install.status)}
-                          <span>{getStatusLabel(install.status)}</span>
-                        </div>
-                      </Badge>
-                      <Badge 
-                        variant="outline" 
-                        className={`${getPriorityColor(install.priority)} text-sm`}
-                      >
-                        {install.priority} Priority
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Owner:</span>
-                      <span className="font-medium">{install.ownerId.firstName} {install.ownerId.lastName}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Location:</span>
-                      <span className="font-medium">{install.location.city}, {install.location.state}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Assigned:</span>
-                      <span className="font-medium">
-                        {new Date(install.assignedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {install.notes && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        <strong>Notes:</strong> {install.notes}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedInstall(install.id)}
-                        className="flex items-center space-x-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Details</span>
-                      </Button>
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        const deviceId = prompt('Enter Device ID:');
-                        if (deviceId) {
-                          handleStartInstallation(install.id, deviceId);
-                        }
-                      }}
-                      className="flex items-center space-x-1"
-                    >
-                      <Play className="w-4 h-4" />
-                      <span>Start Installation</span>
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="in-progress" className="space-y-6">
-          {/* In Progress Installs */}
-          {filteredInstalls.filter(install => install.status === 'in_progress').length === 0 ? (
-            <EmptyState
-              icon={Play}
-              title="No installations in progress"
-              description="You don't have any installations currently in progress"
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredInstalls
-                .filter(install => install.status === 'in_progress')
-                .map((install) => (
-                <Card key={install.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-blue-100 rounded-lg">
-                        <Play className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {install.vehicleId.year} {install.vehicleId.make} {install.vehicleId.model}
-                        </h3>
-                        <p className="text-sm text-gray-500">{install.vehicleId.vin}</p>
-                        <p className="text-sm text-gray-500">
-                          Device: {install.deviceId}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <Badge 
-                        variant="outline" 
-                        className={`${getStatusColor(install.status)} text-sm`}
-                      >
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(install.status)}
-                          <span>{getStatusLabel(install.status)}</span>
-                        </div>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Owner:</span>
-                      <span className="font-medium">{install.ownerId.firstName} {install.ownerId.lastName}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Location:</span>
-                      <span className="font-medium">{install.location.address}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Started:</span>
-                      <span className="font-medium">
-                        {install.startedAt ? new Date(install.startedAt).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedInstall(install.id)}
-                        className="flex items-center space-x-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Details</span>
-                      </Button>
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      onClick={() => handleCompleteInstallation(install.id)}
-                      className="flex items-center space-x-1"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Complete Installation</span>
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="completed" className="space-y-6">
-          {/* Completed Installs */}
-          {filteredInstalls.filter(install => install.status === 'completed').length === 0 ? (
-            <EmptyState
-              icon={CheckCircle}
-              title="No completed installations"
-              description="You haven't completed any installations yet"
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredInstalls
-                .filter(install => install.status === 'completed')
-                .map((install) => (
-                <Card key={install.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-green-100 rounded-lg">
-                        <CheckCircle className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {install.vehicleId.year} {install.vehicleId.make} {install.vehicleId.model}
-                        </h3>
-                        <p className="text-sm text-gray-500">{install.vehicleId.vin}</p>
-                        <p className="text-sm text-gray-500">
-                          Device: {install.deviceId}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <Badge 
-                        variant="outline" 
-                        className={`${getStatusColor(install.status)} text-sm`}
-                      >
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(install.status)}
-                          <span>{getStatusLabel(install.status)}</span>
-                        </div>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Owner:</span>
-                      <span className="font-medium">{install.ownerId.firstName} {install.ownerId.lastName}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Completed:</span>
-                      <span className="font-medium">
-                        {install.completedAt ? new Date(install.completedAt).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </div>
-                    
-                    {install.cost && (
-                      <div className="flex items-center space-x-2 text-sm">
-                        <span className="text-gray-500">Cost:</span>
-                        <span className="font-medium">${install.cost}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedInstall(install.id)}
-                        className="flex items-center space-x-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Details</span>
-                      </Button>
-                    </div>
-                    
-                    <div className="text-sm text-gray-500">
-                      Duration: {install.actualDuration || install.estimatedDuration} minutes
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+      <InstallStartModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        vehicle={selectedInstall?.vehicle || { id: '', make: '', model: '', year: 0, vin: '' }}
+        onSubmit={handleInstallSubmit}
+      />
+    </>
   );
 };
 
 export default SPInstalls;
-

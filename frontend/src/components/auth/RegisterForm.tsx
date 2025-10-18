@@ -10,7 +10,8 @@ import { handleApiError } from '../../services/api';
 import type { RegisterFormData } from '../../types/auth';
 import { USER_ROLES, ROLE_LABELS, generateDefaultRoleData } from '../../types/auth';
 
-const registerSchema = z.object({
+// Create a custom schema for service providers
+const baseRegisterSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
@@ -26,14 +27,39 @@ const registerSchema = z.object({
   organization: z.string().optional(),
   termsAccepted: z.boolean().refine((val) => val === true, 'You must accept the terms and conditions'),
   privacyAccepted: z.boolean().refine((val) => val === true, 'You must accept the privacy policy'),
+  licenseNumber: z.string().optional(),
+  businessType: z.enum(['dealer', 'mechanic', 'inspection', 'towing']).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
+// Create a schema with conditional validation for service providers
+const registerSchema = baseRegisterSchema.refine(
+  (data) => {
+    // If role is service provider, organization, licenseNumber, and businessType are required
+    if (data.role === USER_ROLES.SERVICE) {
+      return data.organization && data.organization.trim() !== '' && 
+             data.licenseNumber && data.licenseNumber.trim() !== '' && 
+             data.businessType && data.businessType.trim() !== '';
+    }
+    return true;
+  },
+  {
+    message: "Service providers must provide business name, license number, and business type",
+    path: ["organization"], // This will show the error on the organization field
+  }
+);
+
 interface RegisterFormProps {
   onSuccess?: () => void;
   onLogin?: () => void;
+}
+
+// Extend the RegisterFormData interface for service providers
+interface ExtendedRegisterFormData extends RegisterFormData {
+  licenseNumber?: string;
+  businessType?: 'dealer' | 'mechanic' | 'inspection' | 'towing';
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ 
@@ -52,7 +78,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     formState: { errors },
     watch,
     trigger,
-  } = useForm<RegisterFormData>({
+  } = useForm<ExtendedRegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       email: '',
@@ -65,22 +91,42 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       organization: '',
       termsAccepted: false,
       privacyAccepted: false,
+      licenseNumber: '',
+      businessType: undefined, // Use undefined instead of empty string for enum
     },
   });
 
   const selectedRole = watch('role');
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const onSubmit = async (data: ExtendedRegisterFormData) => {
     try {
       dispatch(clearError());
       dispatch(loginStart());
       
       // Generate role-specific data based on selected role
-      const roleSpecificData = generateDefaultRoleData(data.role, data.organization);
+      let roleSpecificData = generateDefaultRoleData(data.role, data.organization);
+      
+      // For service providers, override with provided data
+      if (data.role === USER_ROLES.SERVICE && roleSpecificData && typeof roleSpecificData === 'object') {
+        roleSpecificData = {
+          ...roleSpecificData,
+          businessName: data.organization || '',
+          licenseNumber: data.licenseNumber || '',
+          businessType: data.businessType || 'mechanic'
+        };
+      }
       
       // Prepare registration data with role-specific data
       const registrationData = {
-        ...data,
+        email: data.email,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        role: data.role,
+        phoneNumber: data.phoneNumber,
+        termsAccepted: data.termsAccepted,
+        privacyAccepted: data.privacyAccepted,
         roleSpecificData
       };
       
@@ -100,11 +146,20 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const nextStep = async () => {
-    const fieldsToValidate = currentStep === 1 
-      ? ['email', 'password', 'confirmPassword'] 
-      : ['firstName', 'lastName', 'role'];
+    let fieldsToValidate: (keyof ExtendedRegisterFormData)[] = [];
     
-    const isValid = await trigger(fieldsToValidate as (keyof RegisterFormData)[]);
+    if (currentStep === 1) {
+      fieldsToValidate = ['email', 'password', 'confirmPassword'];
+    } else {
+      fieldsToValidate = ['firstName', 'lastName', 'role'];
+      // For service providers, we also need to validate the additional fields
+      const role = watch('role');
+      if (role === USER_ROLES.SERVICE) {
+        fieldsToValidate.push('organization', 'licenseNumber', 'businessType');
+      }
+    }
+    
+    const isValid = await trigger(fieldsToValidate);
     if (isValid) {
       setCurrentStep(2);
     }
@@ -129,6 +184,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const isRoleRequiresOrganization = (role: string) => {
     const rolesRequiringOrg = [USER_ROLES.SERVICE, USER_ROLES.INSURANCE, USER_ROLES.GOVERNMENT] as string[];
     return rolesRequiringOrg.includes(role);
+  };
+
+  const isRoleRequiresServiceProviderFields = (role: string) => {
+    return role === USER_ROLES.SERVICE;
   };
 
   return (
@@ -377,7 +436,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               </div>
 
               {/* Organization Field (conditional) */}
-              {isRoleRequiresOrganization(selectedRole) && (
+              {isRoleRequiresOrganization(selectedRole) && !isRoleRequiresServiceProviderFields(selectedRole) && (
                 <div>
                   <label htmlFor="organization" className="block text-sm font-medium text-gray-700 mb-2">
                     Organization
@@ -443,6 +502,69 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               </div>
               {errors.privacyAccepted && (
                 <p className="mt-2 text-sm text-red-600">{errors.privacyAccepted.message}</p>
+              )}
+
+              {/* Service Provider Specific Fields */}
+              {isRoleRequiresServiceProviderFields(selectedRole) && (
+                <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900">Service Provider Information</h3>
+                  <p className="text-sm text-gray-600">Please provide your business details to complete registration.</p>
+                  
+                  <div>
+                    <label htmlFor="organization" className="block text-sm font-medium text-gray-700 mb-2">
+                      Business Name *
+                    </label>
+                    <input
+                      id="organization"
+                      type="text"
+                      {...register('organization')}
+                      className={`input-field ${errors.organization ? 'border-red-500' : ''}`}
+                      placeholder="Enter your business name"
+                      disabled={isLoading}
+                    />
+                    {errors.organization && (
+                      <p className="mt-2 text-sm text-red-600">{errors.organization.message}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                      License Number *
+                    </label>
+                    <input
+                      id="licenseNumber"
+                      type="text"
+                      {...register('licenseNumber')}
+                      className={`input-field ${errors.licenseNumber ? 'border-red-500' : ''}`}
+                      placeholder="Enter your business license number"
+                      disabled={isLoading}
+                    />
+                    {errors.licenseNumber && (
+                      <p className="mt-2 text-sm text-red-600">{errors.licenseNumber.message}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="businessType" className="block text-sm font-medium text-gray-700 mb-2">
+                      Business Type *
+                    </label>
+                    <select
+                      id="businessType"
+                      {...register('businessType')}
+                      className={`input-field ${errors.businessType ? 'border-red-500' : ''}`}
+                      disabled={isLoading}
+                    >
+                      <option value="">Select business type</option>
+                      <option value="mechanic">Mechanic</option>
+                      <option value="dealer">Dealer</option>
+                      <option value="inspection">Inspection</option>
+                      <option value="towing">Towing</option>
+                    </select>
+                    {errors.businessType && (
+                      <p className="mt-2 text-sm text-red-600">{errors.businessType.message}</p>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Navigation Buttons */}

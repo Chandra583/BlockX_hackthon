@@ -1,386 +1,257 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { 
-  Bell, 
-  TrendingUp, 
   Car, 
-  Smartphone, 
-  AlertTriangle,
+  DollarSign, 
+  Shield, 
+  TrendingUp, 
   CheckCircle,
-  Clock,
-  DollarSign,
-  Activity,
-  Shield,
-  Wrench,
-  FileText
+  AlertTriangle,
+  Bell,
+  Smartphone
 } from 'lucide-react';
 import { useAppSelector } from '../hooks/redux';
-import { LoadingSpinner } from '../components/ui/LoadingSpinner';
-import { StatCard } from '../components/ui/StatCard';
-import { QuickActionsDropdown } from '../components/QuickActions/QuickActionsDropdown';
-import { useSocket } from '../hooks/useSocket';
+import QuickActionsDropdown from '../components/dashboard/QuickActionsDropdown';
+import { MetricCardSkeleton } from '../components/common/LoadingSkeleton';
 
-interface DashboardStats {
-  totalVehicles: number;
-  activeDevices: number;
-  pendingInstalls: number;
-  trustScore: number;
-  recentActivity: number;
-  walletBalance: number;
-}
-
-interface Notification {
-  id: string;
+interface DashboardStat {
   title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  timestamp: Date;
-  read: boolean;
+  value: number | string;
+  change: string;
+  changeType: 'positive' | 'negative' | 'neutral';
+  icon: React.ComponentType<any>;
+  description: string;
 }
 
-export const DashboardHome: React.FC = () => {
-  const navigate = useNavigate();
+const DashboardHome: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [realtimeUpdates, setRealtimeUpdates] = useState(0);
-  
-  const socket = useSocket();
+  const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  // Load dashboard data
+  // Simulate loading
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        // Mock data - replace with actual API calls
-        const mockStats: DashboardStats = {
-          totalVehicles: 3,
-          activeDevices: 2,
-          pendingInstalls: 1,
-          trustScore: 95,
-          recentActivity: 12,
-          walletBalance: 1250.50
-        };
-
-        const mockNotifications: Notification[] = [
-          {
-            id: '1',
-            title: 'Device Installation Request',
-            message: 'New device installation request for Vehicle VIN: 1HGBH41JXMN109186',
-            type: 'info',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-            read: false
-          },
-          {
-            id: '2',
-            title: 'Trust Score Updated',
-            message: 'Vehicle trust score increased to 95 points',
-            type: 'success',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-            read: false
-          },
-          {
-            id: '3',
-            title: 'Telemetry Received',
-            message: 'New telemetry data received from device DEV-001',
-            type: 'info',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-            read: true
-          }
-        ];
-
-        setStats(mockStats);
-        setNotifications(mockNotifications);
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Socket.IO real-time updates
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleInstallRequest = (data: any) => {
-      setRealtimeUpdates(prev => prev + 1);
-      // Add new notification
-      const newNotification: Notification = {
-        id: `realtime-${Date.now()}`,
-        title: 'New Install Request',
-        message: `Installation request for ${data.vehicleId}`,
-        type: 'info',
-        timestamp: new Date(),
-        read: false
-      };
-      setNotifications(prev => [newNotification, ...prev]);
-    };
-
-    const handleDeviceActivated = (data: any) => {
-      setRealtimeUpdates(prev => prev + 1);
-      // Update stats
-      setStats(prev => prev ? {
-        ...prev,
-        activeDevices: prev.activeDevices + 1,
-        pendingInstalls: Math.max(0, prev.pendingInstalls - 1)
-      } : null);
-    };
-
-    const handleTrustScoreChanged = (data: any) => {
-      setRealtimeUpdates(prev => prev + 1);
-      // Update trust score
-      setStats(prev => prev ? {
-        ...prev,
-        trustScore: data.newScore
-      } : null);
-    };
-
-    socket.on('install_request_created', handleInstallRequest);
-    socket.on('device_activated', handleDeviceActivated);
-    socket.on('trustscore_changed', handleTrustScoreChanged);
-
-    return () => {
-      socket.off('install_request_created', handleInstallRequest);
-      socket.off('device_activated', handleDeviceActivated);
-      socket.off('trustscore_changed', handleTrustScoreChanged);
-    };
-  }, [socket]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading dashboard..." />
-      </div>
-    );
-  }
-
-  if (!stats) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to load dashboard</h2>
-          <p className="text-gray-600">Please try refreshing the page</p>
-        </div>
-      </div>
-    );
-  }
-
-  const statCards = [
+  const ownerStats: DashboardStat[] = [
     {
-      title: 'Total Vehicles',
-      value: stats.totalVehicles.toString(),
-      change: '+1 this month',
-      changeType: 'positive' as const,
+      title: 'My Vehicles',
+      value: 12,
+      change: '+2 this month',
+      changeType: 'positive',
       icon: Car,
-      description: 'Registered vehicles'
+      description: 'Total owned vehicles'
     },
     {
-      title: 'Active Devices',
-      value: stats.activeDevices.toString(),
-      change: '+2 this week',
-      changeType: 'positive' as const,
-      icon: Smartphone,
-      description: 'Connected devices'
-    },
-    {
-      title: 'Trust Score',
-      value: `${stats.trustScore}%`,
-      change: '+5 points',
-      changeType: 'positive' as const,
-      icon: Shield,
-      description: 'Average trust score'
-    },
-    {
-      title: 'Wallet Balance',
-      value: `$${stats.walletBalance.toLocaleString()}`,
-      change: '+$150 this month',
-      changeType: 'positive' as const,
+      title: 'Total Earnings',
+      value: 48250,
+      change: '+18.7%',
+      changeType: 'positive',
       icon: DollarSign,
-      description: 'Available balance'
+      description: 'From vehicle sales'
+    },
+    {
+      title: 'Active Listings',
+      value: 8,
+      change: '+3 new',
+      changeType: 'positive',
+      icon: Car,
+      description: 'Currently for sale'
+    },
+    {
+      title: 'Verified Status',
+      value: '100%',
+      change: 'All verified',
+      changeType: 'neutral',
+      icon: CheckCircle,
+      description: 'Vehicle verification'
     }
   ];
 
-  const quickActions = [
+  const recentNotifications = [
     {
-      title: 'Register Vehicle',
-      description: 'Add a new vehicle to your account',
-      icon: Car,
-      action: () => navigate('/vehicles'),
-      color: 'bg-blue-500'
+      id: 1,
+      type: 'info',
+      title: 'New vehicle registered',
+      message: 'Your Honda Civic has been successfully registered',
+      time: '2 hours ago',
+      read: false
     },
     {
-      title: 'Request Device Install',
-      description: 'Request device installation for a vehicle',
-      icon: Wrench,
-      action: () => navigate('/devices'),
-      color: 'bg-green-500'
+      id: 2,
+      type: 'warning',
+      title: 'TrustScore update',
+      message: 'Your Toyota Camry TrustScore decreased to 85',
+      time: '1 day ago',
+      read: true
     },
     {
-      title: 'View Marketplace',
-      description: 'Browse vehicles for sale',
-      icon: FileText,
-      action: () => navigate('/marketplace'),
-      color: 'bg-purple-500'
+      id: 3,
+      type: 'success',
+      title: 'Device installed',
+      message: 'ESP32 device successfully installed on Ford Mustang',
+      time: '3 days ago',
+      read: true
     }
   ];
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+      case 'success': return <CheckCircle className="w-5 h-5 text-green-500" />;
+      default: return <Bell className="w-5 h-5 text-blue-500" />;
+    }
+  };
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case 'warning': return 'bg-yellow-50 border-yellow-200';
+      case 'success': return 'bg-green-50 border-green-200';
+      default: return 'bg-blue-50 border-blue-200';
+    }
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Here's what's happening with your vehicles and devices
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {user?.firstName} {user?.lastName}</p>
         </div>
-        
-        <div className="flex items-center space-x-4">
-          {realtimeUpdates > 0 && (
-            <div className="flex items-center space-x-2 text-sm text-green-600">
-              <Activity className="w-4 h-4" />
-              <span>{realtimeUpdates} real-time updates</span>
-            </div>
-          )}
-          <QuickActionsDropdown actions={quickActions} />
-        </div>
+        <QuickActionsDropdown />
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, index) => (
-          <StatCard
-            key={stat.title}
-            title={stat.title}
-            value={stat.value}
-            change={stat.change}
-            changeType={stat.changeType}
-            icon={stat.icon}
-            description={stat.description}
-            delay={index * 0.1}
-          />
-        ))}
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Notifications */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Notifications</h2>
-              <button 
-                onClick={() => navigate('/notifications')}
-                className="text-sm text-primary-600 hover:text-primary-700"
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, index) => (
+            <MetricCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {ownerStats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
               >
-                View all
-              </button>
-            </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                    <p className="text-2xl font-semibold text-gray-900 mt-2">{stat.value}</p>
+                    <p className="text-sm mt-1">
+                      <span className={`inline-flex items-center ${
+                        stat.changeType === 'positive' ? 'text-green-600' : 
+                        stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-500'
+                      }`}>
+                        {stat.changeType === 'positive' ? '↑' : stat.changeType === 'negative' ? '↓' : ''}
+                        {stat.change}
+                      </span>
+                      <span className="text-gray-500 ml-1">· {stat.description}</span>
+                    </p>
+                  </div>
+                  <div className="p-3 bg-primary-100 rounded-lg">
+                    <Icon className="w-6 h-6 text-primary-600" />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Notifications and Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Notifications */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Notifications</h3>
+            <button className="text-sm text-primary-600 hover:text-primary-800">
+              View all
+            </button>
           </div>
-          <div className="p-6 space-y-4">
-            {notifications.slice(0, 5).map((notification) => (
-              <div key={notification.id} className="flex items-start space-x-3">
-                <div className={`p-2 rounded-full ${
-                  notification.type === 'success' ? 'bg-green-100 text-green-600' :
-                  notification.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
-                  notification.type === 'error' ? 'bg-red-100 text-red-600' :
-                  'bg-blue-100 text-blue-600'
-                }`}>
-                  <Bell className="w-4 h-4" />
+          <div className="space-y-4">
+            {recentNotifications.map((notification) => (
+              <div 
+                key={notification.id} 
+                className={`p-4 rounded-lg border ${getNotificationColor(notification.type)} ${
+                  !notification.read ? 'ring-1 ring-blue-100' : ''
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  {getNotificationIcon(notification.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                    <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                    <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                  </div>
+                  {!notification.read && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${
-                    !notification.read ? 'text-gray-900' : 'text-gray-600'
-                  }`}>
-                    {notification.title}
-                  </p>
-                  <p className="text-sm text-gray-500 truncate">
-                    {notification.message}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {notification.timestamp.toLocaleTimeString()}
-                  </p>
-                </div>
-                {!notification.read && (
-                  <div className="w-2 h-2 bg-primary-500 rounded-full" />
-                )}
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
-          </div>
-          <div className="p-6 space-y-4">
-            {quickActions.map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.title}
-                  onClick={action.action}
-                  className="w-full flex items-center p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all text-left"
-                >
-                  <div className={`p-3 rounded-lg ${action.color} mr-4`}>
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-900">{action.title}</h3>
-                    <p className="text-sm text-gray-500">{action.description}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* System Status */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">System Status</h2>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Recent Activity */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+          <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Blockchain</p>
-                <p className="text-sm text-gray-500">Operational</p>
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                <Car className="w-4 h-4 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Vehicle registered</p>
+                <p className="text-sm text-gray-600">Honda Civic - KA01AB1234</p>
+                <p className="text-xs text-gray-500">2 hours ago</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Devices</p>
-                <p className="text-sm text-gray-500">All connected</p>
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">TrustScore updated</p>
+                <p className="text-sm text-gray-600">Toyota Camry - 85</p>
+                <p className="text-xs text-gray-500">1 day ago</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <Clock className="w-5 h-5 text-yellow-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Sync Status</p>
-                <p className="text-sm text-gray-500">Last sync: 2 min ago</p>
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <Smartphone className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Device installed</p>
+                <p className="text-sm text-gray-600">ESP32_001234 on Ford Mustang</p>
+                <p className="text-xs text-gray-500">3 days ago</p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
 };
 
 export default DashboardHome;
-
-
-

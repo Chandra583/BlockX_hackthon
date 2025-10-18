@@ -17,7 +17,8 @@ import {
   UserX,
   Activity,
   Award,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
@@ -75,6 +76,39 @@ interface ServiceProvider {
   joinedAt: string;
 }
 
+// New interface for service provider registration form
+interface ServiceProviderFormData {
+  userId: string;
+  companyName: string;
+  licenseNumber: string;
+  contactInfo: {
+    phone: string;
+    email: string;
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    };
+  };
+  serviceAreas: Array<{
+    city: string;
+    state: string;
+    radius: number;
+  }>;
+  capabilities: Array<{
+    deviceType: string;
+    installationType: 'basic' | 'advanced' | 'expert';
+    estimatedTime: number;
+    cost: number;
+  }>;
+  paymentInfo: {
+    ratePerHour: number;
+    minimumCharge: number;
+    paymentMethod: 'bank_transfer' | 'check' | 'digital_wallet';
+  };
+}
+
 const ServiceProviderManagement: React.FC = () => {
   const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +117,7 @@ const ServiceProviderManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [showProviderModal, setShowProviderModal] = useState(false);
+  const [showAddProviderModal, setShowAddProviderModal] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -94,6 +129,30 @@ const ServiceProviderManagement: React.FC = () => {
     title: '',
     message: '',
     onConfirm: () => {}
+  });
+
+  // Form state for adding new service provider
+  const [formData, setFormData] = useState<ServiceProviderFormData>({
+    userId: '',
+    companyName: '',
+    licenseNumber: '',
+    contactInfo: {
+      phone: '',
+      email: '',
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: ''
+      }
+    },
+    serviceAreas: [{ city: '', state: '', radius: 50 }],
+    capabilities: [{ deviceType: 'ESP32_Telematics', installationType: 'basic', estimatedTime: 60, cost: 100 }],
+    paymentInfo: {
+      ratePerHour: 50,
+      minimumCharge: 100,
+      paymentMethod: 'bank_transfer'
+    }
   });
 
   useEffect(() => {
@@ -154,6 +213,134 @@ const ServiceProviderManagement: React.FC = () => {
     setShowProviderModal(true);
   };
 
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    // Handle nested properties
+    if (name.includes('.')) {
+      const keys = name.split('.');
+      setFormData(prev => {
+        const updated = { ...prev };
+        let current: any = updated;
+        
+        for (let i = 0; i < keys.length - 1; i++) {
+          current = current[keys[i]];
+        }
+        
+        current[keys[keys.length - 1]] = value;
+        return updated;
+      });
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  // Handle service area changes
+  const handleServiceAreaChange = (index: number, field: string, value: string | number) => {
+    setFormData(prev => {
+      const updatedAreas = [...prev.serviceAreas];
+      updatedAreas[index] = { ...updatedAreas[index], [field]: value };
+      return { ...prev, serviceAreas: updatedAreas };
+    });
+  };
+
+  // Add a new service area
+  const addServiceArea = () => {
+    setFormData(prev => ({
+      ...prev,
+      serviceAreas: [...prev.serviceAreas, { city: '', state: '', radius: 50 }]
+    }));
+  };
+
+  // Remove a service area
+  const removeServiceArea = (index: number) => {
+    if (formData.serviceAreas.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        serviceAreas: prev.serviceAreas.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  // Handle capability changes
+  const handleCapabilityChange = (index: number, field: string, value: string | number) => {
+    setFormData(prev => {
+      const updatedCapabilities = [...prev.capabilities];
+      updatedCapabilities[index] = { ...updatedCapabilities[index], [field]: value };
+      return { ...prev, capabilities: updatedCapabilities };
+    });
+  };
+
+  // Add a new capability
+  const addCapability = () => {
+    setFormData(prev => ({
+      ...prev,
+      capabilities: [...prev.capabilities, { deviceType: 'ESP32_Telematics', installationType: 'basic', estimatedTime: 60, cost: 100 }]
+    }));
+  };
+
+  // Remove a capability
+  const removeCapability = (index: number) => {
+    if (formData.capabilities.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        capabilities: prev.capabilities.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  // Handle form submission
+  const handleAddProvider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const response = await fetch('/api/admin/service-providers/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        toast.success('Service provider registered successfully');
+        setShowAddProviderModal(false);
+        // Reset form
+        setFormData({
+          userId: '',
+          companyName: '',
+          licenseNumber: '',
+          contactInfo: {
+            phone: '',
+            email: '',
+            address: {
+              street: '',
+              city: '',
+              state: '',
+              zipCode: ''
+            }
+          },
+          serviceAreas: [{ city: '', state: '', radius: 50 }],
+          capabilities: [{ deviceType: 'ESP32_Telematics', installationType: 'basic', estimatedTime: 60, cost: 100 }],
+          paymentInfo: {
+            ratePerHour: 50,
+            minimumCharge: 100,
+            paymentMethod: 'bank_transfer'
+          }
+        });
+        fetchData();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to register service provider');
+      }
+    } catch (error) {
+      console.error('Failed to register service provider:', error);
+      toast.error('Failed to register service provider');
+    }
+  };
+
   // Calculate statistics
   const stats = {
     total: serviceProviders.length,
@@ -190,7 +377,7 @@ const ServiceProviderManagement: React.FC = () => {
         </div>
         <Button 
           icon={<Plus className="w-4 h-4" />}
-          onClick={() => {/* TODO: Add provider functionality */}}
+          onClick={() => setShowAddProviderModal(true)}
         >
           Add Provider
         </Button>
@@ -222,66 +409,51 @@ const ServiceProviderManagement: React.FC = () => {
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Total Providers"
               value={stats.total}
-              subtitle={`${stats.verified} verified`}
               icon={<Users className="w-6 h-6" />}
-              color="blue"
+              trend={{ value: 12, isPositive: true }}
             />
             <StatCard
-              title="Active Providers"
-              value={stats.active}
-              subtitle="Currently available"
-              icon={<Activity className="w-6 h-6" />}
-              color="green"
+              title="Verified"
+              value={stats.verified}
+              icon={<CheckCircle className="w-6 h-6" />}
+              trend={{ value: 8, isPositive: true }}
             />
             <StatCard
-              title="Pending Verification"
+              title="Pending"
               value={stats.pending}
-              subtitle="Awaiting approval"
               icon={<Clock className="w-6 h-6" />}
-              color="yellow"
+              trend={{ value: 3, isPositive: false }}
             />
             <StatCard
-              title="Average Rating"
+              title="Avg. Rating"
               value={stats.averageRating.toFixed(1)}
-              subtitle="Overall provider rating"
               icon={<Star className="w-6 h-6" />}
-              color="purple"
+              suffix="/5"
             />
           </div>
-
-          {/* Recent Activity or Charts could go here */}
-          <Card>
-            <div className="text-center py-8">
-              <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics Coming Soon</h3>
-              <p className="text-gray-600">Provider performance analytics and trends will be displayed here.</p>
-            </div>
-          </Card>
         </TabsContent>
 
         {/* Providers Tab */}
         <TabsContent value="providers">
           <div className="space-y-6">
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <SearchInput
-                  placeholder="Search providers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onClear={() => setSearchTerm('')}
-                />
-              </div>
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <SearchInput
+                placeholder="Search providers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1"
+              />
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
               >
-                <option value="all">All Status</option>
+                <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="verified">Verified</option>
                 <option value="suspended">Suspended</option>
@@ -345,48 +517,33 @@ const ServiceProviderManagement: React.FC = () => {
                             </span>
                             <span className="flex items-center gap-1">
                               <Star className="w-4 h-4" />
-                              {provider.metrics.averageRating.toFixed(1)} rating
+                              {provider.metrics.averageRating.toFixed(1)}/5
                             </span>
                           </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500 block">Total Jobs</span>
-                              <p className="font-semibold text-gray-900">{provider.metrics.totalInstallations}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 block">Success Rate</span>
-                              <p className="font-semibold text-gray-900">
-                                {provider.metrics.totalInstallations > 0 
-                                  ? Math.round((provider.metrics.successfulInstallations / provider.metrics.totalInstallations) * 100)
-                                  : 0}%
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 block">On Time</span>
-                              <p className="font-semibold text-gray-900">{provider.metrics.onTimePercentage}%</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 block">Current Jobs</span>
-                              <p className="font-semibold text-gray-900">{provider.currentAssignments.length}</p>
-                            </div>
-                          </div>
                         </div>
-
+                        
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            icon={<Eye className="w-4 h-4" />}
+                            onClick={() => viewProviderDetails(provider)}
+                          >
+                            View
+                          </Button>
                           {provider.verificationStatus === 'pending' && (
                             <>
                               <Button
-                                variant="success"
                                 size="sm"
+                                variant="success"
                                 icon={<UserCheck className="w-4 h-4" />}
                                 onClick={() => openConfirmationModal(provider, 'verify')}
                               >
                                 Verify
                               </Button>
                               <Button
-                                variant="destructive"
                                 size="sm"
+                                variant="destructive"
                                 icon={<UserX className="w-4 h-4" />}
                                 onClick={() => openConfirmationModal(provider, 'reject')}
                               >
@@ -394,14 +551,6 @@ const ServiceProviderManagement: React.FC = () => {
                               </Button>
                             </>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            icon={<Eye className="w-4 h-4" />}
-                            onClick={() => viewProviderDetails(provider)}
-                          >
-                            View Details
-                          </Button>
                         </div>
                       </div>
                     </Card>
@@ -414,15 +563,12 @@ const ServiceProviderManagement: React.FC = () => {
 
         {/* Installations Tab */}
         <TabsContent value="installations">
-          <EmptyState
-            icon={<Wrench className="w-16 h-16" />}
-            title="Installation Management"
-            description="Device installation tracking and management features will be available here."
-            action={{
-              label: "Coming Soon",
-              onClick: () => toast.info("Installation management features are coming soon!")
-            }}
-          />
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+            <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Installation Management</h3>
+            <p className="text-gray-500 mb-6">Manage device installation requests and assignments</p>
+            <Button variant="primary">View Installations</Button>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -483,6 +629,332 @@ const ServiceProviderManagement: React.FC = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Add Provider Modal */}
+      <Modal
+        isOpen={showAddProviderModal}
+        onClose={() => setShowAddProviderModal(false)}
+        title="Add New Service Provider"
+        size="xl"
+      >
+        <form onSubmit={handleAddProvider} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Information */}
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                  <input
+                    type="text"
+                    name="userId"
+                    value={formData.userId}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter user ID"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                  <input
+                    type="text"
+                    name="companyName"
+                    value={formData.companyName}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter company name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+                  <input
+                    type="text"
+                    name="licenseNumber"
+                    value={formData.licenseNumber}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter license number"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Contact Information */}
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    name="contactInfo.phone"
+                    value={formData.contactInfo.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="contactInfo.email"
+                    value={formData.contactInfo.email}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter email"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                  <input
+                    type="text"
+                    name="contactInfo.address.street"
+                    value={formData.contactInfo.address.street}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter street address"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    name="contactInfo.address.city"
+                    value={formData.contactInfo.address.city}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter city"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                  <input
+                    type="text"
+                    name="contactInfo.address.state"
+                    value={formData.contactInfo.address.state}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter state"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                  <input
+                    type="text"
+                    name="contactInfo.address.zipCode"
+                    value={formData.contactInfo.address.zipCode}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter ZIP code"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Service Areas */}
+            <div className="md:col-span-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Service Areas</h3>
+                <Button type="button" variant="outline" size="sm" onClick={addServiceArea}>
+                  Add Area
+                </Button>
+              </div>
+              
+              {formData.serviceAreas.map((area, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <input
+                      type="text"
+                      value={area.city}
+                      onChange={(e) => handleServiceAreaChange(index, 'city', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter city"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input
+                      type="text"
+                      value={area.state}
+                      onChange={(e) => handleServiceAreaChange(index, 'state', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter state"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
+                    <input
+                      type="number"
+                      value={area.radius}
+                      onChange={(e) => handleServiceAreaChange(index, 'radius', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      min="1"
+                      max="500"
+                    />
+                  </div>
+                  
+                  {formData.serviceAreas.length > 1 && (
+                    <div className="md:col-span-4 flex justify-end">
+                      <Button 
+                        type="button" 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => removeServiceArea(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Capabilities */}
+            <div className="md:col-span-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Capabilities</h3>
+                <Button type="button" variant="outline" size="sm" onClick={addCapability}>
+                  Add Capability
+                </Button>
+              </div>
+              
+              {formData.capabilities.map((capability, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 border border-gray-200 rounded-lg">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Device Type</label>
+                    <select
+                      value={capability.deviceType}
+                      onChange={(e) => handleCapabilityChange(index, 'deviceType', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="ESP32_Telematics">ESP32 Telematics</option>
+                      <option value="OBD_Scanner">OBD Scanner</option>
+                      <option value="GPS_Tracker">GPS Tracker</option>
+                      <option value="Custom">Custom</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Installation Type</label>
+                    <select
+                      value={capability.installationType}
+                      onChange={(e) => handleCapabilityChange(index, 'installationType', e.target.value as any)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="basic">Basic</option>
+                      <option value="advanced">Advanced</option>
+                      <option value="expert">Expert</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Time (min)</label>
+                    <input
+                      type="number"
+                      value={capability.estimatedTime}
+                      onChange={(e) => handleCapabilityChange(index, 'estimatedTime', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      min="15"
+                      max="480"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cost ($)</label>
+                    <input
+                      type="number"
+                      value={capability.cost}
+                      onChange={(e) => handleCapabilityChange(index, 'cost', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      min="0"
+                    />
+                  </div>
+                  
+                  {formData.capabilities.length > 1 && (
+                    <div className="md:col-span-4 flex justify-end">
+                      <Button 
+                        type="button" 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => removeCapability(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Payment Information */}
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rate Per Hour ($)</label>
+                  <input
+                    type="number"
+                    name="paymentInfo.ratePerHour"
+                    value={formData.paymentInfo.ratePerHour}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    min="0"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Charge ($)</label>
+                  <input
+                    type="number"
+                    name="paymentInfo.minimumCharge"
+                    value={formData.paymentInfo.minimumCharge}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    min="0"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <select
+                    name="paymentInfo.paymentMethod"
+                    value={formData.paymentInfo.paymentMethod}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="check">Check</option>
+                    <option value="digital_wallet">Digital Wallet</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <Button type="button" variant="outline" onClick={() => setShowAddProviderModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Add Service Provider
+            </Button>
+          </div>
+        </form>
       </Modal>
 
       {/* Confirmation Modal */}

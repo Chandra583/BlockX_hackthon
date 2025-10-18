@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Car, 
@@ -71,6 +72,7 @@ interface OwnerDashboardProps {
 }
 
 export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
+  const navigate = useNavigate();
   const [showVehicleRegistration, setShowVehicleRegistration] = useState(false);
   const [showMileageUpdate, setShowMileageUpdate] = useState(false);
   const [showVehicleList, setShowVehicleList] = useState(false);
@@ -81,6 +83,11 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [hasWallet, setHasWallet] = useState<boolean>(false);
   const [walletLoading, setWalletLoading] = useState(true);
+
+  // Redirect to new dashboard
+  useEffect(() => {
+    navigate('/dashboard/home');
+  }, [navigate]);
 
   // Fetch user's wallet on component mount
   useEffect(() => {

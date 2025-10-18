@@ -1,3 +1,8 @@
+export interface ExtendedRegisterFormData extends RegisterFormData {
+  licenseNumber?: string;
+  businessType?: 'dealer' | 'mechanic' | 'inspection' | 'towing';
+}
+
 export interface LoginFormData {
   email: string;
   password: string;
@@ -210,9 +215,9 @@ export const generateDefaultRoleData = (role: string, organization?: string): Ro
 
     case USER_ROLES.SERVICE:
       return {
-        businessName: organization || 'Service Provider',
+        businessName: organization || '',
         businessType: 'mechanic',
-        licenseNumber: '',
+        licenseNumber: '',  // Will be filled during registration
         licenseExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
         serviceCategories: [],
         certificationsHeld: [],

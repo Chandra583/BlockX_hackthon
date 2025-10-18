@@ -11,6 +11,7 @@ import { ServiceDashboard } from '../components/dashboard/ServiceDashboard';
 import { InsuranceDashboard } from '../components/dashboard/InsuranceDashboard';
 import { GovernmentDashboard } from '../components/dashboard/GovernmentDashboard';
 import { RoleDashboard } from '../components/dashboard/RoleDashboard';
+import DashboardHome from './DashboardHome';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -66,13 +67,18 @@ const DashboardPage: React.FC = () => {
       role: user.role
     };
 
+    // For owners, redirect to the new dashboard home
+    if (user.role === 'owner') {
+      // Redirect to the new dashboard home
+      navigate('/dashboard/home', { replace: true });
+      return <DashboardHome />;
+    }
+
     switch (user.role) {
       case 'admin':
         return <EnhancedAdminDashboard user={userProps} />;
       case 'buyer':
         return <BuyerDashboard user={userProps} />;
-      case 'owner':
-        return <OwnerDashboard user={userProps} />;
       case 'service':
         return <ServiceDashboard user={userProps} />;
       case 'insurance':
@@ -92,4 +98,4 @@ const DashboardPage: React.FC = () => {
   );
 };
 
-export default DashboardPage; 
+export default DashboardPage;

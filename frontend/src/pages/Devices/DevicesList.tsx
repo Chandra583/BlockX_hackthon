@@ -1,548 +1,276 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Smartphone, 
-  Plus, 
-  Search, 
-  Filter, 
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  Wrench,
-  MapPin,
-  Calendar,
-  User,
-  Car,
-  Eye,
-  Play,
-  Pause
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Smartphone, Plus, Search, Filter, Eye, User, Clock, CheckCircle, XCircle } from 'lucide-react';
+import NewInstallationRequestModal from '../../components/devices/NewInstallationRequestModal';
 import { useAppSelector } from '../../hooks/redux';
-import { LoadingSpinner, EmptyState, Badge, Button, Card, Input, Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui';
-import { useSocket } from '../../hooks/useSocket';
+import { InstallationService } from '../../services/installation';
+import type { InstallationRequest } from '../../services/installation';
 
-interface InstallRequest {
-  id: string;
-  vehicleId: {
-    id: string;
-    vin: string;
-    make: string;
-    model: string;
-    year: number;
-    color: string;
-  };
-  ownerId: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  serviceProviderId?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  deviceId?: string;
-  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'failed';
-  requestedAt: string;
-  assignedAt?: string;
-  startedAt?: string;
-  completedAt?: string;
-  cancelledAt?: string;
-  cancellationReason?: string;
-  notes?: string;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
-  estimatedDuration?: number;
-  actualDuration?: number;
-  cost?: number;
-  paymentStatus?: 'pending' | 'paid' | 'refunded';
-  feedback?: {
-    rating: number;
-    comment: string;
-    submittedAt: string;
-  };
-  statusHistory: Array<{
-    status: string;
-    changedBy: string;
-    changedAt: string;
-    reason: string;
-    notes?: string;
-  }>;
-}
-
-export const DevicesList: React.FC = () => {
+const DevicesList: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAppSelector((state) => state.auth);
-  const [installs, setInstalls] = useState<InstallRequest[]>([]);
+  const [devices, setDevices] = useState<InstallationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState('my-requests');
-  const [realtimeUpdates, setRealtimeUpdates] = useState(0);
-  
-  const socket = useSocket();
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [filteredDevices, setFilteredDevices] = useState<InstallationRequest[]>([]);
+  const [showNewRequestModal, setShowNewRequestModal] = useState(false);
 
-  // Load install requests
   useEffect(() => {
-    const loadInstalls = async () => {
-      try {
-        setLoading(true);
-        
-        // Mock data - replace with actual API call
-        const mockInstalls: InstallRequest[] = [
-          {
-            id: '1',
-            vehicleId: {
-              id: 'v1',
-              vin: '1HGBH41JXMN109186',
-              make: 'Honda',
-              model: 'Civic',
-              year: 2021,
-              color: 'Silver'
-            },
-            ownerId: {
-              id: 'u1',
-              firstName: 'John',
-              lastName: 'Doe',
-              email: 'john@example.com'
-            },
-            serviceProviderId: {
-              id: 'sp1',
-              firstName: 'Mike',
-              lastName: 'Smith',
-              email: 'mike@service.com'
-            },
-            deviceId: 'DEV-001',
-            status: 'in_progress',
-            requestedAt: '2024-01-20T10:00:00Z',
-            assignedAt: '2024-01-20T11:00:00Z',
-            startedAt: '2024-01-20T14:00:00Z',
-            notes: 'Installation in progress',
-            location: {
-              address: '123 Main St',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10001',
-              coordinates: {
-                latitude: 40.7128,
-                longitude: -74.0060
-              }
-            },
-            estimatedDuration: 120,
-            actualDuration: 90,
-            cost: 150.00,
-            paymentStatus: 'paid',
-            statusHistory: [
-              {
-                status: 'pending',
-                changedBy: 'u1',
-                changedAt: '2024-01-20T10:00:00Z',
-                reason: 'Install request created'
-              },
-              {
-                status: 'assigned',
-                changedBy: 'admin',
-                changedAt: '2024-01-20T11:00:00Z',
-                reason: 'Assigned to service provider'
-              },
-              {
-                status: 'in_progress',
-                changedBy: 'sp1',
-                changedAt: '2024-01-20T14:00:00Z',
-                reason: 'Installation started'
-              }
-            ]
-          },
-          {
-            id: '2',
-            vehicleId: {
-              id: 'v2',
-              vin: '1FTFW1ET5DFC12345',
-              make: 'Ford',
-              model: 'F-150',
-              year: 2020,
-              color: 'Black'
-            },
-            ownerId: {
-              id: 'u1',
-              firstName: 'John',
-              lastName: 'Doe',
-              email: 'john@example.com'
-            },
-            status: 'pending',
-            requestedAt: '2024-01-21T09:00:00Z',
-            notes: 'Need device installation for new vehicle',
-            location: {
-              address: '456 Oak Ave',
-              city: 'Los Angeles',
-              state: 'CA',
-              zipCode: '90210'
-            },
-            estimatedDuration: 90,
-            statusHistory: [
-              {
-                status: 'pending',
-                changedBy: 'u1',
-                changedAt: '2024-01-21T09:00:00Z',
-                reason: 'Install request created'
-              }
-            ]
-          }
-        ];
-
-        setInstalls(mockInstalls);
-      } catch (error) {
-        console.error('Failed to load install requests:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInstalls();
+    fetchDeviceRequests();
   }, []);
 
-  // Real-time updates
   useEffect(() => {
-    if (!socket) return;
+    filterDevices();
+  }, [devices, searchTerm, statusFilter]);
 
-    const handleInstallRequestCreated = (data: any) => {
-      setRealtimeUpdates(prev => prev + 1);
-      // Add new install request to the list
-      const newInstall: InstallRequest = {
-        id: `realtime-${Date.now()}`,
-        vehicleId: data.vehicleId,
-        ownerId: data.ownerId,
-        status: 'pending',
-        requestedAt: new Date().toISOString(),
-        location: data.location,
-        statusHistory: [{
-          status: 'pending',
-          changedBy: data.ownerId.id,
-          changedAt: new Date().toISOString(),
-          reason: 'Install request created'
-        }]
-      };
-      setInstalls(prev => [newInstall, ...prev]);
-    };
-
-    const handleInstallStatusChanged = (data: any) => {
-      setRealtimeUpdates(prev => prev + 1);
-      setInstalls(prev => prev.map(install => 
-        install.id === data.installId 
-          ? { ...install, status: data.newStatus }
-          : install
-      ));
-    };
-
-    socket.on('install_request_created', handleInstallRequestCreated);
-    socket.on('install_status_changed', handleInstallStatusChanged);
-
-    return () => {
-      socket.off('install_request_created', handleInstallRequestCreated);
-      socket.off('install_status_changed', handleInstallStatusChanged);
-    };
-  }, [socket]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'in_progress':
-        return <Play className="w-4 h-4 text-blue-600" />;
-      case 'assigned':
-        return <Wrench className="w-4 h-4 text-yellow-600" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-orange-600" />;
-      case 'cancelled':
-        return <Pause className="w-4 h-4 text-red-600" />;
-      default:
-        return <AlertTriangle className="w-4 h-4 text-gray-600" />;
+  const fetchDeviceRequests = async () => {
+    try {
+      setLoading(true);
+      const response = await InstallationService.getInstallationRequests({
+        ownerId: user?.id
+      });
+      setDevices(response.data.requests);
+    } catch (error) {
+      console.error('Failed to fetch device requests:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const filterDevices = () => {
+    let filtered = devices;
+    
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(device => 
+        (device.vehicle && 
+          (`${device.vehicle.year} ${device.vehicle.make} ${device.vehicle.model}`.toLowerCase().includes(term) ||
+          device.vehicle.registration.toLowerCase().includes(term) ||
+          device.vehicle.vin.toLowerCase().includes(term))) ||
+        (device.device?.deviceID && device.device.deviceID.toLowerCase().includes(term)) ||
+        (device.serviceProvider && 
+          `${device.serviceProvider.firstName} ${device.serviceProvider.lastName}`.toLowerCase().includes(term))
+      );
+    }
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(device => device.status === statusFilter);
+    }
+    
+    setFilteredDevices(filtered);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'assigned':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'pending':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'assigned': return 'bg-blue-100 text-blue-800';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'in_progress':
-        return 'In Progress';
-      case 'assigned':
-        return 'Assigned';
-      case 'pending':
-        return 'Pending';
-      case 'cancelled':
-        return 'Cancelled';
-      case 'failed':
-        return 'Failed';
-      default:
-        return status;
+      case 'completed': return <CheckCircle className="w-4 h-4" />;
+      case 'cancelled': return <XCircle className="w-4 h-4" />;
+      default: return <Clock className="w-4 h-4" />;
     }
   };
 
-  const filteredInstalls = installs.filter(install => {
-    const matchesSearch = 
-      install.vehicleId.vin.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.vehicleId.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.vehicleId.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      install.location.address.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = 
-      filterStatus === 'all' || 
-      install.status === filterStatus;
-
-    return matchesSearch && matchesFilter;
-  });
-
-  const handleRequestInstall = () => {
-    const vehicleId = searchParams.get('vehicle');
-    if (vehicleId) {
-      navigate(`/devices/request?vehicle=${vehicleId}`);
-    } else {
-      navigate('/devices/request');
-    }
+  const handleViewDetails = (deviceId: string) => {
+    console.log('View device details:', deviceId);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading device requests..." />
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+            <div className="flex justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+            </div>
+            <div className="mt-4 h-3 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Device Installations</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your device installation requests and track progress
-          </p>
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Device Installations</h1>
+            <p className="text-gray-600">Manage device installation requests and assignments</p>
+          </div>
+          <button
+            onClick={() => setShowNewRequestModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            New Request
+          </button>
         </div>
-        <div className="flex items-center space-x-3">
-          {realtimeUpdates > 0 && (
-            <div className="flex items-center space-x-2 text-sm text-green-600">
-              <Smartphone className="w-4 h-4" />
-              <span>{realtimeUpdates} real-time updates</span>
-            </div>
-          )}
-          <Button onClick={handleRequestInstall} className="flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
-            <span>Request Install</span>
-          </Button>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search by VIN, make, model, or address..."
+        {/* Search and Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Search by vehicle, device ID, or service provider..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
             />
           </div>
-        </div>
-        
-        <div className="flex gap-2">
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="block w-full sm:w-auto pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
+            <option value="all">All Statuses</option>
+            <option value="requested">Requested</option>
             <option value="assigned">Assigned</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
+          <button className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            <Filter className="w-5 h-5 mr-2" />
+            More Filters
+          </button>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="my-requests">My Requests</TabsTrigger>
-          <TabsTrigger value="all-requests">All Requests</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="my-requests" className="space-y-6">
-          {/* Install Requests */}
-          {filteredInstalls.length === 0 ? (
-            <EmptyState
-              icon={Smartphone}
-              title="No install requests found"
-              description={searchTerm || filterStatus !== 'all' 
-                ? "Try adjusting your search or filter criteria"
-                : "You haven't requested any device installations yet"
-              }
-              action={
-                !searchTerm && filterStatus === 'all' ? {
-                  label: 'Request Installation',
-                  onClick: handleRequestInstall
-                } : undefined
-              }
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredInstalls.map((install) => (
-                <Card key={install.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-primary-100 rounded-lg">
-                        <Smartphone className="w-6 h-6 text-primary-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {install.vehicleId.year} {install.vehicleId.make} {install.vehicleId.model}
-                        </h3>
-                        <p className="text-sm text-gray-500">{install.vehicleId.vin}</p>
-                        <p className="text-sm text-gray-500">{install.location.address}, {install.location.city}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <Badge 
-                        variant="outline" 
-                        className={`${getStatusColor(install.status)} text-sm`}
-                      >
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(install.status)}
-                          <span>{getStatusLabel(install.status)}</span>
-                        </div>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Requested:</span>
-                      <span className="font-medium">
-                        {new Date(install.requestedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    
-                    {install.assignedAt && (
-                      <div className="flex items-center space-x-2 text-sm">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-500">Assigned:</span>
-                        <span className="font-medium">
-                          {new Date(install.assignedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {install.estimatedDuration && (
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-500">Duration:</span>
-                        <span className="font-medium">{install.estimatedDuration} min</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {install.serviceProviderId && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Wrench className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-500">Service Provider:</span>
-                        <span className="font-medium">
-                          {install.serviceProviderId.firstName} {install.serviceProviderId.lastName}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {install.notes && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        <strong>Notes:</strong> {install.notes}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/installs/${install.id}`)}
-                        className="flex items-center space-x-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Details</span>
-                      </Button>
-                      
-                      {install.status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/installs/${install.id}/edit`)}
-                          className="flex items-center space-x-1"
-                        >
-                          <Wrench className="w-4 h-4" />
-                          <span>Edit Request</span>
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="text-sm text-gray-500">
-                      {install.statusHistory.length} status updates
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="all-requests" className="space-y-6">
-          <div className="text-center py-8">
-            <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">All Requests</h3>
-            <p className="text-gray-600">
-              This view would show all install requests across the platform (admin/service provider view)
-            </p>
+        {/* Device Requests List */}
+        {filteredDevices.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <Smartphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No device requests found</h3>
+            <p className="text-gray-500 mb-6">Get started by creating a new installation request.</p>
+            <button
+              onClick={() => setShowNewRequestModal(true)}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              New Request
+            </button>
           </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vehicle
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Device ID
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Service Provider
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Requested
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredDevices.map((device, index) => (
+                    <motion.tr
+                      key={device.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <Smartphone className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div className="ml-4">
+                            {device.vehicle ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {device.vehicle.year} {device.vehicle.make} {device.vehicle.model}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  Reg: {device.vehicle.registration} | VIN: {device.vehicle.vin}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-sm font-medium text-gray-900">
+                                Vehicle information not available
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(device.status)}`}>
+                          {getStatusIcon(device.status)}
+                          <span className="ml-1">{device.status.charAt(0).toUpperCase() + device.status.slice(1).replace('_', ' ')}</span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {device.device?.deviceID || 'Not assigned'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {device.serviceProvider 
+                          ? `${device.serviceProvider.firstName} ${device.serviceProvider.lastName}` 
+                          : 'Not assigned'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(device.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => handleViewDetails(device.id)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <NewInstallationRequestModal
+        isOpen={showNewRequestModal}
+        onClose={() => setShowNewRequestModal(false)}
+        onSuccess={() => {
+          // Refresh the device list
+          fetchDeviceRequests();
+          console.log('Installation request created successfully');
+        }}
+        currentUserId={user?.id || ''}
+      />
+    </>
   );
 };
 
 export default DevicesList;
-

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { VehicleService, type Vehicle } from '../../services/vehicle';
 import { BlockchainService } from '../../services/blockchain';
+import TrustScoreDisplay from './TrustScoreDisplay';
 
 interface VehicleListProps {
   onVehicleSelect?: (vehicle: Vehicle) => void;
@@ -257,6 +258,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                     <span className="capitalize">{vehicle.color}</span>
                   </div>
                 )}
+                <div className="flex items-center text-sm text-gray-600">
+                  <TrustScoreDisplay score={vehicle.trustScore || 100} size="sm" />
+                </div>
               </div>
 
               {/* Blockchain Info */}

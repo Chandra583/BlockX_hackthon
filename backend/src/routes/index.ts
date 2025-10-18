@@ -6,6 +6,10 @@ import deviceRoutes from './device/device.routes';
 import blockchainRoutes from './blockchain/blockchain.routes';
 // Phase 2 routes - Vehicle Management
 import vehicleRoutes from './vehicle/vehicle.routes';
+// Installation routes
+import installsRoutes from './installs.routes';
+import installationRequestRoutes from './installationRequest.routes';
+import serviceInstallsRoutes from './serviceInstalls.routes';
 // New routes - Service Providers, Batch Processing, Marketplace (temporarily disabled)
 // import serviceProviderRoutes from './admin/serviceProvider.routes';
 // import batchProcessingRoutes from './admin/batchProcessing.routes';
@@ -26,6 +30,15 @@ router.use('/blockchain', blockchainRoutes);
 
 // Mount Phase 2 routes (Vehicle Management)
 router.use('/vehicles', vehicleRoutes);
+
+// Mount installation routes with proper prefix
+router.use('/installs', installsRoutes);
+
+// Mount new installation request routes with v1 prefix
+router.use('/v1/installation-requests', installationRequestRoutes);
+
+// Mount service installs routes
+router.use('/service', serviceInstallsRoutes);
 
 // Mount new feature routes (temporarily disabled for debugging)
 // router.use('/admin/service-providers', serviceProviderRoutes);
@@ -100,6 +113,11 @@ router.get('/info', (req, res) => {
         device: '/api/device',
         blockchain: '/api/blockchain',
         
+        // Phase 2 - Vehicle Management
+        vehicles: '/api/vehicles',
+        installs: '/api/installs',
+        installationRequests: '/api/v1/installation-requests',
+        
         // System
         health: '/api/health',
         info: '/api/info',
@@ -119,4 +137,4 @@ router.get('/info', (req, res) => {
   });
 });
 
-export default router; 
+export default router;

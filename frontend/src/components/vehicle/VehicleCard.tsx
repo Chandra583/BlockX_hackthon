@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { type Vehicle } from '../../services/vehicle';
 import { BlockchainService } from '../../services/blockchain';
+import TrustScoreDisplay from './TrustScoreDisplay';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -119,6 +120,9 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               <span className="capitalize">{vehicle.bodyType.replace('_', ' ')}</span>
             </div>
           )}
+          <div className="flex items-center text-sm text-gray-600">
+            <TrustScoreDisplay score={vehicle.trustScore || 100} size="sm" />
+          </div>
         </div>
 
         {/* Additional Details */}

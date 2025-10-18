@@ -1,564 +1,556 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { 
   Car, 
-  ArrowLeft, 
+  Calendar, 
+  Hash, 
+  Gauge, 
   Shield, 
-  Smartphone, 
+  MapPin, 
+  Wrench, 
   AlertTriangle,
   CheckCircle,
   Clock,
-  Edit,
-  History,
-  TrendingUp,
-  MapPin,
-  Calendar,
-  Wrench,
-  FileText,
-  ExternalLink
+  Smartphone,
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
-import { useAppSelector } from '../../hooks/redux';
-import { LoadingSpinner, Badge, Button, Card, Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui';
-import { useSocket } from '../../hooks/useSocket';
+import { VehicleService } from '../../services/vehicle';
+import { InstallationService } from '../../services/installation';
+import { config } from '../../config/env';
+import toast from 'react-hot-toast';
 
-interface VehicleDetails {
+interface Vehicle {
   id: string;
   vin: string;
   vehicleNumber: string;
   make: string;
   model: string;
   year: number;
-  color: string;
-  bodyType: string;
-  fuelType: string;
-  transmission: string;
-  engineSize: string;
-  currentMileage: number;
-  lastMileageUpdate: string;
-  trustScore: number;
-  verificationStatus: string;
-  condition: string;
-  features: string[];
-  description: string;
-  hasDevice: boolean;
-  deviceStatus?: 'active' | 'inactive' | 'pending';
-  deviceId?: string;
-  isForSale: boolean;
-  listingStatus: string;
-  blockchainHash?: string;
+  color?: string;
+  bodyType?: string;
+  fuelType?: string;
+  transmission?: string;
+  mileage: number;
+  trustScore?: number;
+  verificationStatus?: string;
+  isForSale?: boolean;
+  createdAt: string;
   blockchainAddress?: string;
+  lastMileageUpdate?: string;
+}
+
+interface InstallationRequest {
+  id: string;
+  vehicleId: string;
+  ownerId: string;
+  serviceProviderId?: string;
+  deviceId?: string;
+  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  notes?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-interface TrustScoreHistory {
-  id: string;
-  score: number;
-  change: number;
-  reason: string;
-  timestamp: string;
-}
-
-interface MileageRecord {
-  id: string;
-  mileage: number;
-  recordedBy: string;
-  recordedAt: string;
-  source: string;
-  location?: {
-    latitude: number;
-    longitude: number;
-    accuracy: number;
+  installedAt?: string;
+  vehicle?: {
+    id: string;
+    vin: string;
+    registration: string;
+    make: string;
+    model: string;
+    year: number;
   };
-  verified: boolean;
-  blockchainHash?: string;
+  owner?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  serviceProvider?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  device?: {
+    id: string;
+    deviceID: string;
+    status: string;
+  };
 }
 
-export const VehicleDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user } = useAppSelector((state) => state.auth);
-  const [vehicle, setVehicle] = useState<VehicleDetails | null>(null);
-  const [trustScoreHistory, setTrustScoreHistory] = useState<TrustScoreHistory[]>([]);
-  const [mileageHistory, setMileageHistory] = useState<MileageRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+const TrustScoreDisplay: React.FC<{ score: number }> = ({ score }) => {
+  let bgColor = 'bg-green-100 text-green-800';
+  let ringColor = 'ring-green-500';
+  let size = 'w-24 h-24';
   
-  const socket = useSocket();
-
-  // Load vehicle details
-  useEffect(() => {
-    const loadVehicleDetails = async () => {
-      if (!id) return;
-
-      try {
-        setLoading(true);
-        
-        // Mock data - replace with actual API call
-        const mockVehicle: VehicleDetails = {
-          id,
-          vin: '1HGBH41JXMN109186',
-          vehicleNumber: 'ABC123',
-          make: 'Honda',
-          model: 'Civic',
-          year: 2021,
-          color: 'Silver',
-          bodyType: 'sedan',
-          fuelType: 'gasoline',
-          transmission: 'automatic',
-          engineSize: '1.5L',
-          currentMileage: 25000,
-          lastMileageUpdate: '2024-01-20T14:45:00Z',
-          trustScore: 95,
-          verificationStatus: 'verified',
-          condition: 'excellent',
-          features: ['Bluetooth', 'Backup Camera', 'Lane Assist', 'Cruise Control'],
-          description: 'Well-maintained Honda Civic with low mileage and excellent condition.',
-          hasDevice: true,
-          deviceStatus: 'active',
-          deviceId: 'DEV-001',
-          isForSale: false,
-          listingStatus: 'not_listed',
-          blockchainHash: '0x1234567890abcdef',
-          blockchainAddress: '0xabcdef1234567890',
-          createdAt: '2024-01-15T10:30:00Z',
-          updatedAt: '2024-01-20T14:45:00Z'
-        };
-
-        const mockTrustScoreHistory: TrustScoreHistory[] = [
-          {
-            id: '1',
-            score: 95,
-            change: +5,
-            reason: 'Recent service record added',
-            timestamp: '2024-01-20T14:45:00Z'
-          },
-          {
-            id: '2',
-            score: 90,
-            change: +10,
-            reason: 'Vehicle verification completed',
-            timestamp: '2024-01-18T09:30:00Z'
-          },
-          {
-            id: '3',
-            score: 80,
-            change: 0,
-            reason: 'Initial trust score',
-            timestamp: '2024-01-15T10:30:00Z'
-          }
-        ];
-
-        const mockMileageHistory: MileageRecord[] = [
-          {
-            id: '1',
-            mileage: 25000,
-            recordedBy: 'Device',
-            recordedAt: '2024-01-20T14:45:00Z',
-            source: 'automated',
-            location: {
-              latitude: 40.7128,
-              longitude: -74.0060,
-              accuracy: 5
-            },
-            verified: true,
-            blockchainHash: '0xabcdef1234567890'
-          },
-          {
-            id: '2',
-            mileage: 24500,
-            recordedBy: 'Owner',
-            recordedAt: '2024-01-15T10:30:00Z',
-            source: 'owner',
-            verified: false
-          }
-        ];
-
-        setVehicle(mockVehicle);
-        setTrustScoreHistory(mockTrustScoreHistory);
-        setMileageHistory(mockMileageHistory);
-      } catch (error) {
-        console.error('Failed to load vehicle details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadVehicleDetails();
-  }, [id]);
-
-  // Real-time updates
-  useEffect(() => {
-    if (!socket || !vehicle) return;
-
-    const handleTrustScoreChanged = (data: any) => {
-      if (data.vehicleId === vehicle.id) {
-        setVehicle(prev => prev ? { ...prev, trustScore: data.newScore } : null);
-        
-        // Add to trust score history
-        const newHistoryItem: TrustScoreHistory = {
-          id: `realtime-${Date.now()}`,
-          score: data.newScore,
-          change: data.newScore - data.oldScore,
-          reason: data.reason,
-          timestamp: new Date().toISOString()
-        };
-        setTrustScoreHistory(prev => [newHistoryItem, ...prev]);
-      }
-    };
-
-    const handleDeviceActivated = (data: any) => {
-      if (data.vehicleId === vehicle.id) {
-        setVehicle(prev => prev ? {
-          ...prev,
-          hasDevice: true,
-          deviceStatus: 'active',
-          deviceId: data.deviceId
-        } : null);
-      }
-    };
-
-    socket.on('trustscore_changed', handleTrustScoreChanged);
-    socket.on('device_activated', handleDeviceActivated);
-
-    return () => {
-      socket.off('trustscore_changed', handleTrustScoreChanged);
-      socket.off('device_activated', handleDeviceActivated);
-    };
-  }, [socket, vehicle]);
-
-  const getTrustScoreColor = (score: number) => {
-    if (score >= 90) return 'text-green-600 bg-green-50 border-green-200';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    return 'text-red-600 bg-red-50 border-red-200';
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'pending':
-        return <Clock className="w-5 h-5 text-yellow-600" />;
-      case 'flagged':
-        return <AlertTriangle className="w-5 h-5 text-orange-600" />;
-      default:
-        return <Clock className="w-5 h-5 text-gray-600" />;
-    }
-  };
-
-  const handleRequestInstall = () => {
-    navigate(`/devices?vehicle=${vehicle?.id}`);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading vehicle details..." />
+  if (score < 70) {
+    bgColor = 'bg-red-100 text-red-800';
+    ringColor = 'ring-red-500';
+    size = 'w-24 h-24';
+  } else if (score < 90) {
+    bgColor = 'bg-yellow-100 text-yellow-800';
+    ringColor = 'ring-yellow-500';
+    size = 'w-24 h-24';
+  }
+  
+  return (
+    <div className="flex flex-col items-center">
+      <div className={`${size} rounded-full ${bgColor} ${ringColor} ring-4 flex items-center justify-center`}>
+        <span className="text-2xl font-bold">{score}</span>
       </div>
+      <p className="mt-2 text-sm font-medium text-gray-900">TrustScore</p>
+      <p className="text-xs text-gray-500">
+        {score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : 'Needs Attention'}
+      </p>
+    </div>
+  );
+};
+
+const DeviceStatusCard: React.FC<{ 
+  installationRequest?: InstallationRequest;
+  onRequestInstall: () => void;
+}> = ({ installationRequest, onRequestInstall }) => {
+  // Check if there's an active request (requested or assigned)
+  const hasActiveRequest = installationRequest && 
+    (installationRequest.status === 'requested' || installationRequest.status === 'assigned');
+  
+  // Check if device is installed
+  const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
+
+  if (hasActiveRequest) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Device Status</h2>
+        <div className="text-center py-4">
+          <Clock className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+          <p className="text-gray-500 mb-4">Request Pending</p>
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-4">
+            <Clock className="w-3 h-3 mr-1" />
+            {installationRequest.status === 'requested' ? 'Requested' : 'Assigned'}
+          </div>
+          <button
+            disabled={true}
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+          >
+            <Smartphone className="w-4 h-4 mr-1" />
+            Request Pending
+          </button>
+          <p className="text-xs text-gray-500 mt-2">Submitted on {new Date(installationRequest.createdAt).toLocaleDateString()}</p>
+          <p className="text-xs text-gray-500 mt-1">Device request already submitted</p>
+        </div>
+      </motion.div>
     );
   }
 
-  if (!vehicle) {
+  if (isDeviceInstalled && installationRequest?.device) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Vehicle not found</h2>
-          <p className="text-gray-600 mb-4">The vehicle you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => navigate('/vehicles')}>
-            Back to Vehicles
-          </Button>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Device Status</h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Device ID</span>
+            <span className="font-medium">{installationRequest.device.deviceID}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Status</span>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Installed
+            </span>
+          </div>
+          {installationRequest.serviceProvider && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Service Provider</span>
+              <span className="font-medium">
+                {installationRequest.serviceProvider.firstName} {installationRequest.serviceProvider.lastName}
+              </span>
+            </div>
+          )}
+          {installationRequest.installedAt && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Installed At</span>
+              <span className="font-medium">{new Date(installationRequest.installedAt).toLocaleDateString()}</span>
+            </div>
+          )}
+          <div className="flex space-x-2 pt-2">
+            <button className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+              <ExternalLink className="w-4 h-4 mr-1" />
+              View Device
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">Device installed</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Device Status</h2>
+      <div className="text-center py-4">
+        <Smartphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-500 mb-4">No device installed</p>
+        <button
+          onClick={onRequestInstall}
+          className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <Smartphone className="w-4 h-4 mr-1" />
+          Request Install
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+const VehicleDetails: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [installationRequest, setInstallationRequest] = useState<InstallationRequest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (id) {
+      Promise.all([
+        fetchVehicleDetails(id),
+        fetchInstallationRequest(id)
+      ]).finally(() => {
+        setLoading(false);
+      });
+    }
+  }, [id]);
+
+  const fetchVehicleDetails = async (vehicleId: string) => {
+    try {
+      const response = await VehicleService.getVehicleById(vehicleId);
+      
+      // Map the response to our interface
+      const vehicleData = {
+        id: response.data.id,
+        vin: response.data.vin,
+        vehicleNumber: response.data.vehicleNumber || '',
+        make: response.data.make,
+        model: response.data.model,
+        year: response.data.year,
+        color: response.data.color,
+        bodyType: response.data.bodyType,
+        fuelType: response.data.fuelType,
+        transmission: response.data.transmission,
+        mileage: response.data.mileage || 0,
+        trustScore: (response.data as any).trustScore || 100,
+        verificationStatus: response.data.verificationStatus,
+        isForSale: response.data.isForSale,
+        createdAt: response.data.createdAt,
+        blockchainAddress: response.data.blockchainAddress,
+        lastMileageUpdate: response.data.lastMileageUpdate
+      };
+      
+      setVehicle(vehicleData);
+    } catch (err) {
+      setError('Failed to fetch vehicle details');
+      console.error('Error fetching vehicle:', err);
+      toast.error('Can\'t reach vehicle API. Contact support.');
+    }
+  };
+
+  const fetchInstallationRequest = async (vehicleId: string) => {
+    try {
+      const response = await InstallationService.getInstallationRequests({ vehicleId });
+      if (response.data.requests.length > 0) {
+        // Get the most recent request
+        const latestRequest = response.data.requests[0];
+        setInstallationRequest(latestRequest);
+      }
+    } catch (err) {
+      console.error('Error fetching installation request:', err);
+      toast.error('Can\'t reach installation API. Contact support.');
+    }
+  };
+
+  const handleRequestInstall = () => {
+    console.log('Request device installation for vehicle:', id);
+    // TODO: Implement installation request logic
+  };
+
+  const getExplorerUrl = (address?: string) => {
+    if (!address) return null;
+    
+    // Use environment variable for explorer base URL or default to Solana explorer
+    const explorerBase = import.meta.env.VITE_EXPLORER_BASE || 'https://explorer.solana.com';
+    return `${explorerBase}/address/${address}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !vehicle) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+        <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Vehicle Not Found</h3>
+        <p className="text-gray-500 mb-6">The requested vehicle could not be found.</p>
+        <button
+          onClick={() => navigate('/vehicles')}
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          Back to Vehicles
+        </button>
+      </div>
+    );
+  }
+
+  // Check if there's an active request (requested or assigned)
+  const hasActiveRequest = installationRequest && 
+    (installationRequest.status === 'requested' || installationRequest.status === 'assigned');
+  
+  // Check if device is installed
+  const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
+
+  return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <button
             onClick={() => navigate('/vehicles')}
-            className="flex items-center space-x-2"
+            className="inline-flex items-center text-sm text-primary-600 hover:text-primary-800 mb-2"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {vehicle.year} {vehicle.make} {vehicle.model}
-            </h1>
-            <p className="text-gray-600">{vehicle.vin}</p>
-          </div>
+            ← Back to Vehicles
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {vehicle.year} {vehicle.make} {vehicle.model}
+          </h1>
+          <p className="text-gray-600">VIN: {vehicle.vin}</p>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          {!vehicle.hasDevice && (
-            <Button onClick={handleRequestInstall} className="flex items-center space-x-2">
-              <Smartphone className="w-4 h-4" />
-              <span>Request Install</span>
-            </Button>
-          )}
-          <Button variant="outline" className="flex items-center space-x-2">
-            <Edit className="w-4 h-4" />
-            <span>Edit</span>
-          </Button>
+        <button
+          onClick={handleRequestInstall}
+          disabled={!!(hasActiveRequest || isDeviceInstalled)}
+          className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors ${
+            hasActiveRequest || isDeviceInstalled
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-primary-600 text-white hover:bg-primary-700'
+          }`}
+        >
+          <Smartphone className="w-5 h-5 mr-2" />
+          {hasActiveRequest ? 'Request Pending' : isDeviceInstalled ? 'Device Installed' : 'Request Device Install'}
+        </button>
+      </div>
+      {(hasActiveRequest || isDeviceInstalled) && (
+        <div className="text-sm text-gray-500 mt-1">
+          {hasActiveRequest ? 'Device request already submitted' : 'Device installed'}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Vehicle Info */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Vehicle Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <Car className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Make & Model</p>
+                  <p className="font-medium">{vehicle.make} {vehicle.model}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Hash className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Vehicle Number</p>
+                  <p className="font-medium">{vehicle.vehicleNumber}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Calendar className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Year</p>
+                  <p className="font-medium">{vehicle.year}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 rounded-full" style={{ backgroundColor: vehicle.color }}></div>
+                <div>
+                  <p className="text-sm text-gray-500">Color</p>
+                  <p className="font-medium">{vehicle.color}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Gauge className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Current Mileage</p>
+                  <p className="font-medium">{vehicle.mileage.toLocaleString()} miles</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Shield className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Verification Status</p>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    vehicle.verificationStatus === 'verified' 
+                      ? 'bg-green-100 text-green-800' 
+                      : vehicle.verificationStatus === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {vehicle.verificationStatus?.charAt(0).toUpperCase() + (vehicle.verificationStatus?.slice(1) || '')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Blockchain Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Blockchain Information</h2>
+            <div className="space-y-3">
+              {vehicle.blockchainAddress ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Blockchain Address</span>
+                    <span className="font-mono text-sm">{vehicle.blockchainAddress.substring(0, 6)}...{vehicle.blockchainAddress.substring(vehicle.blockchainAddress.length - 4)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Last Mileage Update</span>
+                    <span>{vehicle.lastMileageUpdate ? new Date(vehicle.lastMileageUpdate).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const url = getExplorerUrl(vehicle.blockchainAddress);
+                      if (url) {
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    disabled={!vehicle.blockchainAddress}
+                    className="inline-flex items-center text-sm text-primary-600 hover:text-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    View on Explorer
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center text-gray-500">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  <span>Not available</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Service History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Service History</h2>
+            <div className="text-center py-8">
+              <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No service history recorded yet</p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* TrustScore */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">TrustScore</h2>
+            <div className="flex justify-center">
+              <TrustScoreDisplay score={vehicle.trustScore || 100} />
+            </div>
+            <div className="mt-6 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Fraud Alerts</span>
+                <span className="font-medium">0</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Verification Status</span>
+                <span className="font-medium">Verified</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Last Updated</span>
+                <span className="font-medium">Today</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Device Status */}
+          <DeviceStatusCard 
+            installationRequest={installationRequest || undefined} 
+            onRequestInstall={handleRequestInstall} 
+          />
+
+          {/* Recent Activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Vehicle Registered</p>
+                  <p className="text-xs text-gray-500">2 hours ago</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">TrustScore Calculated</p>
+                  <p className="text-xs text-gray-500">1 day ago</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
-
-      {/* Trust Score Display */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-primary-100 rounded-lg">
-              <Shield className="w-6 h-6 text-primary-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Trust Score</h2>
-              <p className="text-sm text-gray-500">Vehicle reliability and authenticity score</p>
-            </div>
-          </div>
-          <div className={`px-4 py-2 rounded-lg border ${getTrustScoreColor(vehicle.trustScore)}`}>
-            <span className="text-2xl font-bold">{vehicle.trustScore}%</span>
-          </div>
-        </div>
-        
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-          <div 
-            className={`h-2 rounded-full transition-all duration-500 ${
-              vehicle.trustScore >= 90 ? 'bg-green-500' :
-              vehicle.trustScore >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-            }`}
-            style={{ width: `${vehicle.trustScore}%` }}
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full" />
-            <span>Excellent (90-100)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-            <span>Good (70-89)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full" />
-            <span>Poor (0-69)</span>
-          </div>
-        </div>
-      </Card>
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trustscore">Trust Score</TabsTrigger>
-          <TabsTrigger value="mileage">Mileage</TabsTrigger>
-          <TabsTrigger value="blockchain">Blockchain</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Vehicle Information */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle Information</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Vehicle Number:</span>
-                  <span className="font-medium">{vehicle.vehicleNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Color:</span>
-                  <span className="font-medium">{vehicle.color}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Body Type:</span>
-                  <span className="font-medium capitalize">{vehicle.bodyType}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Fuel Type:</span>
-                  <span className="font-medium capitalize">{vehicle.fuelType}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Transmission:</span>
-                  <span className="font-medium capitalize">{vehicle.transmission}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Engine Size:</span>
-                  <span className="font-medium">{vehicle.engineSize}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Condition:</span>
-                  <span className="font-medium capitalize">{vehicle.condition}</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* Device Status */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Device Status</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Device Installed:</span>
-                  <div className="flex items-center space-x-2">
-                    {vehicle.hasDevice ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                    )}
-                    <span className="font-medium">
-                      {vehicle.hasDevice ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                </div>
-                
-                {vehicle.hasDevice && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Device ID:</span>
-                      <span className="font-medium">{vehicle.deviceId}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Status:</span>
-                      <Badge 
-                        variant={vehicle.deviceStatus === 'active' ? 'default' : 'outline'}
-                        className={vehicle.deviceStatus === 'active' ? 'bg-green-100 text-green-800' : ''}
-                      >
-                        {vehicle.deviceStatus}
-                      </Badge>
-                    </div>
-                  </>
-                )}
-                
-                {!vehicle.hasDevice && (
-                  <div className="mt-4">
-                    <Button onClick={handleRequestInstall} className="w-full">
-                      <Smartphone className="w-4 h-4 mr-2" />
-                      Request Device Installation
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Features */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Features</h3>
-            <div className="flex flex-wrap gap-2">
-              {vehicle.features.map((feature, index) => (
-                <Badge key={index} variant="outline">
-                  {feature}
-                </Badge>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="trustscore" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Trust Score History</h3>
-            <div className="space-y-4">
-              {trustScoreHistory.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      entry.change > 0 ? 'bg-green-100 text-green-800' :
-                      entry.change < 0 ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {entry.change > 0 ? '+' : ''}{entry.change}
-                    </div>
-                    <div>
-                      <p className="font-medium">{entry.score}%</p>
-                      <p className="text-sm text-gray-500">{entry.reason}</p>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {new Date(entry.timestamp).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="mileage" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Mileage History</h3>
-            <div className="space-y-4">
-              {mileageHistory.map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-primary-100 rounded-lg">
-                      <TrendingUp className="w-4 h-4 text-primary-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{record.mileage.toLocaleString()} miles</p>
-                      <p className="text-sm text-gray-500">
-                        Recorded by {record.recordedBy} • {record.source}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {new Date(record.recordedAt).toLocaleDateString()}
-                    </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      {record.verified && (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      )}
-                      {record.blockchainHash && (
-                        <ExternalLink className="w-4 h-4 text-blue-600" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="blockchain" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Blockchain Information</h3>
-            <div className="space-y-4">
-              {vehicle.blockchainHash && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Transaction Hash:</span>
-                  <div className="flex items-center space-x-2">
-                    <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                      {vehicle.blockchainHash.slice(0, 10)}...
-                    </code>
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {vehicle.blockchainAddress && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Contract Address:</span>
-                  <div className="flex items-center space-x-2">
-                    <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                      {vehicle.blockchainAddress.slice(0, 10)}...
-                    </code>
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 };
 
 export default VehicleDetails;
-

@@ -30,6 +30,7 @@ export interface IVehicleDocument extends Document {
   nextServiceDue?: Date;
   registrationExpiry?: Date;
   insuranceExpiry?: Date;
+  lastVerifiedMileage?: number;
   
   // Methods
   updateMileage(mileage: number, source: string, recordedBy: string, location?: any): Promise<void>;
@@ -383,8 +384,7 @@ const VehicleSchema = new Schema({
     type: Number,
     default: 100,
     min: [0, 'Trust score cannot be negative'],
-    max: [100, 'Trust score cannot exceed 100'],
-    index: true
+    max: [100, 'Trust score cannot exceed 100']
   },
   fraudAlerts: [FraudAlertSchema],
   isForSale: {
@@ -423,6 +423,11 @@ const VehicleSchema = new Schema({
   },
   insuranceExpiry: {
     type: Date
+  },
+  lastVerifiedMileage: {
+    type: Number,
+    min: 0,
+    default: 0
   },
   blockchainHash: {
     type: String,

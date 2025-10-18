@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { connectDatabase } from './config/database';
 import { app } from './app';
 import { logger } from './utils/logger';
+import { initializeSocketIO } from './utils/socketEmitter';
 
 // Import models to ensure they are registered with mongoose
 import './models/core/User.model';
@@ -113,6 +114,9 @@ const startServer = async (): Promise<void> => {
       console.log(`📊 API Documentation: http://localhost:${PORT}/api/docs`);
       console.log(`🔐 Health Check: http://localhost:${PORT}/api/health`);
     });
+
+    // Initialize Socket.IO
+    initializeSocketIO(server);
 
     // Graceful shutdown
     process.on('SIGTERM', () => {

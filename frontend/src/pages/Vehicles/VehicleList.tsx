@@ -1,22 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Car, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical,
-  Smartphone,
-  Shield,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Eye,
-  Edit
-} from 'lucide-react';
-import { useAppSelector } from '../../hooks/redux';
-import { LoadingSpinner, EmptyState, Badge, Button, Card, Input } from '../../components/ui';
-import { useSocket } from '../../hooks/useSocket';
+import { motion } from 'framer-motion';
+import { Car, Plus, Search, Filter, Eye, Edit, Trash2, Clock, CheckCircle, Smartphone } from 'lucide-react';
+import { VehicleService } from '../../services/vehicle';
+import { InstallationService } from '../../services/installation';
+import toast from 'react-hot-toast';
 
 interface Vehicle {
   id: string;
@@ -25,229 +13,162 @@ interface Vehicle {
   make: string;
   model: string;
   year: number;
-  color: string;
+  color?: string;
   currentMileage: number;
   trustScore: number;
-  verificationStatus: 'pending' | 'verified' | 'flagged' | 'rejected';
-  isForSale: boolean;
-  listingStatus: string;
-  condition: string;
-  hasDevice: boolean;
-  deviceStatus?: 'active' | 'inactive' | 'pending';
+  verificationStatus?: string;
+  isForSale?: boolean;
   createdAt: string;
-  updatedAt: string;
 }
 
-export const VehicleList: React.FC = () => {
+import type { InstallationRequestSummaryItem } from '../../services/installation';
+
+const TrustScoreBadge: React.FC<{ score: number }> = ({ score }) => {
+  let bgColor = 'bg-green-100 text-green-800';
+  if (score < 70) bgColor = 'bg-red-100 text-red-800';
+  else if (score < 90) bgColor = 'bg-yellow-100 text-yellow-800';
+  
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor}`}>
+      {score}
+    </span>
+  );
+};
+
+const DeviceRequestStatus: React.FC<{ request?: InstallationRequestSummaryItem }> = ({ request }) => {
+  if (!request) return null;
+
+  let statusText = '';
+  let statusColor = '';
+  let statusIcon = <Clock className="w-4 h-4" />;
+
+  switch (request.status) {
+    case 'requested':
+      statusText = 'Requested';
+      statusColor = 'bg-gray-100 text-gray-800';
+      statusIcon = <Clock className="w-4 h-4" />;
+      break;
+    case 'assigned':
+      statusText = 'Assigned';
+      statusColor = 'bg-blue-100 text-blue-800';
+      statusIcon = <Clock className="w-4 h-4" />;
+      break;
+    case 'completed':
+      statusText = 'Installed';
+      statusColor = 'bg-green-100 text-green-800';
+      statusIcon = <CheckCircle className="w-4 h-4" />;
+      break;
+    default:
+      statusText = 'Unknown';
+      statusColor = 'bg-gray-100 text-gray-800';
+  }
+
+  return (
+    <div className="mt-2">
+      <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+        {statusIcon}
+        <span className="ml-1">{statusText}</span>
+      </div>
+      {request.deviceId && (
+        <p className="text-xs text-gray-500 mt-1">Device: {request.deviceId}</p>
+      )}
+    </div>
+  );
+};
+
+const VehicleList: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAppSelector((state) => state.auth);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [installationSummary, setInstallationSummary] = useState<Record<string, InstallationRequestSummaryItem>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
-  const socket = useSocket();
+  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
 
-  // Load vehicles
   useEffect(() => {
-    const loadVehicles = async () => {
-      try {
-        setLoading(true);
-        
-        // Mock data - replace with actual API call
-        const mockVehicles: Vehicle[] = [
-          {
-            id: '1',
-            vin: '1HGBH41JXMN109186',
-            vehicleNumber: 'ABC123',
-            make: 'Honda',
-            model: 'Civic',
-            year: 2021,
-            color: 'Silver',
-            currentMileage: 25000,
-            trustScore: 95,
-            verificationStatus: 'verified',
-            isForSale: false,
-            listingStatus: 'not_listed',
-            condition: 'excellent',
-            hasDevice: true,
-            deviceStatus: 'active',
-            createdAt: '2024-01-15T10:30:00Z',
-            updatedAt: '2024-01-20T14:45:00Z'
-          },
-          {
-            id: '2',
-            vin: '1FTFW1ET5DFC12345',
-            vehicleNumber: 'XYZ789',
-            make: 'Ford',
-            model: 'F-150',
-            year: 2020,
-            color: 'Black',
-            currentMileage: 45000,
-            trustScore: 78,
-            verificationStatus: 'verified',
-            isForSale: true,
-            listingStatus: 'active',
-            condition: 'good',
-            hasDevice: false,
-            deviceStatus: 'pending',
-            createdAt: '2024-01-10T09:15:00Z',
-            updatedAt: '2024-01-18T16:20:00Z'
-          },
-          {
-            id: '3',
-            vin: '5NPE34AF4HH123456',
-            vehicleNumber: 'DEF456',
-            make: 'Hyundai',
-            model: 'Elantra',
-            year: 2019,
-            color: 'White',
-            currentMileage: 32000,
-            trustScore: 65,
-            verificationStatus: 'flagged',
-            isForSale: false,
-            listingStatus: 'not_listed',
-            condition: 'fair',
-            hasDevice: false,
-            deviceStatus: 'inactive',
-            createdAt: '2024-01-05T08:00:00Z',
-            updatedAt: '2024-01-19T11:30:00Z'
-          }
-        ];
-
-        setVehicles(mockVehicles);
-      } catch (error) {
-        console.error('Failed to load vehicles:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadVehicles();
+    fetchVehiclesAndInstallationSummary();
   }, []);
 
-  // Real-time updates
   useEffect(() => {
-    if (!socket) return;
+    filterVehicles();
+  }, [vehicles, searchTerm, installationSummary]);
 
-    const handleTrustScoreChanged = (data: any) => {
-      setVehicles(prev => prev.map(vehicle => 
-        vehicle.id === data.vehicleId 
-          ? { ...vehicle, trustScore: data.newScore }
-          : vehicle
-      ));
-    };
-
-    const handleDeviceActivated = (data: any) => {
-      setVehicles(prev => prev.map(vehicle => 
-        vehicle.id === data.vehicleId 
-          ? { ...vehicle, hasDevice: true, deviceStatus: 'active' }
-          : vehicle
-      ));
-    };
-
-    socket.on('trustscore_changed', handleTrustScoreChanged);
-    socket.on('device_activated', handleDeviceActivated);
-
-    return () => {
-      socket.off('trustscore_changed', handleTrustScoreChanged);
-      socket.off('device_activated', handleDeviceActivated);
-    };
-  }, [socket]);
-
-  const getTrustScoreColor = (score: number) => {
-    if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
-    if (score >= 70) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-red-100 text-red-800 border-red-200';
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-600" />;
-      case 'flagged':
-        return <AlertTriangle className="w-4 h-4 text-orange-600" />;
-      case 'rejected':
-        return <AlertTriangle className="w-4 h-4 text-red-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-600" />;
+  const fetchVehiclesAndInstallationSummary = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch vehicles
+      const vehicleResponse = await VehicleService.getUserVehicles();
+      
+      // Map the response to our interface
+      const mappedVehicles = vehicleResponse.data.vehicles.map(vehicle => ({
+        id: vehicle.id,
+        vin: vehicle.vin,
+        vehicleNumber: vehicle.vehicleNumber || '',
+        make: vehicle.make,
+        model: vehicle.model,
+        year: vehicle.year,
+        color: vehicle.color,
+        currentMileage: vehicle.mileage || 0,
+        trustScore: (vehicle as any).trustScore || 100, // trustScore might not be in the TS interface but is in the API response
+        verificationStatus: vehicle.verificationStatus,
+        isForSale: vehicle.isForSale,
+        createdAt: vehicle.createdAt
+      }));
+      
+      setVehicles(mappedVehicles);
+      
+      // Fetch installation request summary
+      const summaryResponse = await InstallationService.getInstallationRequestSummary();
+      setInstallationSummary(summaryResponse.data);
+    } catch (error) {
+      console.error('Failed to fetch vehicles or installation summary:', error);
+      toast.error('Can\'t reach installation API. Contact support.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getDeviceStatusBadge = (vehicle: Vehicle) => {
-    if (!vehicle.hasDevice) {
-      return (
-        <Badge variant="outline" className="text-xs">
-          No Device
-        </Badge>
-      );
+  const filterVehicles = () => {
+    if (!searchTerm) {
+      setFilteredVehicles(vehicles);
+      return;
     }
-
-    switch (vehicle.deviceStatus) {
-      case 'active':
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-            <Smartphone className="w-3 h-3 mr-1" />
-            Active
-          </Badge>
-        );
-      case 'pending':
-        return (
-          <Badge variant="outline" className="text-yellow-600 border-yellow-200">
-            <Clock className="w-3 h-3 mr-1" />
-            Pending
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-gray-600">
-            <Smartphone className="w-3 h-3 mr-1" />
-            Inactive
-          </Badge>
-        );
-    }
+    
+    const term = searchTerm.toLowerCase();
+    const filtered = vehicles.filter(vehicle => 
+      vehicle.vin.toLowerCase().includes(term) ||
+      vehicle.vehicleNumber.toLowerCase().includes(term) ||
+      vehicle.make.toLowerCase().includes(term) ||
+      vehicle.model.toLowerCase().includes(term)
+    );
+    
+    setFilteredVehicles(filtered);
   };
 
-  const filteredVehicles = vehicles.filter(vehicle => {
-    const matchesSearch = 
-      vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.model.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = 
-      filterStatus === 'all' || 
-      vehicle.verificationStatus === filterStatus ||
-      (filterStatus === 'for-sale' && vehicle.isForSale);
+  const handleViewDetails = (vehicleId: string) => {
+    navigate(`/vehicles/${vehicleId}`);
+  };
 
-    return matchesSearch && matchesFilter;
-  });
+  const handleEdit = (vehicleId: string) => {
+    console.log('Edit vehicle:', vehicleId);
+  };
 
-  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
-    const aValue = a[sortBy as keyof Vehicle];
-    const bValue = b[sortBy as keyof Vehicle];
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortOrder === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-    
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
-    }
-    
-    return 0;
-  });
+  const handleDelete = (vehicleId: string) => {
+    console.log('Delete vehicle:', vehicleId);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading vehicles..." />
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+            <div className="flex justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+            </div>
+            <div className="mt-4 h-3 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -255,155 +176,131 @@ export const VehicleList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Vehicles</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your registered vehicles and their trust scores
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">My Vehicles</h1>
+          <p className="text-gray-600">Manage your registered vehicles and their blockchain records</p>
         </div>
-        <Button onClick={() => navigate('/vehicles/register')} className="flex items-center space-x-2">
-          <Plus className="w-4 h-4" />
-          <span>Add Vehicle</span>
-        </Button>
+        <button
+          onClick={() => navigate('/vehicles/register')}
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          Register Vehicle
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search by VIN, vehicle number, make, or model..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
           </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Search vehicles by VIN, number, make, or model..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        
-        <div className="flex gap-2">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="verified">Verified</option>
-            <option value="pending">Pending</option>
-            <option value="flagged">Flagged</option>
-            <option value="for-sale">For Sale</option>
-          </select>
-          
-          <select
-            value={`${sortBy}-${sortOrder}`}
-            onChange={(e) => {
-              const [field, order] = e.target.value.split('-');
-              setSortBy(field);
-              setSortOrder(order as 'asc' | 'desc');
-            }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          >
-            <option value="createdAt-desc">Newest First</option>
-            <option value="createdAt-asc">Oldest First</option>
-            <option value="trustScore-desc">Trust Score (High)</option>
-            <option value="trustScore-asc">Trust Score (Low)</option>
-            <option value="make-asc">Make (A-Z)</option>
-            <option value="make-desc">Make (Z-A)</option>
-          </select>
-        </div>
+        <button className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <Filter className="w-5 h-5 mr-2" />
+          Filters
+        </button>
       </div>
 
-      {/* Vehicles Grid */}
-      {sortedVehicles.length === 0 ? (
-        <EmptyState
-          icon={Car}
-          title="No vehicles found"
-          description={searchTerm || filterStatus !== 'all' 
-            ? "Try adjusting your search or filter criteria"
-            : "You haven't registered any vehicles yet"
-          }
-          action={
-            !searchTerm && filterStatus === 'all' ? {
-              label: 'Register Vehicle',
-              onClick: () => navigate('/vehicles/register')
-            } : undefined
-          }
-        />
+      {/* Vehicle List */}
+      {filteredVehicles.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No vehicles found</h3>
+          <p className="text-gray-500 mb-6">Get started by registering your first vehicle.</p>
+          <button
+            onClick={() => navigate('/vehicles/register')}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Register Vehicle
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedVehicles.map((vehicle) => (
-            <Card key={vehicle.id} className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-primary-100 rounded-lg">
-                    <Car className="w-5 h-5 text-primary-600" />
+          {filteredVehicles.map((vehicle, index) => {
+            const installationRequest = installationSummary[vehicle.id];
+            
+            return (
+              <motion.div
+                key={vehicle.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <div className="p-5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {vehicle.year} {vehicle.make} {vehicle.model}
+                      </h3>
+                      <p className="text-sm text-gray-500">{vehicle.vin}</p>
+                    </div>
+                    <TrustScoreBadge score={vehicle.trustScore} />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {vehicle.year} {vehicle.make} {vehicle.model}
-                    </h3>
-                    <p className="text-sm text-gray-500">{vehicle.vin}</p>
+                  
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Vehicle Number</span>
+                      <span className="font-medium">{vehicle.vehicleNumber}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Mileage</span>
+                      <span className="font-medium">{(vehicle.currentMileage || 0).toLocaleString()} miles</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Status</span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        vehicle.verificationStatus === 'verified' 
+                          ? 'bg-green-100 text-green-800' 
+                          : vehicle.verificationStatus === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {vehicle.verificationStatus?.charAt(0).toUpperCase() + (vehicle.verificationStatus?.slice(1) || '')}
+                      </span>
+                    </div>
+                    
+                    {/* Device Request Status */}
+                    <DeviceRequestStatus request={installationRequest} />
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <Badge 
-                    variant="outline" 
-                    className={`${getTrustScoreColor(vehicle.trustScore)} text-xs`}
+                <div className="bg-gray-50 px-5 py-3 flex justify-between">
+                  <button
+                    onClick={() => handleViewDetails(vehicle.id)}
+                    className="inline-flex items-center text-sm text-primary-600 hover:text-primary-800"
                   >
-                    <Shield className="w-3 h-3 mr-1" />
-                    {vehicle.trustScore}%
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Vehicle Number:</span>
-                  <span className="font-medium">{vehicle.vehicleNumber}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Mileage:</span>
-                  <span className="font-medium">{vehicle.currentMileage.toLocaleString()} mi</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Status:</span>
-                  <div className="flex items-center space-x-1">
-                    {getStatusIcon(vehicle.verificationStatus)}
-                    <span className="capitalize">{vehicle.verificationStatus}</span>
+                    <Eye className="w-4 h-4 mr-1" />
+                    View Details
+                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(vehicle.id)}
+                      className="text-gray-500 hover:text-primary-600"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(vehicle.id)}
+                      className="text-gray-500 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Device:</span>
-                  {getDeviceStatusBadge(vehicle)}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/vehicles/${vehicle.id}`)}
-                  className="flex items-center space-x-1"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>View Details</span>
-                </Button>
-                
-                {!vehicle.hasDevice && (
-                  <Button
-                    size="sm"
-                    onClick={() => navigate(`/devices?vehicle=${vehicle.id}`)}
-                    className="flex items-center space-x-1"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>Request Install</span>
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -411,4 +308,3 @@ export const VehicleList: React.FC = () => {
 };
 
 export default VehicleList;
-

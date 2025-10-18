@@ -4,13 +4,23 @@ export interface IInstall extends Document {
   vehicleId: mongoose.Types.ObjectId;
   ownerId: mongoose.Types.ObjectId;
   serviceProviderId?: mongoose.Types.ObjectId;
-  status: 'requested' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'requested' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'flagged';
   deviceId?: string;
   requestedAt: Date;
   assignedAt?: Date;
+  startedAt?: Date;
   completedAt?: Date;
   notes?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
+  initialMileage?: number;
+  solanaTx?: string;
+  arweaveTx?: string;
+  history: Array<{
+    action: string;
+    by: mongoose.Types.ObjectId;
+    at: Date;
+    meta?: any;
+  }>;
 }
 
 const InstallSchema = new Schema<IInstall>({
@@ -30,7 +40,7 @@ const InstallSchema = new Schema<IInstall>({
   },
   status: {
     type: String,
-    enum: ['requested', 'assigned', 'in_progress', 'completed', 'cancelled'],
+    enum: ['requested', 'assigned', 'in_progress', 'completed', 'cancelled', 'flagged'],
     default: 'requested'
   },
   deviceId: String,
@@ -39,13 +49,33 @@ const InstallSchema = new Schema<IInstall>({
     default: Date.now
   },
   assignedAt: Date,
+  startedAt: Date,
   completedAt: Date,
   notes: String,
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium'
-  }
+  },
+  initialMileage: Number,
+  solanaTx: String,
+  arweaveTx: String,
+  history: [{
+    action: {
+      type: String,
+      required: true
+    },
+    by: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    at: {
+      type: Date,
+      default: Date.now
+    },
+    meta: Schema.Types.Mixed
+  }]
 }, {
   timestamps: true
 });
@@ -56,5 +86,7 @@ InstallSchema.index({ ownerId: 1 });
 InstallSchema.index({ serviceProviderId: 1 });
 InstallSchema.index({ status: 1 });
 InstallSchema.index({ requestedAt: -1 });
+InstallSchema.index({ solanaTx: 1 });
+InstallSchema.index({ arweaveTx: 1 });
 
 export const Install = mongoose.model<IInstall>('Install', InstallSchema);

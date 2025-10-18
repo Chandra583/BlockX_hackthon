@@ -13,6 +13,7 @@ export interface Vehicle {
   fuelType?: string;
   transmission?: string;
   mileage: number;
+  trustScore?: number;
   ownerId: string;
   isActive: boolean;
   createdAt: string;
@@ -165,6 +166,47 @@ export interface MileageUpdateResponse {
   };
 }
 
+export interface InstallRequestData {
+  vehicleId: string;
+  notes?: string;
+}
+
+export interface InstallAssignmentData {
+  installId: string;
+  serviceProviderId: string;
+  notes?: string;
+}
+
+export interface InstallCompletionData {
+  installId: string;
+  deviceId: string;
+  notes?: string;
+}
+
+export interface InstallResponse {
+  success: boolean;
+  message: string;
+  data: {
+    installId: string;
+    status: string;
+    [key: string]: any;
+  };
+}
+
+export interface TrustScoreUpdateData {
+  trustScore: number;
+  reason?: string;
+}
+
+export interface TrustScoreUpdateResponse {
+  success: boolean;
+  message: string;
+  data: {
+    vehicleId: string;
+    trustScore: number;
+  };
+}
+
 /**
  * Vehicle Service Class
  * Handles all vehicle-related API calls
@@ -300,6 +342,52 @@ export class VehicleService {
    */
   static async getBlockchainMileageHistory(vehicleId: string): Promise<any> {
     return await apiService.get(`/blockchain/vehicle/${vehicleId}/mileage-history`);
+  }
+  
+  // ========================================
+  // INSTALLATION OPERATIONS
+  // ========================================
+  
+  /**
+   * Request device installation for a vehicle
+   */
+  static async requestDeviceInstallation(data: InstallRequestData): Promise<InstallResponse> {
+    return await apiService.post<InstallResponse>(`/installs/vehicles/${data.vehicleId}/request-install`, {
+      notes: data.notes
+    });
+  }
+  
+  /**
+   * Assign installation to service provider (admin only)
+   */
+  static async assignInstallation(data: InstallAssignmentData): Promise<InstallResponse> {
+    return await apiService.post<InstallResponse>('/installs/admin/assign-install', data);
+  }
+  
+  /**
+   * Complete installation (service provider only)
+   */
+  static async completeInstallation(data: InstallCompletionData): Promise<InstallResponse> {
+    return await apiService.post<InstallResponse>('/installs/service/install/complete', data);
+  }
+  
+  /**
+   * Get installation requests
+   */
+  static async getInstallations(params?: any): Promise<any> {
+    const queryParams = new URLSearchParams(params || {});
+    return await apiService.get(`/installs/devices?${queryParams.toString()}`);
+  }
+  
+  // ========================================
+  // TRUSTSCORE OPERATIONS
+  // ========================================
+  
+  /**
+   * Update vehicle trustScore (admin only)
+   */
+  static async updateTrustScore(vehicleId: string, data: TrustScoreUpdateData): Promise<TrustScoreUpdateResponse> {
+    return await apiService.patch<TrustScoreUpdateResponse>(`/vehicles/${vehicleId}/trustscore`, data);
   }
   
   // ========================================

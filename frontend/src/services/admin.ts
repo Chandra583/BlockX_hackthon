@@ -67,6 +67,20 @@ export interface UserActivityLog {
   timestamp: string;
 }
 
+export interface ServiceProvider {
+  _id: string;
+  userId: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  companyName: string;
+  licenseNumber: string;
+  verificationStatus: 'pending' | 'verified' | 'suspended' | 'rejected';
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface SystemStats {
   totalVehicles: number;
   totalTransactions: number;
@@ -632,6 +646,61 @@ export class AdminService {
       });
     } catch (error) {
       return 'Invalid Date';
+    }
+  }
+
+  /**
+   * Get all service providers
+   */
+  static async getServiceProviders(): Promise<ServiceProvider[]> {
+    try {
+      const response = await apiService.get('/admin/service-providers');
+      return response.data.data.serviceProviders;
+    } catch (error) {
+      console.error('Failed to fetch service providers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get users by role
+   */
+  static async getUsersByRole(role: string): Promise<User[]> {
+    try {
+      const response = await apiService.get('/admin/users', { params: { role } });
+      return response.data.data.users;
+    } catch (error) {
+      console.error(`Failed to fetch ${role} users:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Assign installation request to service provider
+   */
+  static async assignInstallationRequest(
+    installationId: string,
+    serviceProviderId: string
+  ): Promise<any> {
+    try {
+      // Add validation to prevent undefined IDs
+      console.log('assignInstallationRequest called with:', { installationId, serviceProviderId });
+      
+      if (!installationId) {
+        throw new Error('Installation request ID is required');
+      }
+      
+      if (!serviceProviderId) {
+        throw new Error('Service provider ID is required');
+      }
+      
+      const response = await apiService.post(`/v1/installation-requests/${installationId}/assign`, {
+        serviceProviderId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to assign installation request:', error);
+      throw error;
     }
   }
 }
