@@ -87,6 +87,8 @@ interface EnvironmentConfig {
   // Blockchain toggles
   ARWEAVE_ENABLED: boolean;
   SOLANA_ANCHOR_SIGNER: 'service' | 'owner' | 'platform';
+  SOLANA_CLUSTER: 'devnet' | 'mainnet';
+  PLATFORM_SOLANA_SECRET_KEY: string;
 }
 
 /**
@@ -195,6 +197,8 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     // Blockchain toggles
     ARWEAVE_ENABLED: process.env.ARWEAVE_ENABLED === 'true',
     SOLANA_ANCHOR_SIGNER: (process.env.SOLANA_ANCHOR_SIGNER as any) || 'service',
+    SOLANA_CLUSTER: (process.env.SOLANA_CLUSTER as any) || 'devnet',
+    PLATFORM_SOLANA_SECRET_KEY: process.env.PLATFORM_SOLANA_SECRET_KEY || '',
   };
 };
 

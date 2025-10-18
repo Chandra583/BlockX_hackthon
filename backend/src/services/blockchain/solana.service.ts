@@ -86,7 +86,7 @@ export class SolanaService {
     try {
       const version = await this.connection.getVersion();
       const slot = await this.connection.getSlot();
-      logger.info(`✅ Solana RPC connected - Version: ${version['solana-core']}, Slot: ${slot}`);
+      logger.info(`✅ Solana RPC connected - Version: ${version['solana-core']}, Slot: ${slot}, Network: ${this.isDevnet ? 'devnet' : 'mainnet'}`);
     } catch (error) {
       logger.error('❌ Failed to connect to Solana RPC:', error);
       logger.warn('⚠️ Some blockchain features may not work properly');

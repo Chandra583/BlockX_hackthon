@@ -191,11 +191,26 @@ export class AnchorService {
 
       // Use Solana service to send real transaction
       try {
+        // Determine signer: service provider or platform fallback
+        let signerSecretKey: Uint8Array | null = null;
+        if (payload.transactionDetails?.serviceProviderWalletSecret) {
+          try {
+            const raw = payload.transactionDetails.serviceProviderWalletSecret;
+            const parsed = Array.isArray(raw) ? raw : JSON.parse(raw);
+            signerSecretKey = new Uint8Array(parsed);
+          } catch {}
+        }
+        if (!signerSecretKey && config.PLATFORM_SOLANA_SECRET_KEY) {
+          try {
+            signerSecretKey = new Uint8Array(JSON.parse(config.PLATFORM_SOLANA_SECRET_KEY));
+          } catch {}
+        }
+
         const solanaResult = await this.solanaService.recordInstallation(
           solanaData,
           {
             publicKey: payload.transactionDetails?.serviceProviderWallet || 'service_wallet',
-            secretKey: new Uint8Array(64), // In production, get from secure storage
+            secretKey: signerSecretKey || new Uint8Array(64),
             balance: 0.1
           }
         );

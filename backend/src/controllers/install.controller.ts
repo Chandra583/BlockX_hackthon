@@ -252,7 +252,16 @@ export const startInstallation = async (req: Request, res: Response) => {
         solanaTx: anchorResult.solanaTx,
         arweaveTx: anchorResult.arweaveTx,
         arweaveUrl: anchorResult.arweaveTx ? `https://arweave.net/${anchorResult.arweaveTx}` : undefined,
-        solanaUrl: `https://explorer.solana.com/tx/${anchorResult.solanaTx}`
+        solanaUrl: anchorResult.solanaTx ? `https://explorer.solana.com/tx/${anchorResult.solanaTx}${process.env.NODE_ENV !== 'production' ? '?cluster=devnet' : ''}` : undefined,
+        // Include enriched payload echo for client visibility
+        payload: {
+          vehicleNumber: vehicle.vehicleNumber,
+          vin: vehicle.vin,
+          ownerName: `${(ownerData as any)?.firstName || ''} ${(ownerData as any)?.lastName || ''}`.trim(),
+          ownerId: install.ownerId,
+          serviceProviderId: install.serviceProviderId,
+          assignedId: install._id
+        }
       }
     });
   } catch (error) {
