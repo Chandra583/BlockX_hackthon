@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import TransactionHistory from '../../components/TransactionHistory';
 import { 
   Car, 
   Calendar, 
@@ -229,6 +230,7 @@ const VehicleDetails: React.FC = () => {
   const [installationRequest, setInstallationRequest] = useState<InstallationRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -292,6 +294,24 @@ const VehicleDetails: React.FC = () => {
         // Get the most recent request
         const latestRequest = response.data.requests[0];
         setInstallationRequest(latestRequest);
+        
+        // Extract transaction history from installation request
+        const transactions = latestRequest.history?.map((historyItem: any) => ({
+          id: historyItem._id,
+          type: historyItem.action === 'started' ? 'install_start' : 
+                historyItem.action === 'completed' ? 'install_complete' : 'other',
+          timestamp: historyItem.at,
+          solanaTx: historyItem.meta?.solanaTx,
+          arweaveTx: historyItem.meta?.arweaveTx,
+          deviceId: historyItem.meta?.deviceId,
+          initialMileage: historyItem.meta?.initialMileage,
+          ownerName: latestRequest.owner?.fullName,
+          serviceProviderName: latestRequest.serviceProvider?.fullName,
+          vehicleNumber: latestRequest.vehicle?.vehicleNumber,
+          vin: latestRequest.vehicle?.vin
+        })) || [];
+        
+        setTransactionHistory(transactions);
       }
     } catch (err) {
       console.error('Error fetching installation request:', err);
@@ -533,35 +553,8 @@ const VehicleDetails: React.FC = () => {
             onRequestInstall={handleRequestInstall} 
           />
 
-          {/* Recent Activity */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Vehicle Registered</p>
-                  <p className="text-xs text-gray-500">2 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">TrustScore Calculated</p>
-                  <p className="text-xs text-gray-500">1 day ago</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          {/* Transaction History */}
+          <TransactionHistory transactions={transactionHistory} />
         </div>
       </div>
     </div>

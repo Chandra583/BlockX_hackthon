@@ -20,7 +20,7 @@ export class AnchorService {
   /**
    * Anchor install event to both Arweave and Solana
    */
-  async anchorInstallEvent(install: IInstall, vehicle: IVehicleDocument): Promise<AnchorResult> {
+  async anchorInstallEvent(install: IInstall, vehicle: IVehicleDocument, ownerData?: any, serviceProviderData?: any): Promise<AnchorResult> {
     try {
       // Check if already anchored
       if (install.solanaTx) {
@@ -33,7 +33,7 @@ export class AnchorService {
         };
       }
 
-      // Create payload for anchoring with enriched data
+      // Create payload for anchoring with enriched data from API response
       const payload = {
         installId: install._id ? install._id.toString() : '',
         vehicleId: install.vehicleId.toString(),
@@ -43,24 +43,33 @@ export class AnchorService {
         vehicleModel: vehicle.vehicleModel,
         vehicleYear: vehicle.year,
         ownerId: install.ownerId.toString(),
-        ownerName: vehicle.ownerName || 'Unknown Owner', // Will be populated from vehicle or user data
+        ownerName: ownerData ? `${ownerData.firstName} ${ownerData.lastName}` : 'Unknown Owner',
+        ownerEmail: ownerData?.email || 'Unknown Email',
         serviceProviderId: install.serviceProviderId?.toString(),
-        serviceProviderName: install.serviceProviderName || 'Unknown Service Provider',
+        serviceProviderName: serviceProviderData ? `${serviceProviderData.firstName} ${serviceProviderData.lastName}` : 'Unknown Service Provider',
+        serviceProviderEmail: serviceProviderData?.email || 'Unknown Email',
         deviceId: install.deviceId,
         deviceDetails: {
           deviceId: install.deviceId,
-          deviceType: 'OBD-II', // Default device type
-          deviceStatus: 'installing'
+          deviceType: 'OBD-II',
+          deviceStatus: 'installing',
+          deviceSerial: install.deviceId
         },
         initialMileage: install.initialMileage,
         previousMileage: vehicle.lastVerifiedMileage || 0,
         mileageDelta: install.initialMileage - (vehicle.lastVerifiedMileage || 0),
         timestamp: new Date().toISOString(),
         eventType: 'INSTALL_START',
+        transactionDetails: {
+          initiatedBy: 'service_provider',
+          serviceProviderWallet: serviceProviderData?.walletAddress || 'service_wallet',
+          ownerWallet: ownerData?.walletAddress || 'owner_wallet'
+        },
         blockchainData: {
-          solanaNetwork: 'devnet', // or 'mainnet' based on environment
+          solanaNetwork: 'devnet',
           transactionType: 'installation_start',
-          dataIntegrity: 'verified'
+          dataIntegrity: 'verified',
+          signer: 'service_provider'
         }
       };
 
@@ -140,17 +149,25 @@ export class AnchorService {
    */
   private async anchorToSolana(hash: string, payload: any): Promise<AnchorResult> {
     try {
-      // Include enriched metadata so both owner/admin can query explorer and read memo
+      // Use service provider wallet for transaction signing
       const solanaData = {
         hash,
         payload,
         timestamp: Date.now(),
         action: 'ANCHOR_INSTALL',
+        signer: 'service_provider',
+        serviceProviderWallet: payload.transactionDetails?.serviceProviderWallet || 'service_wallet',
+        ownerWallet: payload.transactionDetails?.ownerWallet || 'owner_wallet',
         visibility: {
           ownerId: payload.ownerId,
+          ownerName: payload.ownerName,
           serviceProviderId: payload.serviceProviderId,
+          serviceProviderName: payload.serviceProviderName,
           vehicleId: payload.vehicleId,
-          vin: payload.vin
+          vin: payload.vin,
+          vehicleNumber: payload.vehicleNumber,
+          deviceId: payload.deviceId,
+          initialMileage: payload.initialMileage
         }
       };
 

@@ -169,7 +169,11 @@ export const startInstallation = async (req: Request, res: Response) => {
     }
 
     // Anchor install event
-    const anchorResult = await anchorService.anchorInstallEvent(install, vehicle);
+    // Fetch owner and service provider details for Solana payload
+    const ownerData = await User.findById(install.ownerId).select('firstName lastName email walletAddress');
+    const serviceProviderData = await User.findById(install.serviceProviderId).select('firstName lastName email walletAddress');
+    
+    const anchorResult = await anchorService.anchorInstallEvent(install, vehicle, ownerData, serviceProviderData);
     
     if (!anchorResult.success) {
       return res.status(500).json({
