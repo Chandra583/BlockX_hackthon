@@ -89,6 +89,7 @@ interface EnvironmentConfig {
   SOLANA_ANCHOR_SIGNER: 'service' | 'owner' | 'platform';
   SOLANA_CLUSTER: 'devnet' | 'mainnet';
   PLATFORM_SOLANA_SECRET_KEY: string;
+  ALLOW_SOLANA_FALLBACK: boolean;
 }
 
 /**
@@ -199,6 +200,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     SOLANA_ANCHOR_SIGNER: (process.env.SOLANA_ANCHOR_SIGNER as any) || 'service',
     SOLANA_CLUSTER: (process.env.SOLANA_CLUSTER as any) || 'devnet',
     PLATFORM_SOLANA_SECRET_KEY: process.env.PLATFORM_SOLANA_SECRET_KEY || '',
+    ALLOW_SOLANA_FALLBACK: process.env.ALLOW_SOLANA_FALLBACK === 'true',
   };
 };
 

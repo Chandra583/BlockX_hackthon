@@ -246,14 +246,17 @@ export class AnchorService {
           message: 'Successfully anchored to Solana blockchain'
         };
       } catch (solanaError) {
-        logger.error('❌ Real Solana transaction failed, using fallback:', solanaError);
-        
-        // Fallback to mock transaction if real one fails
+        logger.error('❌ Real Solana transaction failed:', solanaError);
+        if (!config.ALLOW_SOLANA_FALLBACK) {
+          return {
+            success: false,
+            message: 'Solana anchor failed (fallback disabled)'
+          };
+        }
+        // Fallback to mock transaction if explicitly allowed
         const mockTxId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
         logger.info(`📋 Enriched payload (fallback):`, JSON.stringify(solanaData, null, 2));
         logger.info(`✅ Fallback Solana transaction: ${mockTxId}`);
-        
         return {
           success: true,
           solanaTx: mockTxId,
