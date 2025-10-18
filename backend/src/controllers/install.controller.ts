@@ -175,6 +175,8 @@ export const startInstallation = async (req: Request, res: Response) => {
     
     logger.info('📋 Owner Data for Solana:', JSON.stringify(ownerData, null, 2));
     logger.info('📋 Service Provider Data for Solana:', JSON.stringify(serviceProviderData, null, 2));
+    logger.info('🔍 Owner wallet address:', ownerData?.walletAddress);
+    logger.info('🔍 Owner wallet secret present:', !!ownerData?.walletSecret);
     logger.info('📋 Vehicle Data for Solana:', JSON.stringify({
       vin: vehicle.vin,
       vehicleNumber: vehicle.vehicleNumber,

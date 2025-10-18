@@ -212,14 +212,7 @@ export class SolanaService {
     signerWallet: SolanaWallet
   ): Promise<any> {
     try {
-      let signerKeypair: Keypair;
-      if (signerWallet.secretKey && signerWallet.secretKey.length === 64) {
-        signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
-      } else if (signerWallet.secretKey && signerWallet.secretKey.length === 32) {
-        signerKeypair = Keypair.fromSeed(signerWallet.secretKey);
-      } else {
-        throw new Error('Invalid signer secret key length. Expected 32 or 64 bytes.');
-      }
+      const signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
       
       const installData = {
         ...installationData,
@@ -229,40 +222,21 @@ export class SolanaService {
       };
 
       const transaction = new Transaction();
-
-      // Include owner/service provider accounts so the tx shows in their histories
-      const ownerWalletStr: string | undefined = (installationData?.payload?.transactionDetails?.ownerWallet) || (installationData?.ownerWallet);
-      const serviceWalletStr: string | undefined = (installationData?.payload?.transactionDetails?.serviceProviderWallet) || (installationData?.serviceProviderWallet);
-
-      const keys: any[] = [];
-      try {
-        if (ownerWalletStr && ownerWalletStr.length > 30) {
-          keys.push({ pubkey: new PublicKey(ownerWalletStr), isSigner: false, isWritable: false });
-        }
-      } catch {}
-      try {
-        if (serviceWalletStr && serviceWalletStr.length > 30) {
-          keys.push({ pubkey: new PublicKey(serviceWalletStr), isSigner: false, isWritable: false });
-        }
-      } catch {}
-
+      
       // Add memo instruction with installation data
       const memoInstruction = new TransactionInstruction({
-        keys,
+        keys: [],
         programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
         data: Buffer.from(JSON.stringify(installData))
       });
       
       transaction.add(memoInstruction);
 
-      transaction.feePayer = signerKeypair.publicKey;
-      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-
-      const signature = await sendAndConfirmTransaction(this.connection, transaction, [signerKeypair], {
-        commitment: 'confirmed',
-        minContextSlot: undefined
-      });
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [signerKeypair]
+      );
 
       logger.info(`✅ Installation recorded on Solana: ${signature}`);
       return {
