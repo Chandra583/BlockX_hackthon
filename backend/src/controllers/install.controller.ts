@@ -174,8 +174,7 @@ export const startInstallation = async (req: Request, res: Response) => {
     const serviceProviderData = await User.findById(install.serviceProviderId).select('firstName lastName email');
     
     // Get owner's wallet using wallet service (properly decrypts the private key)
-    const { getWalletService } = await import('../services/blockchain/wallet.service');
-    const walletService = getWalletService();
+    const { walletService } = await import('../services/blockchain/wallet.service');
     const ownerWallet = await walletService.getUserWallet(install.ownerId.toString());
     
     if (!ownerWallet) {
