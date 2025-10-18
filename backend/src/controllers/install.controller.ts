@@ -170,13 +170,25 @@ export const startInstallation = async (req: Request, res: Response) => {
 
     // Anchor install event
     // Fetch owner and service provider details for Solana payload
-    const ownerData = await User.findById(install.ownerId).select('firstName lastName email walletAddress walletSecret');
-    const serviceProviderData = await User.findById(install.serviceProviderId).select('firstName lastName email walletAddress walletSecret');
+    const ownerData = await User.findById(install.ownerId).select('firstName lastName email');
+    const serviceProviderData = await User.findById(install.serviceProviderId).select('firstName lastName email');
+    
+    // Get owner's wallet using wallet service (properly decrypts the private key)
+    const { getWalletService } = await import('../services/blockchain/wallet.service');
+    const walletService = getWalletService();
+    const ownerWallet = await walletService.getUserWallet(install.ownerId.toString());
+    
+    if (!ownerWallet) {
+      return res.status(400).json({
+        success: false,
+        message: 'Owner wallet not found. Cannot anchor installation to blockchain.'
+      });
+    }
     
     logger.info('📋 Owner Data for Solana:', JSON.stringify(ownerData, null, 2));
     logger.info('📋 Service Provider Data for Solana:', JSON.stringify(serviceProviderData, null, 2));
-    logger.info('🔍 Owner wallet address:', ownerData?.walletAddress);
-    logger.info('🔍 Owner wallet secret present:', !!ownerData?.walletSecret);
+    logger.info('🔍 Owner wallet address:', ownerWallet.publicKey);
+    logger.info('🔍 Owner wallet secret key length:', ownerWallet.secretKey.length);
     logger.info('📋 Vehicle Data for Solana:', JSON.stringify({
       vin: vehicle.vin,
       vehicleNumber: vehicle.vehicleNumber,
@@ -185,7 +197,7 @@ export const startInstallation = async (req: Request, res: Response) => {
       year: vehicle.year
     }, null, 2));
     
-    const anchorResult = await anchorService.anchorInstallEvent(install, vehicle, ownerData, serviceProviderData);
+    const anchorResult = await anchorService.anchorInstallEvent(install, vehicle, ownerData, serviceProviderData, ownerWallet);
     
     if (!anchorResult.success) {
       return res.status(500).json({

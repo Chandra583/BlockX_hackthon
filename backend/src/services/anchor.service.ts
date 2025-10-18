@@ -20,7 +20,7 @@ export class AnchorService {
   /**
    * Anchor install event to both Arweave and Solana
    */
-  async anchorInstallEvent(install: IInstall, vehicle: IVehicleDocument, ownerData?: any, serviceProviderData?: any): Promise<AnchorResult> {
+  async anchorInstallEvent(install: IInstall, vehicle: IVehicleDocument, ownerData?: any, serviceProviderData?: any, ownerWallet?: any): Promise<AnchorResult> {
     try {
       // Check if already anchored
       if (install.solanaTx) {
@@ -67,15 +67,13 @@ export class AnchorService {
         eventType: 'INSTALL_START',
         transactionDetails: {
           initiatedBy: 'owner',
-          serviceProviderWallet: serviceProviderData?.walletAddress || 'service_wallet',
-          ownerWallet: ownerData?.walletAddress || 'owner_wallet',
-          ownerWalletSecret: ownerData?.walletSecret || null
+          ownerWallet: ownerWallet?.publicKey || 'owner_wallet'
         },
         blockchainData: {
-          solanaNetwork: 'devnet',
+          solanaNetwork: config.SOLANA_CLUSTER || 'devnet',
           transactionType: 'installation_start',
           dataIntegrity: 'verified',
-          signer: 'owner' // Changed to owner since we're using owner's wallet
+          signer: 'owner' // Using owner's wallet for signing
         }
       };
 
@@ -96,8 +94,8 @@ export class AnchorService {
       // Create deterministic hash for Solana
       const hash = this.createDeterministicHash(payload);
       
-      // Anchor to Solana (choose signer: service, owner, or platform)
-      const solanaResult = await this.anchorToSolana(hash, payload);
+      // Anchor to Solana using owner's wallet
+      const solanaResult = await this.anchorToSolana(hash, payload, ownerWallet);
       if (!solanaResult.success) {
         return solanaResult;
       }
@@ -155,16 +153,15 @@ export class AnchorService {
   /**
    * Anchor hash to Solana using memo transaction
    */
-  private async anchorToSolana(hash: string, payload: any): Promise<AnchorResult> {
+  private async anchorToSolana(hash: string, payload: any, ownerWallet: any): Promise<AnchorResult> {
     try {
-      // Use service provider wallet for transaction signing
+      // Use owner's wallet for transaction signing
       const solanaData = {
         hash,
         payload,
         timestamp: Date.now(),
         action: 'ANCHOR_INSTALL',
-        signer: 'service_provider',
-        serviceProviderWallet: payload.transactionDetails?.serviceProviderWallet || 'service_wallet',
+        signer: 'owner',
         ownerWallet: payload.transactionDetails?.ownerWallet || 'owner_wallet',
         visibility: {
           ownerId: payload.ownerId,
@@ -179,59 +176,15 @@ export class AnchorService {
         }
       };
 
-      // Create a simple memo transaction
-      // Note: In a real implementation, you would use a proper Solana program
-      const transaction = new (await import('@solana/web3.js')).Transaction();
-      const memoInstruction = new (await import('@solana/web3.js')).TransactionInstruction({
-        keys: [],
-        programId: new (await import('@solana/web3.js')).PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
-        data: Buffer.from(JSON.stringify(solanaData))
-      });
-      
-      transaction.add(memoInstruction);
-
-      // Use Solana service to send real transaction
+      // Use Solana service to send real transaction with owner's wallet
       try {
-        // Use OWNER's wallet for signing (so transaction appears in owner's wallet history)
-        let signerSecretKey: Uint8Array | null = null;
-        let signerPublicKey = payload.transactionDetails?.ownerWallet || 'owner_wallet';
-        
-        // Try to use owner's wallet secret first
-        if (payload.transactionDetails?.ownerWalletSecret) {
-          try {
-            const raw = payload.transactionDetails.ownerWalletSecret;
-            logger.info('🔍 Raw owner wallet secret type:', typeof raw);
-            logger.info('🔍 Raw owner wallet secret length:', raw?.length);
-            
-            const parsed = Array.isArray(raw) ? raw : JSON.parse(raw);
-            signerSecretKey = new Uint8Array(parsed);
-            logger.info('🔑 Using owner wallet for Solana transaction signing');
-            logger.info('🔑 Signer secret key length:', signerSecretKey.length);
-          } catch (error) {
-            logger.warn('⚠️ Failed to parse owner wallet secret, using fallback:', error.message);
-          }
-        } else {
-          logger.warn('⚠️ No owner wallet secret found in payload');
-        }
-        
-        // Fallback to platform wallet if owner wallet not available
-        if (!signerSecretKey && config.PLATFORM_SOLANA_SECRET_KEY) {
-          try {
-            signerSecretKey = new Uint8Array(JSON.parse(config.PLATFORM_SOLANA_SECRET_KEY));
-            signerPublicKey = 'platform_wallet';
-            logger.info('🔑 Using platform wallet for Solana transaction signing (fallback)');
-          } catch (error) {
-            logger.warn('⚠️ Failed to parse platform wallet secret');
-          }
-        }
+        logger.info('🔑 Using owner wallet for Solana transaction signing');
+        logger.info('🔑 Owner wallet address:', ownerWallet.publicKey);
+        logger.info('🔑 Owner wallet secret key length:', ownerWallet.secretKey.length);
 
         const solanaResult = await this.solanaService.recordInstallation(
           solanaData,
-          {
-            publicKey: signerPublicKey,
-            secretKey: signerSecretKey || new Uint8Array(64),
-            balance: 0.1
-          }
+          ownerWallet
         );
         
         logger.info(`✅ Real Solana transaction sent: ${solanaResult.transactionHash}`);
@@ -243,18 +196,12 @@ export class AnchorService {
           message: 'Successfully anchored to Solana blockchain'
         };
       } catch (solanaError) {
-        logger.error('❌ Real Solana transaction failed, using fallback:', solanaError);
+        logger.error('❌ Real Solana transaction failed:', solanaError);
         
-        // Fallback to mock transaction if real one fails
-        const mockTxId = `solana_tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        logger.info(`📋 Enriched payload (fallback):`, JSON.stringify(solanaData, null, 2));
-        logger.info(`✅ Fallback Solana transaction: ${mockTxId}`);
-        
+        // Don't fallback to mock - return error
         return {
-          success: true,
-          solanaTx: mockTxId,
-          message: 'Successfully anchored to Solana (fallback mode)'
+          success: false,
+          message: `Solana transaction failed: ${solanaError.message}`
         };
       }
     } catch (error) {
