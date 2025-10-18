@@ -210,7 +210,7 @@ export const startInstallation = async (req: Request, res: Response) => {
         startedAt: install.startedAt,
         solanaTx: anchorResult.solanaTx,
         arweaveTx: anchorResult.arweaveTx,
-        arweaveUrl: `https://arweave.net/${anchorResult.arweaveTx}`,
+        arweaveUrl: anchorResult.arweaveTx ? `https://arweave.net/${anchorResult.arweaveTx}` : undefined,
         solanaUrl: `https://explorer.solana.com/tx/${anchorResult.solanaTx}`
       }
     });

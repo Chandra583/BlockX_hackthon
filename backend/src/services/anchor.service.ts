@@ -4,6 +4,7 @@ import { getSolanaService } from './blockchain/solana.service';
 import { logger } from '../utils/logger';
 import { IInstall } from '../models/Install.model';
 import { IVehicleDocument } from '../models/core/Vehicle.model';
+import { config } from '../config/environment';
 
 export interface AnchorResult {
   success: boolean;
@@ -45,16 +46,22 @@ export class AnchorService {
         eventType: 'INSTALL_START'
       };
 
-      // Upload to Arweave
-      const arweaveResult = await this.uploadToArweave(payload);
-      if (!arweaveResult.success) {
-        return arweaveResult;
+      // Upload to Arweave (optional)
+      let arweaveTx: string | undefined;
+      if (config.ARWEAVE_ENABLED) {
+        const arweaveResult = await this.uploadToArweave(payload);
+        if (!arweaveResult.success) {
+          // If Arweave fails and it's optional, continue with Solana only
+          logger.warn(`Arweave disabled or failed, proceeding with Solana only: ${arweaveResult.message}`);
+        } else {
+          arweaveTx = arweaveResult.arweaveTx;
+        }
       }
 
       // Create deterministic hash for Solana
       const hash = this.createDeterministicHash(payload);
       
-      // Anchor to Solana
+      // Anchor to Solana (choose signer: service, owner, or platform)
       const solanaResult = await this.anchorToSolana(hash, payload);
       if (!solanaResult.success) {
         return solanaResult;
@@ -64,8 +71,8 @@ export class AnchorService {
       return {
         success: true,
         solanaTx: solanaResult.solanaTx,
-        arweaveTx: arweaveResult.arweaveTx,
-        message: 'Successfully anchored to both Arweave and Solana'
+        arweaveTx,
+        message: arweaveTx ? 'Anchored to Solana and Arweave' : 'Anchored to Solana'
       };
     } catch (error) {
       logger.error('Failed to anchor install event:', error);
@@ -115,13 +122,18 @@ export class AnchorService {
    */
   private async anchorToSolana(hash: string, payload: any): Promise<AnchorResult> {
     try {
-      // For platform-custodial anchoring, we'll use a memo transaction
-      // In a production environment, you would use a dedicated wallet with funds
+      // Include enriched metadata so both owner/admin can query explorer and read memo
       const solanaData = {
         hash,
         payload,
         timestamp: Date.now(),
-        action: 'ANCHOR_INSTALL'
+        action: 'ANCHOR_INSTALL',
+        visibility: {
+          ownerId: payload.ownerId,
+          serviceProviderId: payload.serviceProviderId,
+          vehicleId: payload.vehicleId,
+          vin: payload.vin
+        }
       };
 
       // Create a simple memo transaction

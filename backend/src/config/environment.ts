@@ -83,6 +83,10 @@ interface EnvironmentConfig {
   ADMIN_EMAIL: string;
   ADMIN_PASSWORD: string;
   SUPER_ADMIN_TOKEN: string;
+
+  // Blockchain toggles
+  ARWEAVE_ENABLED: boolean;
+  SOLANA_ANCHOR_SIGNER: 'service' | 'owner' | 'platform';
 }
 
 /**
@@ -187,6 +191,10 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@veridrive.com',
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'AdminPassword123!',
     SUPER_ADMIN_TOKEN: process.env.SUPER_ADMIN_TOKEN || 'super-admin-token',
+
+    // Blockchain toggles
+    ARWEAVE_ENABLED: process.env.ARWEAVE_ENABLED === 'true',
+    SOLANA_ANCHOR_SIGNER: (process.env.SOLANA_ANCHOR_SIGNER as any) || 'service',
   };
 };
 
