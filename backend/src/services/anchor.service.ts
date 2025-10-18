@@ -65,18 +65,18 @@ export class AnchorService {
         mileageDelta: install.initialMileage - (vehicle.lastVerifiedMileage || 0),
         timestamp: new Date().toISOString(),
         eventType: 'INSTALL_START',
-          transactionDetails: {
-            initiatedBy: 'service_provider',
-            serviceProviderWallet: serviceProviderData?.walletAddress || 'service_wallet',
-            ownerWallet: ownerData?.walletAddress || 'owner_wallet',
-            ownerWalletSecret: ownerData?.walletSecret || null
-          },
-          blockchainData: {
-            solanaNetwork: 'devnet',
-            transactionType: 'installation_start',
-            dataIntegrity: 'verified',
-            signer: 'owner' // Changed to owner since we're using owner's wallet
-          }
+        transactionDetails: {
+          initiatedBy: 'owner',
+          serviceProviderWallet: serviceProviderData?.walletAddress || 'service_wallet',
+          ownerWallet: ownerData?.walletAddress || 'owner_wallet',
+          ownerWalletSecret: ownerData?.walletSecret || null
+        },
+        blockchainData: {
+          solanaNetwork: 'devnet',
+          transactionType: 'installation_start',
+          dataIntegrity: 'verified',
+          signer: 'owner' // Changed to owner since we're using owner's wallet
+        }
       };
 
       logger.info('📦 Complete Solana payload created:', JSON.stringify(payload, null, 2));
