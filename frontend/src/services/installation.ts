@@ -7,7 +7,7 @@ export interface InstallationRequest {
   ownerId: string;
   serviceProviderId?: string;
   deviceId?: string;
-  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  status: 'requested' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'flagged';
   notes?: string;
   createdAt: string;
   updatedAt: string;

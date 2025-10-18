@@ -231,7 +231,7 @@ const DevicesList: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {device.device?.deviceID || 'Not assigned'}
+                        {device.deviceId || device.device?.deviceID || 'Not assigned'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {device.serviceProvider 

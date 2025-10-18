@@ -120,6 +120,38 @@ const SPInstalls: React.FC = () => {
     }
   };
 
+  const handleCompleteInstallation = async (installId: string) => {
+    try {
+      const response = await ServiceInstallsService.completeInstallation({
+        installId: installId,
+        finalNotes: 'Installation completed successfully'
+      });
+      
+      if (response.success) {
+        // Update the local state to reflect the completion
+        setInstallAssignments(prev => prev.map(install => 
+          install.id === installId 
+            ? { 
+                ...install, 
+                status: 'completed' as 'completed',
+                completedAt: new Date().toISOString()
+              } 
+            : install
+        ));
+        
+        // Refresh the list to get updated data
+        await fetchInstallAssignments();
+        
+        return response;
+      } else {
+        throw new Error(response.message || 'Failed to complete installation');
+      }
+    } catch (error) {
+      console.error('Failed to complete installation:', error);
+      throw error;
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -276,7 +308,13 @@ const SPInstalls: React.FC = () => {
                             Start
                           </button>
                         ) : assignment.status === 'in_progress' ? (
-                          <span className="text-gray-500">In Progress</span>
+                          <button
+                            onClick={() => handleCompleteInstallation(assignment.id)}
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Complete
+                          </button>
                         ) : assignment.status === 'completed' ? (
                           <div className="flex items-center text-green-600">
                             <Check className="w-4 h-4 mr-1" />
