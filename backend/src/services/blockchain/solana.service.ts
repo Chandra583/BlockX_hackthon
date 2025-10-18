@@ -229,21 +229,40 @@ export class SolanaService {
       };
 
       const transaction = new Transaction();
-      
+
+      // Include owner/service provider accounts so the tx shows in their histories
+      const ownerWalletStr: string | undefined = (installationData?.payload?.transactionDetails?.ownerWallet) || (installationData?.ownerWallet);
+      const serviceWalletStr: string | undefined = (installationData?.payload?.transactionDetails?.serviceProviderWallet) || (installationData?.serviceProviderWallet);
+
+      const keys: any[] = [];
+      try {
+        if (ownerWalletStr && ownerWalletStr.length > 30) {
+          keys.push({ pubkey: new PublicKey(ownerWalletStr), isSigner: false, isWritable: false });
+        }
+      } catch {}
+      try {
+        if (serviceWalletStr && serviceWalletStr.length > 30) {
+          keys.push({ pubkey: new PublicKey(serviceWalletStr), isSigner: false, isWritable: false });
+        }
+      } catch {}
+
       // Add memo instruction with installation data
       const memoInstruction = new TransactionInstruction({
-        keys: [],
+        keys,
         programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
         data: Buffer.from(JSON.stringify(installData))
       });
       
       transaction.add(memoInstruction);
 
-      const signature = await sendAndConfirmTransaction(
-        this.connection,
-        transaction,
-        [signerKeypair]
-      );
+      transaction.feePayer = signerKeypair.publicKey;
+      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      const signature = await sendAndConfirmTransaction(this.connection, transaction, [signerKeypair], {
+        commitment: 'confirmed',
+        minContextSlot: undefined
+      });
 
       logger.info(`✅ Installation recorded on Solana: ${signature}`);
       return {

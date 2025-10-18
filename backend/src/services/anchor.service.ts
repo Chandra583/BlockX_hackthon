@@ -249,7 +249,7 @@ export class AnchorService {
         logger.error('❌ Real Solana transaction failed, using fallback:', solanaError);
         
         // Fallback to mock transaction if real one fails
-         const mockTxId = `mock_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const mockTxId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         logger.info(`📋 Enriched payload (fallback):`, JSON.stringify(solanaData, null, 2));
         logger.info(`✅ Fallback Solana transaction: ${mockTxId}`);
