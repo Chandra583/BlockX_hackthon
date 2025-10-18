@@ -6,11 +6,19 @@ export interface IInstallationRequest extends Document {
   requestedBy: mongoose.Types.ObjectId;
   deviceId?: mongoose.Types.ObjectId | string;
   serviceProviderId?: mongoose.Types.ObjectId;
-  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  status: 'requested' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'flagged';
   notes?: string;
+  priority?: 'low' | 'medium' | 'high';
   createdAt: Date;
   updatedAt: Date;
+  requestedAt?: Date;
+  assignedAt?: Date;
+  startedAt?: Date;
+  completedAt?: Date;
   installedAt?: Date;
+  initialMileage?: number;
+  solanaTx?: string;
+  arweaveTx?: string;
   history: Array<{
     action: string;
     by: mongoose.Types.ObjectId;
@@ -45,11 +53,23 @@ const InstallationRequestSchema = new Schema<IInstallationRequest>({
   },
   status: {
     type: String,
-    enum: ['requested', 'assigned', 'completed', 'cancelled'],
+    enum: ['requested', 'assigned', 'in_progress', 'completed', 'cancelled', 'flagged'],
     default: 'requested'
   },
   notes: String,
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high'],
+    default: 'medium'
+  },
+  requestedAt: Date,
+  assignedAt: Date,
+  startedAt: Date,
+  completedAt: Date,
   installedAt: Date,
+  initialMileage: Number,
+  solanaTx: String,
+  arweaveTx: String,
   history: [{
     action: {
       type: String,

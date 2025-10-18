@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Install } from '../models/Install.model';
+import { InstallationRequest } from '../models/InstallationRequest.model';
 import Vehicle from '../models/core/Vehicle.model';
 import { User } from '../models/core/User.model';
 import { TelemetryBatch } from '../models/TelemetryBatch.model';
@@ -28,7 +28,7 @@ export const startInstallation = async (req: Request, res: Response) => {
     }
 
     // Verify installation request exists and is assigned to caller
-    const install = await Install.findById(installId);
+    const install = await InstallationRequest.findById(installId);
     if (!install) {
       return res.status(404).json({
         success: false,
@@ -212,7 +212,7 @@ export const completeInstallation = async (req: Request, res: Response) => {
     }
 
     // Verify installation request exists
-    const install = await Install.findById(installId);
+    const install = await InstallationRequest.findById(installId);
     if (!install) {
       return res.status(404).json({
         success: false,
@@ -320,7 +320,7 @@ export const assignInstallation = async (req: Request, res: Response) => {
 
     // Use atomic update to assign installation
     // Handle both 'requested' and 'pending' status values for compatibility
-    const updated = await Install.findOneAndUpdate(
+    const updated = await InstallationRequest.findOneAndUpdate(
       { 
         _id: installId, 
         status: { $in: ['requested', 'pending'] },
@@ -351,7 +351,7 @@ export const assignInstallation = async (req: Request, res: Response) => {
     // If updated is null, the install was not found or was already assigned
     if (!updated) {
       // Check if install exists but is already assigned
-      const existingInstall = await Install.findById(installId);
+      const existingInstall = await InstallationRequest.findById(installId);
       if (existingInstall) {
         if (existingInstall.serviceProviderId) {
           return res.status(409).json({
