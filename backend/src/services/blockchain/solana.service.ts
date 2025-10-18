@@ -214,12 +214,13 @@ export class SolanaService {
     try {
       const signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
       
+      // Build final data - add network without overriding existing fields
       const installData = {
         ...installationData,
-        timestamp: Date.now(),
-        action: 'INSTALLATION_START',
         network: this.isDevnet ? 'devnet' : 'mainnet'
       };
+
+      logger.info(`📝 Final installation data for blockchain:`, JSON.stringify(installData, null, 2));
 
       const transaction = new Transaction();
       

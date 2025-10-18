@@ -178,6 +178,7 @@ export class AnchorService {
         logger.info('🔑 Using owner wallet for Solana transaction signing');
         logger.info('🔑 Owner wallet address:', ownerWallet.publicKey);
         logger.info('🔑 Owner wallet secret key length:', ownerWallet.secretKey.length);
+        logger.info('📤 Data being sent to Solana service:', JSON.stringify(solanaData, null, 2));
 
         const solanaResult = await this.solanaService.recordInstallation(
           solanaData,
