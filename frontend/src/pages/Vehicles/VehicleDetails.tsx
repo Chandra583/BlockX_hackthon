@@ -111,9 +111,9 @@ const DeviceStatusCard: React.FC<{
   installationRequest?: InstallationRequest;
   onRequestInstall: () => void;
 }> = ({ installationRequest, onRequestInstall }) => {
-  // Check if there's an active request (requested or assigned)
+  // Check if there's an active request (requested, assigned, or in_progress)
   const hasActiveRequest = installationRequest && 
-    (installationRequest.status === 'requested' || installationRequest.status === 'assigned');
+    (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress');
   
   // Check if device is installed
   const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
@@ -132,7 +132,8 @@ const DeviceStatusCard: React.FC<{
           <p className="text-gray-500 mb-4">Request Pending</p>
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-4">
             <Clock className="w-3 h-3 mr-1" />
-            {installationRequest.status === 'requested' ? 'Requested' : 'Assigned'}
+            {installationRequest.status === 'requested' ? 'Requested' : 
+             installationRequest.status === 'assigned' ? 'Assigned' : 'In Progress'}
           </div>
           <button
             disabled={true}
@@ -160,7 +161,7 @@ const DeviceStatusCard: React.FC<{
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Device ID</span>
-            <span className="font-medium">{installationRequest.device.deviceID}</span>
+            <span className="font-medium">{installationRequest.deviceId || installationRequest.device?.deviceID}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Status</span>
@@ -184,9 +185,12 @@ const DeviceStatusCard: React.FC<{
             </div>
           )}
           <div className="flex space-x-2 pt-2">
-            <button className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            <button 
+              onClick={() => window.open(getExplorerUrl(vehicle?.blockchainAddress), '_blank')}
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
               <ExternalLink className="w-4 h-4 mr-1" />
-              View Device
+              View on Explorer
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">Device installed</p>
@@ -235,6 +239,17 @@ const VehicleDetails: React.FC = () => {
         setLoading(false);
       });
     }
+  }, [id]);
+
+  // Auto-refresh installation request data every 30 seconds
+  useEffect(() => {
+    if (!id) return;
+    
+    const interval = setInterval(() => {
+      fetchInstallationRequest(id);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
   }, [id]);
 
   const fetchVehicleDetails = async (vehicleId: string) => {
@@ -321,9 +336,9 @@ const VehicleDetails: React.FC = () => {
     );
   }
 
-  // Check if there's an active request (requested or assigned)
+  // Check if there's an active request (requested, assigned, or in_progress)
   const hasActiveRequest = installationRequest && 
-    (installationRequest.status === 'requested' || installationRequest.status === 'assigned');
+    (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress');
   
   // Check if device is installed
   const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
