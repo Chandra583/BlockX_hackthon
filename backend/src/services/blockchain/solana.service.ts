@@ -205,6 +205,52 @@ export class SolanaService {
   }
 
   /**
+   * Record installation event on blockchain
+   */
+  async recordInstallation(
+    installationData: any,
+    signerWallet: SolanaWallet
+  ): Promise<any> {
+    try {
+      const signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
+      
+      const installData = {
+        ...installationData,
+        timestamp: Date.now(),
+        action: 'INSTALLATION_START',
+        network: this.isDevnet ? 'devnet' : 'mainnet'
+      };
+
+      const transaction = new Transaction();
+      
+      // Add memo instruction with installation data
+      const memoInstruction = new TransactionInstruction({
+        keys: [],
+        programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+        data: Buffer.from(JSON.stringify(installData))
+      });
+      
+      transaction.add(memoInstruction);
+
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [signerKeypair]
+      );
+
+      logger.info(`✅ Installation recorded on Solana: ${signature}`);
+      return {
+        transactionHash: signature,
+        blockchainAddress: signerKeypair.publicKey.toString(),
+        network: this.isDevnet ? 'devnet' : 'mainnet'
+      };
+    } catch (error) {
+      logger.error(`❌ Failed to record installation on Solana:`, error);
+      throw new Error(`Installation recording failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Record mileage update on blockchain
    */
   async recordMileage(

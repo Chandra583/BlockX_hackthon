@@ -173,6 +173,16 @@ export const startInstallation = async (req: Request, res: Response) => {
     const ownerData = await User.findById(install.ownerId).select('firstName lastName email walletAddress');
     const serviceProviderData = await User.findById(install.serviceProviderId).select('firstName lastName email walletAddress');
     
+    logger.info('📋 Owner Data for Solana:', JSON.stringify(ownerData, null, 2));
+    logger.info('📋 Service Provider Data for Solana:', JSON.stringify(serviceProviderData, null, 2));
+    logger.info('📋 Vehicle Data for Solana:', JSON.stringify({
+      vin: vehicle.vin,
+      vehicleNumber: vehicle.vehicleNumber,
+      make: vehicle.make,
+      model: vehicle.vehicleModel,
+      year: vehicle.year
+    }, null, 2));
+    
     const anchorResult = await anchorService.anchorInstallEvent(install, vehicle, ownerData, serviceProviderData);
     
     if (!anchorResult.success) {
