@@ -228,6 +228,13 @@ export class AnchorService {
           }
         }
 
+        logger.info(`🔑 Owner wallet address: ${ownerData?.walletAddress || 'NOT_FOUND'}`);
+        logger.info(`🔑 Owner wallet secret: ${ownerData?.walletSecret ? 'PRESENT' : 'NOT_FOUND'}`);
+        logger.info(`🔑 Service provider wallet address: ${serviceProviderData?.walletAddress || 'NOT_FOUND'}`);
+        logger.info(`🔑 Service provider wallet secret: ${serviceProviderData?.walletSecret ? 'PRESENT' : 'NOT_FOUND'}`);
+        logger.info(`🔑 Signer public key: ${signerPublicKey}`);
+        logger.info(`🔑 Signer secret key length: ${signerSecretKey?.length || 0}`);
+        
         const solanaResult = await this.solanaService.recordInstallation(
           solanaData,
           {
@@ -247,10 +254,15 @@ export class AnchorService {
         };
       } catch (solanaError) {
         logger.error('❌ Real Solana transaction failed:', solanaError);
+        logger.error('❌ Error details:', {
+          message: solanaError.message,
+          stack: solanaError.stack,
+          name: solanaError.name
+        });
         if (!config.ALLOW_SOLANA_FALLBACK) {
           return {
             success: false,
-            message: 'Solana anchor failed (fallback disabled)'
+            message: `Solana anchor failed: ${solanaError.message}`
           };
         }
         // Fallback to mock transaction if explicitly allowed
