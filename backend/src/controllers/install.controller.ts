@@ -154,7 +154,7 @@ export const startInstallation = async (req: Request, res: Response) => {
 
     // Update installation
     install.startedAt = new Date();
-    install.deviceId = deviceId;
+    install.deviceId = deviceId?.toString();
     install.initialMileage = initialMileage;
     install.status = 'in_progress';
     install.solanaTx = anchorResult.solanaTx;

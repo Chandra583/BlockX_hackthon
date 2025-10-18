@@ -44,8 +44,8 @@ const InstallationRequestSchema = new Schema<IInstallationRequest>({
     required: true
   },
   deviceId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Device'
+    type: String,
+    trim: true
   },
   serviceProviderId: {
     type: Schema.Types.ObjectId,
