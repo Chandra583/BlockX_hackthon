@@ -198,3 +198,18 @@ coverage/
 
 # Local development
 .local
+
+# Temporary documentation files
+*_FIX.md
+*_SUMMARY.md
+*_ANALYSIS.md
+*_IMPLEMENTATION.md
+*_EXPLANATION.md
+*_CHECKLIST.md
+
+# Standalone test files
+test-*.js
+test-*.ts
+
+# Archive directories
+.archive/
