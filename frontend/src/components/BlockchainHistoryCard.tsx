@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Hash, Calendar, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { VehicleBlockchainService, BlockchainTransaction } from '../services/vehicleBlockchain';
+import VehicleBlockchainService, { BlockchainTransaction } from '../services/vehicleBlockchain';
 import { solanaHelper } from '../lib/solana';
 import toast from 'react-hot-toast';
 

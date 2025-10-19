@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { VehicleService } from '../../services/vehicle';
 import { InstallationService } from '../../services/installation';
+import { VehicleBlockchainService } from '../../services/vehicleBlockchain';
 import { config } from '../../config/env';
 import toast from 'react-hot-toast';
 import { solanaHelper } from '../../lib/solana';
@@ -132,7 +133,6 @@ const DeviceStatusCard: React.FC<{
       if (isDeviceInstalled && vehicleId) {
         try {
           setLoadingTx(true);
-          const { VehicleBlockchainService } = await import('../../services/vehicleBlockchain');
           const response = await VehicleBlockchainService.getDeviceInstallTransaction(vehicleId);
           if (response.success) {
             setInstallTxHash(response.data.hash);
