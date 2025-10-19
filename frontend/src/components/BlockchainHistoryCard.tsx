@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Hash, Calendar, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import VehicleBlockchainService, { BlockchainTransaction } from '../services/vehicleBlockchain';
+import VehicleBlockchainService from '../services/vehicleBlockchain';
+import { VehicleBlockchainTransaction } from '../types/blockchain';
 import { solanaHelper } from '../lib/solana';
 import toast from 'react-hot-toast';
 
@@ -14,7 +15,7 @@ export const BlockchainHistoryCard: React.FC<BlockchainHistoryCardProps> = ({
   vehicleId,
   className = ''
 }) => {
-  const [transactions, setTransactions] = useState<BlockchainTransaction[]>([]);
+  const [transactions, setTransactions] = useState<VehicleBlockchainTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
