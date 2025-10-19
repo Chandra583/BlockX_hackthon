@@ -139,6 +139,8 @@ const DeviceStatusCard: React.FC<{
           }
         } catch (error) {
           console.error('Failed to fetch install transaction:', error);
+          // Don't show error to user - just means no blockchain transaction yet
+          setInstallTxHash(null);
         } finally {
           setLoadingTx(false);
         }
