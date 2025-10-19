@@ -66,7 +66,7 @@ router.get('/installs/assigned', authorize('service'), async (req: any, res: any
       .sort({ requestedAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .populate('vehicleId', 'vin vehicleNumber make vehicleModel year lastVerifiedMileage')
+      .populate('vehicleId', 'vin vehicleNumber make vehicleModel year lastVerifiedMileage currentMileage')
       .populate('ownerId', 'firstName lastName email');
 
     const total = await InstallationRequest.countDocuments(query);

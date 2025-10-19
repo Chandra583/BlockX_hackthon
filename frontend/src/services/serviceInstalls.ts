@@ -31,6 +31,7 @@ export interface InstallAssignment {
     vehicleModel: string;
     year: number;
     lastVerifiedMileage?: number;
+    currentMileage?: number;
   };
   owner?: {
     id: string;

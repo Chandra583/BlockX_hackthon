@@ -11,6 +11,7 @@ interface InstallStartModalProps {
     year: number;
     vin: string;
     lastVerifiedMileage?: number;
+    currentMileage?: number;
   };
   onSubmit: (data: { deviceId: string; initialMileage: number }) => Promise<{ solanaTx?: string; arweaveTx?: string } | void>;
 }
@@ -22,7 +23,7 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
   onSubmit 
 }) => {
   const [deviceId, setDeviceId] = useState('');
-  const [initialMileage, setInitialMileage] = useState(vehicle.lastVerifiedMileage?.toString() || '');
+  const [initialMileage, setInitialMileage] = useState(vehicle.currentMileage?.toString() || vehicle.lastVerifiedMileage?.toString() || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -56,7 +57,7 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
   const handleClose = () => {
     // Reset form when closing
     setDeviceId('');
-    setInitialMileage(vehicle.lastVerifiedMileage?.toString() || '');
+    setInitialMileage(vehicle.currentMileage?.toString() || vehicle.lastVerifiedMileage?.toString() || '');
     setError('');
     setSuccess(false);
     setResult(null);
@@ -191,9 +192,9 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
                     min="0"
                     required
                   />
-                  {vehicle.lastVerifiedMileage !== undefined && (
+                  {(vehicle.currentMileage !== undefined || vehicle.lastVerifiedMileage !== undefined) && (
                     <p className="mt-1 text-sm text-gray-500">
-                      Last verified: {vehicle.lastVerifiedMileage.toLocaleString()} miles
+                      Last verified: {(vehicle.currentMileage || vehicle.lastVerifiedMileage || 0).toLocaleString()} miles
                     </p>
                   )}
                 </div>
