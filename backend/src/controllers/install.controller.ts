@@ -210,7 +210,7 @@ export const startInstallation = async (req: Request, res: Response) => {
     install.startedAt = new Date();
     install.deviceId = deviceId?.toString();
     install.initialMileage = initialMileage;
-    install.status = 'in_progress';
+    install.status = 'completed';
     install.solanaTx = anchorResult.solanaTx;
     install.arweaveTx = anchorResult.arweaveTx;
     install.history.push({
