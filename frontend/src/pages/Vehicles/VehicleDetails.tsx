@@ -135,7 +135,9 @@ const DeviceStatusCard: React.FC<{
           console.log('🔍 Fetching device install transaction for vehicleId:', vehicleId);
           setLoadingTx(true);
           const response = await VehicleBlockchainService.getDeviceInstallTransaction(vehicleId);
-          console.log('✅ Device install transaction response:', response);
+          console.log('✅ Device install transaction response:', JSON.stringify(response, null, 2));
+          console.log('✅ Response type:', typeof response);
+          console.log('✅ Response keys:', response ? Object.keys(response) : 'null');
           console.log('✅ Response success:', response?.success);
           console.log('✅ Response data:', response?.data);
           console.log('✅ Response data hash:', response?.data?.hash);
