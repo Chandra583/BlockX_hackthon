@@ -122,10 +122,14 @@ const SPInstalls: React.FC = () => {
 
   const handleCompleteInstallation = async (installId: string) => {
     try {
+      console.log('🔄 Completing installation:', installId);
+      
       const response = await ServiceInstallsService.completeInstallation({
         installId: installId,
         finalNotes: 'Installation completed successfully'
       });
+      
+      console.log('✅ Complete installation response:', response);
       
       if (response.success) {
         // Update the local state to reflect the completion
@@ -147,6 +151,7 @@ const SPInstalls: React.FC = () => {
         }
         
         // Refresh the list to get updated data
+        console.log('🔄 Refreshing installation assignments...');
         await fetchInstallAssignments();
         
         return response;
@@ -154,7 +159,8 @@ const SPInstalls: React.FC = () => {
         throw new Error(response.message || 'Failed to complete installation');
       }
     } catch (error) {
-      console.error('Failed to complete installation:', error);
+      console.error('❌ Failed to complete installation:', error);
+      alert(`Failed to complete installation: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   };
@@ -316,7 +322,10 @@ const SPInstalls: React.FC = () => {
                           </button>
                         ) : assignment.status === 'in_progress' ? (
                           <button
-                            onClick={() => handleCompleteInstallation(assignment.id)}
+                            onClick={() => {
+                              console.log('🔄 Clicking complete for installation:', assignment.id, 'Status:', assignment.status);
+                              handleCompleteInstallation(assignment.id);
+                            }}
                             className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                           >
                             <Check className="w-4 h-4 mr-1" />
