@@ -653,6 +653,30 @@ export class AdminController {
 
         logger.info(`✅ Admin ${adminId} approved vehicle ${vehicleId} and registered on blockchain: ${blockchainRecord.transactionHash}`);
 
+        // Save registration transaction to blockchain history
+        try {
+          const { VehicleBlockchainService } = await import('../../services/vehicleBlockchain.service');
+          await VehicleBlockchainService.addTransaction(vehicle._id.toString(), {
+            transactionType: 'registration',
+            transactionHash: blockchainRecord.transactionHash,
+            blockchainAddress: ownerWallet.publicKey,
+            network: process.env.NODE_ENV === 'production' ? 'mainnet' : 'devnet',
+            metadata: {
+              vin: vehicle.vin,
+              vehicleNumber: vehicle.vehicleNumber,
+              make: vehicle.make,
+              model: vehicle.vehicleModel,
+              year: vehicle.year,
+              initialMileage: vehicle.currentMileage,
+              ownerName: `${vehicle.ownerId.firstName} ${vehicle.ownerId.lastName}`,
+              ownerEmail: vehicle.ownerId.email
+            }
+          });
+          logger.info(`✅ Saved registration transaction to blockchain history`);
+        } catch (historyError) {
+          logger.warn('Failed to save to blockchain history (non-fatal):', historyError);
+        }
+
       // Notify owner
       try {
         await Notification.create({

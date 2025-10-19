@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import TransactionHistory from '../../components/TransactionHistory';
+import BlockchainHistoryCard from '../../components/BlockchainHistoryCard';
 import { 
   Car, 
   Calendar, 
@@ -21,6 +22,7 @@ import { VehicleService } from '../../services/vehicle';
 import { InstallationService } from '../../services/installation';
 import { config } from '../../config/env';
 import toast from 'react-hot-toast';
+import { solanaHelper } from '../../lib/solana';
 
 interface Vehicle {
   id: string;
@@ -111,13 +113,40 @@ const TrustScoreDisplay: React.FC<{ score: number }> = ({ score }) => {
 const DeviceStatusCard: React.FC<{ 
   installationRequest?: InstallationRequest;
   onRequestInstall: () => void;
-}> = ({ installationRequest, onRequestInstall }) => {
+  blockchainAddress?: string;
+  vehicleId?: string;
+}> = ({ installationRequest, onRequestInstall, blockchainAddress, vehicleId }) => {
+  const [installTxHash, setInstallTxHash] = useState<string | null>(null);
+  const [loadingTx, setLoadingTx] = useState(false);
+
   // Check if there's an active request (requested, assigned, or in_progress)
   const hasActiveRequest = installationRequest && 
     (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress');
   
   // Check if device is installed
   const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
+
+  // Fetch device installation transaction when device is installed
+  useEffect(() => {
+    const fetchInstallTransaction = async () => {
+      if (isDeviceInstalled && vehicleId) {
+        try {
+          setLoadingTx(true);
+          const { VehicleBlockchainService } = await import('../../services/vehicleBlockchain');
+          const response = await VehicleBlockchainService.getDeviceInstallTransaction(vehicleId);
+          if (response.success) {
+            setInstallTxHash(response.data.hash);
+          }
+        } catch (error) {
+          console.error('Failed to fetch install transaction:', error);
+        } finally {
+          setLoadingTx(false);
+        }
+      }
+    };
+
+    fetchInstallTransaction();
+  }, [isDeviceInstalled, vehicleId]);
 
   if (hasActiveRequest) {
     return (
@@ -187,14 +216,21 @@ const DeviceStatusCard: React.FC<{
           )}
           <div className="flex space-x-2 pt-2">
             <button 
-              onClick={() => window.open(getExplorerUrl(vehicle?.blockchainAddress), '_blank')}
-              className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              onClick={() => {
+                if (!installTxHash) return;
+                const url = solanaHelper.getExplorerUrl(installTxHash, 'tx');
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+              disabled={!installTxHash || loadingTx}
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ExternalLink className="w-4 h-4 mr-1" />
-              View on Explorer
+              {loadingTx ? 'Loading...' : 'View on Explorer'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">Device installed</p>
+          <p className="text-xs text-gray-500 mt-2">
+            {installTxHash ? 'View device installation transaction' : 'Device installed'}
+          </p>
         </div>
       </motion.div>
     );
@@ -326,10 +362,7 @@ const VehicleDetails: React.FC = () => {
 
   const getExplorerUrl = (address?: string) => {
     if (!address) return null;
-    
-    // Use environment variable for explorer base URL or default to Solana explorer
-    const explorerBase = import.meta.env.VITE_EXPLORER_BASE || 'https://explorer.solana.com';
-    return `${explorerBase}/address/${address}`;
+    return solanaHelper.getExplorerUrl(address, 'address');
   };
 
   if (loading) {
@@ -550,11 +583,18 @@ const VehicleDetails: React.FC = () => {
           {/* Device Status */}
           <DeviceStatusCard 
             installationRequest={installationRequest || undefined} 
-            onRequestInstall={handleRequestInstall} 
+            onRequestInstall={handleRequestInstall}
+            blockchainAddress={vehicle.blockchainAddress}
+            vehicleId={vehicle.id}
           />
 
-          {/* Transaction History */}
-          <TransactionHistory transactions={transactionHistory} />
+          {/* Blockchain History */}
+          <BlockchainHistoryCard vehicleId={vehicle.id} />
+
+          {/* Transaction History (Legacy - can be removed if not needed) */}
+          {transactionHistory.length > 0 && (
+            <TransactionHistory transactions={transactionHistory} />
+          )}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import deviceRoutes from './device/device.routes';
 import blockchainRoutes from './blockchain/blockchain.routes';
 // Phase 2 routes - Vehicle Management
 import vehicleRoutes from './vehicle/vehicle.routes';
+import vehicleBlockchainRoutes from './vehicleBlockchain.routes';
 // Installation routes
 import installsRoutes from './installs.routes';
 import installationRequestRoutes from './installationRequest.routes';
@@ -30,6 +31,7 @@ router.use('/blockchain', blockchainRoutes);
 
 // Mount Phase 2 routes (Vehicle Management)
 router.use('/vehicles', vehicleRoutes);
+router.use('/vehicles', vehicleBlockchainRoutes);
 
 // Mount installation routes with proper prefix
 router.use('/installs', installsRoutes);

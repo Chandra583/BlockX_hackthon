@@ -253,6 +253,34 @@ export const startInstallation = async (req: Request, res: Response) => {
 
     logger.info(`✅ Installation ${installId} started with device ${deviceId}`);
 
+    // Save device installation transaction to blockchain history
+    if (anchorResult.solanaTx) {
+      try {
+        const { VehicleBlockchainService } = await import('../services/vehicleBlockchain.service');
+        await VehicleBlockchainService.addTransaction(vehicle._id.toString(), {
+          transactionType: 'device_install',
+          transactionHash: anchorResult.solanaTx,
+          blockchainAddress: ownerWallet.publicKey,
+          network: process.env.NODE_ENV === 'production' ? 'mainnet' : 'devnet',
+          metadata: {
+            deviceId,
+            initialMileage,
+            vin: vehicle.vin,
+            vehicleNumber: vehicle.vehicleNumber,
+            make: vehicle.make,
+            model: vehicle.vehicleModel,
+            year: vehicle.year,
+            ownerName: `${(ownerData as any)?.firstName || ''} ${(ownerData as any)?.lastName || ''}`.trim(),
+            serviceProviderName: `${(serviceProviderData as any)?.firstName || ''} ${(serviceProviderData as any)?.lastName || ''}`.trim(),
+            installId: install._id.toString()
+          }
+        });
+        logger.info(`✅ Saved device installation transaction to blockchain history`);
+      } catch (historyError) {
+        logger.warn('Failed to save to blockchain history (non-fatal):', historyError);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Installation started successfully',
