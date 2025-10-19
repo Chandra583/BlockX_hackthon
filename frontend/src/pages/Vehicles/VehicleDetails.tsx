@@ -132,13 +132,16 @@ const DeviceStatusCard: React.FC<{
     const fetchInstallTransaction = async () => {
       if (isDeviceInstalled && vehicleId) {
         try {
+          console.log('🔍 Fetching device install transaction for vehicleId:', vehicleId);
           setLoadingTx(true);
           const response = await VehicleBlockchainService.getDeviceInstallTransaction(vehicleId);
+          console.log('✅ Device install transaction response:', response);
           if (response.success) {
+            console.log('📝 Setting installTxHash to:', response.data.hash);
             setInstallTxHash(response.data.hash);
           }
         } catch (error) {
-          console.error('Failed to fetch install transaction:', error);
+          console.error('❌ Failed to fetch install transaction:', error);
           // Don't show error to user - just means no blockchain transaction yet
           setInstallTxHash(null);
         } finally {
