@@ -118,6 +118,7 @@ const DeviceStatusCard: React.FC<{
   vehicleId?: string;
 }> = ({ installationRequest, onRequestInstall, blockchainAddress, vehicleId }) => {
   const [installTxHash, setInstallTxHash] = useState<string | null>(null);
+  const [installExplorerUrl, setInstallExplorerUrl] = useState<string | null>(null);
   const [loadingTx, setLoadingTx] = useState(false);
 
   // Check if there's an active request (requested, assigned, or in_progress)
@@ -136,18 +137,34 @@ const DeviceStatusCard: React.FC<{
           setLoadingTx(true);
           const response = await VehicleBlockchainService.getDeviceInstallTransaction(vehicleId);
           console.log('✅ Device install transaction response:', JSON.stringify(response, null, 2));
-          console.log('✅ Response type:', typeof response);
-          console.log('✅ Response keys:', response ? Object.keys(response) : 'null');
-          console.log('✅ Response success:', response?.success);
-          console.log('✅ Response data:', response?.data);
-          console.log('✅ Response data hash:', response?.data?.hash);
-          
-          if (response && response.success && response.data && response.data.hash) {
-            console.log('📝 Setting installTxHash to:', response.data.hash);
-            setInstallTxHash(response.data.hash);
+
+          // Handle both shapes: AxiosResponse and already-unwrapped data
+          const maybeAxios = response as any;
+          const body = (maybeAxios && maybeAxios.data && maybeAxios.data.data)
+            ? maybeAxios.data // AxiosResponse { data: { success, data } }
+            : (maybeAxios && maybeAxios.success !== undefined)
+              ? maybeAxios // Already unwrapped { success, data }
+              : null;
+
+          const payload = body ? (body.data || body) : null;
+          const hash = payload?.hash || null;
+          const explorerFromApi = payload?.explorerUrl || null;
+
+          console.log('🧩 Parsed payload:', payload);
+          console.log('🧩 Parsed hash:', hash);
+
+          if (hash) {
+            setInstallTxHash(hash);
           } else {
-            console.warn('⚠️ Response structure unexpected or missing hash');
             setInstallTxHash(null);
+          }
+
+          // Prefer backend explorer URL if present; ensure devnet in non-prod
+          if (explorerFromApi) {
+            const needsCluster = import.meta.env.MODE !== 'production' && !/\?cluster=devnet$/.test(explorerFromApi);
+            setInstallExplorerUrl(needsCluster ? `${explorerFromApi}?cluster=devnet` : explorerFromApi);
+          } else {
+            setInstallExplorerUrl(null);
           }
         } catch (error) {
           console.error('❌ Failed to fetch install transaction:', error);
@@ -232,17 +249,18 @@ const DeviceStatusCard: React.FC<{
             <button 
               onClick={() => {
                 console.log('🔍 Debug - installTxHash:', installTxHash);
+                console.log('🔍 Debug - installExplorerUrl:', installExplorerUrl);
                 console.log('🔍 Debug - blockchainAddress:', blockchainAddress);
                 const explorerBase = 'https://explorer.solana.com';
                 const clusterParam = import.meta.env.MODE === 'production' ? '' : '?cluster=devnet';
-                const url = installTxHash
-                  ? `${explorerBase}/tx/${installTxHash}${clusterParam}`
-                  : (blockchainAddress ? `${explorerBase}/address/${blockchainAddress}${clusterParam}` : null);
+                const url = installExplorerUrl
+                  || (installTxHash ? `${explorerBase}/tx/${installTxHash}${clusterParam}` : null)
+                  || (blockchainAddress ? `${explorerBase}/address/${blockchainAddress}${clusterParam}` : null);
                 console.log('🔗 Opening URL:', url);
                 if (!url) return;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
-              disabled={loadingTx || (!installTxHash && !blockchainAddress)}
+              disabled={loadingTx || (!installExplorerUrl && !installTxHash && !blockchainAddress)}
               className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ExternalLink className="w-4 h-4 mr-1" />
