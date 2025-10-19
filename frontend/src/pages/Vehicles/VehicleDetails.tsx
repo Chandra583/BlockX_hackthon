@@ -219,11 +219,15 @@ const DeviceStatusCard: React.FC<{
           <div className="flex space-x-2 pt-2">
             <button 
               onClick={() => {
-                if (!installTxHash) return;
-                const url = solanaHelper.getExplorerUrl(installTxHash, 'tx');
+                const explorerBase = 'https://explorer.solana.com';
+                const clusterParam = import.meta.env.MODE === 'production' ? '' : '?cluster=devnet';
+                const url = installTxHash
+                  ? `${explorerBase}/tx/${installTxHash}${clusterParam}`
+                  : (blockchainAddress ? `${explorerBase}/address/${blockchainAddress}${clusterParam}` : null);
+                if (!url) return;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
-              disabled={!installTxHash || loadingTx}
+              disabled={loadingTx || (!installTxHash && !blockchainAddress)}
               className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ExternalLink className="w-4 h-4 mr-1" />
@@ -231,7 +235,7 @@ const DeviceStatusCard: React.FC<{
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            {installTxHash ? 'View device installation transaction' : 'Device installed'}
+            {installTxHash ? 'View device installation transaction' : 'Device installed (address view)'}
           </p>
         </div>
       </motion.div>
