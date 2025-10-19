@@ -1,5 +1,5 @@
 import apiService from './api';
-import { VehicleBlockchainTransaction, BlockchainHistoryResponse, SingleTransactionResponse } from '../types/blockchain';
+import type { VehicleBlockchainTransaction, BlockchainHistoryResponse, SingleTransactionResponse } from '../types/blockchain';
 
 export class VehicleBlockchainService {
   /**
