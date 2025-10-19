@@ -219,11 +219,14 @@ const DeviceStatusCard: React.FC<{
           <div className="flex space-x-2 pt-2">
             <button 
               onClick={() => {
+                console.log('🔍 Debug - installTxHash:', installTxHash);
+                console.log('🔍 Debug - blockchainAddress:', blockchainAddress);
                 const explorerBase = 'https://explorer.solana.com';
                 const clusterParam = import.meta.env.MODE === 'production' ? '' : '?cluster=devnet';
                 const url = installTxHash
                   ? `${explorerBase}/tx/${installTxHash}${clusterParam}`
                   : (blockchainAddress ? `${explorerBase}/address/${blockchainAddress}${clusterParam}` : null);
+                console.log('🔗 Opening URL:', url);
                 if (!url) return;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
