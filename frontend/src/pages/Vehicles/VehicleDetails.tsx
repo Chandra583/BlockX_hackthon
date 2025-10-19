@@ -136,9 +136,16 @@ const DeviceStatusCard: React.FC<{
           setLoadingTx(true);
           const response = await VehicleBlockchainService.getDeviceInstallTransaction(vehicleId);
           console.log('✅ Device install transaction response:', response);
-          if (response.success) {
+          console.log('✅ Response success:', response?.success);
+          console.log('✅ Response data:', response?.data);
+          console.log('✅ Response data hash:', response?.data?.hash);
+          
+          if (response && response.success && response.data && response.data.hash) {
             console.log('📝 Setting installTxHash to:', response.data.hash);
             setInstallTxHash(response.data.hash);
+          } else {
+            console.warn('⚠️ Response structure unexpected or missing hash');
+            setInstallTxHash(null);
           }
         } catch (error) {
           console.error('❌ Failed to fetch install transaction:', error);
