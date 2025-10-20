@@ -148,10 +148,22 @@ export class MileageController {
         .sort({ recordedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('recordedBy', 'firstName lastName role')
-        .populate('verifiedBy', 'firstName lastName role');
+        .populate('recordedBy', 'firstName lastName role');
 
       const totalRecords = await MileageHistory.countDocuments({ vehicleId: new Types.ObjectId(vehicleId) });
+
+      // Get summary data
+      const allRecords = await MileageHistory.find({ vehicleId: new Types.ObjectId(vehicleId) })
+        .sort({ recordedAt: 1 });
+      
+      const registeredMileage = allRecords.find(r => r.source === 'owner')?.mileage || 0;
+      const serviceVerifiedMileage = allRecords.find(r => r.source === 'service')?.mileage || null;
+      
+      // Get last OBD update (search from end)
+      const lastOBDUpdate = [...allRecords].reverse().find(r => r.source === 'automated');
+      
+      // Latest mileage is the last record
+      const latestMileage = allRecords.length > 0 ? allRecords[allRecords.length - 1].mileage : vehicle.currentMileage;
 
       res.status(200).json({
         status: 'success',
@@ -160,6 +172,14 @@ export class MileageController {
           vehicleId,
           vin: vehicle.vin,
           currentMileage: vehicle.currentMileage,
+          totalMileage: latestMileage,
+          registeredMileage,
+          serviceVerifiedMileage,
+          lastOBDUpdate: lastOBDUpdate ? {
+            mileage: lastOBDUpdate.mileage,
+            deviceId: lastOBDUpdate.deviceId,
+            recordedAt: lastOBDUpdate.recordedAt
+          } : null,
           history: mileageHistory.map(record => record.toObject()),
           pagination: {
             page,

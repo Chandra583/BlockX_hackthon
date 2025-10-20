@@ -3,6 +3,7 @@ import { InstallationRequest } from '../models/InstallationRequest.model';
 import Vehicle from '../models/core/Vehicle.model';
 import { User } from '../models/core/User.model';
 import { TelemetryBatch } from '../models/TelemetryBatch.model';
+import MileageHistory from '../models/core/MileageHistory.model';
 import { getAnchorService } from '../services/anchor.service';
 import { logger } from '../utils/logger';
 import { emitEvent, emitToUser } from '../utils/socketEmitter';
@@ -242,6 +243,24 @@ export const startInstallation = async (req: Request, res: Response) => {
       notes: 'Installation started'
     });
     await vehicle.save();
+
+    // Create MileageHistory record for service provider verification
+    try {
+      await MileageHistory.create({
+        vehicleId: vehicle._id,
+        vin: vehicle.vin,
+        mileage: initialMileage,
+        recordedBy: serviceProviderId,
+        recordedAt: new Date(),
+        source: 'service',
+        notes: 'Service provider verified mileage at installation',
+        verified: true,
+        deviceId: deviceId?.toString()
+      });
+      logger.info(`✅ Created MileageHistory record for installation: ${install._id}`);
+    } catch (mileageErr) {
+      logger.warn('⚠️ Failed to create MileageHistory record:', mileageErr);
+    }
 
     // Emit socket event
     emitEvent('install_started', {

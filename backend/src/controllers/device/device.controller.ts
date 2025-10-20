@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import { ApiError, ValidationError } from '../../utils/errors';
 import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITestResult } from '../../models';
+import MileageHistory from '../../models/core/MileageHistory.model';
 // import BatchProcessingService from '../../services/core/batchProcessing.service';
 import mongoose from 'mongoose';
 
@@ -725,6 +726,24 @@ export class DeviceController {
       vehicle.trustScore = vehicle.calculateTrustScore();
       
       await vehicle.save();
+
+      // Create MileageHistory record for OBD device update
+      try {
+        await MileageHistory.create({
+          vehicleId: vehicle._id,
+          vin: vehicle.vin,
+          mileage: data.mileage,
+          recordedBy: activeInstallation.ownerId,
+          recordedAt: new Date(),
+          source: 'automated',
+          notes: `OBD device ${(data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID} reading`,
+          verified: false,
+          deviceId: (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID
+        });
+        logger.info(`✅ Created MileageHistory record for OBD update: ${vehicle._id}`);
+      } catch (mileageErr) {
+        logger.warn('⚠️ Failed to create MileageHistory record:', mileageErr);
+      }
 
       logger.info('Vehicle mileage updated successfully:', {
         vehicleId: vehicle._id,

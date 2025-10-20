@@ -7,6 +7,7 @@ import MileageController from '../../controllers/mileage/mileage.controller';
 import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
 import { TelemetryBatch } from '../../models/TelemetryBatch.model';
+import MileageHistory from '../../models/core/MileageHistory.model';
 
 const router = Router();
 
@@ -269,6 +270,23 @@ router.post('/register',
       });
 
       await newVehicle.save();
+
+      // Create MileageHistory record for registration
+      try {
+        await MileageHistory.create({
+          vehicleId: newVehicle._id,
+          vin: newVehicle.vin,
+          mileage: parseInt(initialMileage),
+          recordedBy: userId,
+          recordedAt: new Date(),
+          source: 'owner',
+          notes: 'Initial mileage at registration',
+          verified: false
+        });
+        logger.info(`✅ Created MileageHistory record for vehicle registration: ${newVehicle.vin}`);
+      } catch (mileageErr) {
+        logger.warn('⚠️ Failed to create MileageHistory record:', mileageErr);
+      }
 
       logger.info(`✅ Vehicle registered with pending status: ${newVehicle.vin} by user ${userId}`);
 

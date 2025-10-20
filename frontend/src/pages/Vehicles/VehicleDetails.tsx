@@ -379,16 +379,18 @@ const VehicleDetails: React.FC = () => {
     };
   }, []);
 
-  // Auto-refresh installation request data every 30 seconds
+  // Auto-refresh installation request data every 30 seconds ONLY when there's an active request
   useEffect(() => {
     if (!id) return;
-    
+    const isActive = !!(installationRequest && (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress'));
+    if (!isActive) return;
+
     const interval = setInterval(() => {
       fetchInstallationRequest(id);
-    }, 30000); // Refresh every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, installationRequest?.status]);
 
   const fetchVehicleDetails = async (vehicleId: string) => {
     try {
@@ -629,7 +631,7 @@ const VehicleDetails: React.FC = () => {
                     </p>
                   )}
                   {/* Inject total distance from batches summary via custom event */}
-                  <span id="last10days-total-distance" className="block text-xs text-gray-500 mt-1"></span>
+                  {/* <span id="last10days-total-distance" className="block text-xs text-gray-500 mt-1"></span> */}
                 </div>
               </div>
               <div className="flex items-center space-x-3">
