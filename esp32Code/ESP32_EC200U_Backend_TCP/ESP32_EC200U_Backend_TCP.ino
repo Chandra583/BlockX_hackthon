@@ -45,7 +45,8 @@ struct Config {
   
   // Security
   bool enableSSL = true;
-  char deviceID[32] = "ESP32_VTS_001";
+ 
+  char deviceId[32] = "OBD3001";  // OBD Device ID for installation mapping
   
   // ========== VEHICLE SELECTION SYSTEM ==========
   // CHANGE THIS NUMBER TO SELECT YOUR VEHICLE:
@@ -257,13 +258,14 @@ void configureVehiclePIDs() {
                        ", Tertiary: 0x" + String(config.tertiaryOdometerPID, HEX));
 }
 
-// Load configuration from preferences
+  // Load configuration from preferences
 void loadConfiguration() {
   preferences.begin("vehicle_config", false);
   
   // Load with defaults
   strlcpy(config.serverHost, preferences.getString("serverHost", config.serverHost).c_str(), sizeof(config.serverHost));
   strlcpy(config.apnName, preferences.getString("apnName", config.apnName).c_str(), sizeof(config.apnName));
+  strlcpy(config.deviceId, preferences.getString("deviceId", config.deviceId).c_str(), sizeof(config.deviceId));
   config.sleepDurationMinutes = preferences.getUInt("sleepDuration", config.sleepDurationMinutes);
   config.maxRetryAttempts = preferences.getUInt("maxRetries", config.maxRetryAttempts);
   
@@ -271,12 +273,14 @@ void loadConfiguration() {
   configureVehiclePIDs();
   
   logMessage(LOG_INFO, "Configuration loaded");
+  logMessage(LOG_INFO, "OBD Device ID: " + String(config.deviceId));
 }
 
 // Save configuration to preferences
 void saveConfiguration() {
   preferences.putString("serverHost", config.serverHost);
   preferences.putString("apnName", config.apnName);
+  preferences.putString("deviceId", config.deviceId);
   preferences.putUInt("sleepDuration", config.sleepDurationMinutes);
   preferences.putUInt("maxRetries", config.maxRetryAttempts);
   preferences.end();
@@ -2071,7 +2075,8 @@ void setup() {
       
       // Create successful OBD data message with proper JSON formatting
       deviceStatus = "{";
-      deviceStatus += "\"deviceID\":\"" + String(config.deviceID) + "\",";
+      // Send ONLY one identifier: deviceID set to OBD device id
+      deviceStatus += "\"deviceID\":\"" + String(config.deviceId) + "\",";
       deviceStatus += "\"status\":\"obd_connected\",";
       deviceStatus += "\"message\":\"Veepeak OBD data collected successfully\",";
       
@@ -2115,7 +2120,8 @@ void setup() {
     logMessage(LOG_WARN, veepeakConnected ? "OBD data collection failed" : "Failed to connect to Veepeak WiFi");
     
     deviceStatus = "{";
-    deviceStatus += "\"deviceID\":\"" + String(config.deviceID) + "\",";
+    // Send ONLY one identifier: deviceID set to OBD device id
+    deviceStatus += "\"deviceID\":\"" + String(config.deviceId) + "\",";
     deviceStatus += "\"status\":\"device_not_connected\",";
     deviceStatus += "\"message\":\"" + String(veepeakConnected ? "OBD data collection failed" : "Veepeak WiFi connection failed") + "\",";
     deviceStatus += "\"veepeakConnected\":" + String(veepeakConnected ? "true" : "false") + ",";

@@ -24,6 +24,8 @@ import { VehicleBlockchainService } from '../../services/vehicleBlockchain';
 import { config } from '../../config/env';
 import toast from 'react-hot-toast';
 import { solanaHelper } from '../../lib/solana';
+import DailyBatchesCard from '../../components/DailyBatchesCard';
+import DailyBatchesChart from '../../components/DailyBatchesChart';
 
 interface Vehicle {
   id: string;
@@ -120,6 +122,7 @@ const DeviceStatusCard: React.FC<{
   const [installTxHash, setInstallTxHash] = useState<string | null>(null);
   const [installExplorerUrl, setInstallExplorerUrl] = useState<string | null>(null);
   const [loadingTx, setLoadingTx] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   // Check if there's an active request (requested, assigned, or in_progress)
   const hasActiveRequest = installationRequest && 
@@ -180,6 +183,31 @@ const DeviceStatusCard: React.FC<{
   }, [isDeviceInstalled, vehicleId]);
 
   if (hasActiveRequest) {
+    const handleCancelRequest = async () => {
+      if (!installationRequest?.id) return;
+      
+      try {
+        setCancelLoading(true);
+        const response = await InstallationService.cancelInstallationRequest(installationRequest.id);
+        
+        if (response.success) {
+          toast.success('Installation request cancelled successfully!');
+          // Notify listeners (parent auto-refresh will also pick this up shortly)
+          window.dispatchEvent(new CustomEvent('installation-request-updated', { detail: { vehicleId } }));
+        } else {
+          toast.error(response.message || 'Failed to cancel installation request');
+        }
+      } catch (error: any) {
+        console.error('Failed to cancel installation request:', error);
+        toast.error(
+          error.response?.data?.message || 
+          'Failed to cancel installation request. Please try again.'
+        );
+      } finally {
+        setCancelLoading(false);
+      }
+    };
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -196,13 +224,24 @@ const DeviceStatusCard: React.FC<{
             {installationRequest.status === 'requested' ? 'Requested' : 
              installationRequest.status === 'assigned' ? 'Assigned' : 'In Progress'}
           </div>
-          <button
-            disabled={true}
-            className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
-          >
-            <Smartphone className="w-4 h-4 mr-1" />
-            Request Pending
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button
+              disabled={true}
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+            >
+              <Smartphone className="w-4 h-4 mr-1" />
+              Request Pending
+            </button>
+            {installationRequest.status === 'requested' && (
+              <button
+                onClick={handleCancelRequest}
+                disabled={cancelLoading}
+                className="inline-flex items-center px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                Cancel Request
+              </button>
+            )}
+          </div>
           <p className="text-xs text-gray-500 mt-2">Submitted on {new Date(installationRequest.createdAt).toLocaleDateString()}</p>
           <p className="text-xs text-gray-500 mt-1">Device request already submitted</p>
         </div>
@@ -318,6 +357,18 @@ const VehicleDetails: React.FC = () => {
     }
   }, [id]);
 
+  // Listen to batches summary to show total distance in current mileage card
+  useEffect(() => {
+    const handler = (e: any) => {
+      const el = document.getElementById('last10days-total-distance');
+      if (el && e?.detail?.totalKm !== undefined) {
+        el.textContent = `Last ${10} days total: ${Number(e.detail.totalKm).toLocaleString()} km`;
+      }
+    };
+    window.addEventListener('batches-total-distance', handler as EventListener);
+    return () => window.removeEventListener('batches-total-distance', handler as EventListener);
+  }, []);
+
   // Auto-refresh installation request data every 30 seconds
   useEffect(() => {
     if (!id) return;
@@ -337,7 +388,7 @@ const VehicleDetails: React.FC = () => {
       const vehicleData = {
         id: response.data.id,
         vin: response.data.vin,
-        vehicleNumber: response.data.vehicleNumber || '',
+        vehicleNumber: (response.data as any).vehicleNumber || '',
         make: response.data.make,
         model: response.data.model,
         year: response.data.year,
@@ -345,7 +396,7 @@ const VehicleDetails: React.FC = () => {
         bodyType: response.data.bodyType,
         fuelType: response.data.fuelType,
         transmission: response.data.transmission,
-        mileage: response.data.mileage || 0,
+        mileage: (response.data as any).currentMileage ?? response.data.mileage ?? 0,
         trustScore: (response.data as any).trustScore || 100,
         verificationStatus: response.data.verificationStatus,
         isForSale: response.data.isForSale,
@@ -369,6 +420,14 @@ const VehicleDetails: React.FC = () => {
         // Get the most recent request
         const latestRequest = response.data.requests[0];
         setInstallationRequest(latestRequest);
+        // Fallback vehicle number from install request if missing
+        setVehicle(prev => {
+          if (!prev) return prev;
+          if (!prev.vehicleNumber && latestRequest.vehicle?.vehicleNumber) {
+            return { ...prev, vehicleNumber: latestRequest.vehicle.vehicleNumber } as any;
+          }
+          return prev;
+        });
         
         // Extract transaction history from installation request
         const transactions = latestRequest.history?.map((historyItem: any) => ({
@@ -394,9 +453,47 @@ const VehicleDetails: React.FC = () => {
     }
   };
 
-  const handleRequestInstall = () => {
-    console.log('Request device installation for vehicle:', id);
-    // TODO: Implement installation request logic
+  const handleRequestInstall = async () => {
+    if (!id) {
+      toast.error('Vehicle ID not found');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Create installation request
+      // The backend will extract the ownerId from the JWT token
+      const requestData = {
+        vehicleId: id,
+        notes: `Device installation request for ${vehicle.make} ${vehicle.model} (${vehicle.vin})`
+      };
+
+      const response = await InstallationService.createInstallationRequest(requestData);
+      
+      if (response.success) {
+        toast.success('Device installation request submitted successfully!');
+        
+        // Refresh the installation request data
+        await fetchInstallationRequest(id);
+        
+        // Show success message with details
+        toast.success(
+          `Request submitted! You'll be notified when a service provider is assigned.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(response.message || 'Failed to submit installation request');
+      }
+    } catch (error: any) {
+      console.error('Failed to create installation request:', error);
+      toast.error(
+        error.response?.data?.message || 
+        'Failed to submit installation request. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getExplorerUrl = (address?: string) => {
@@ -492,7 +589,7 @@ const VehicleDetails: React.FC = () => {
                 <Hash className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">Vehicle Number</p>
-                  <p className="font-medium">{vehicle.vehicleNumber}</p>
+                  <p className="font-medium">{vehicle.vehicleNumber || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -513,7 +610,16 @@ const VehicleDetails: React.FC = () => {
                 <Gauge className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">Current Mileage</p>
-                  <p className="font-medium">{vehicle.mileage.toLocaleString()} miles</p>
+                  <p className="font-medium">
+                    {vehicle.mileage.toLocaleString()} km
+                  </p>
+                  {vehicle.lastMileageUpdate && (
+                    <p className="text-xs text-gray-400">
+                      Last updated: {new Date(vehicle.lastMileageUpdate).toLocaleString()}
+                    </p>
+                  )}
+                  {/* Inject total distance from batches summary via custom event */}
+                  <span id="last10days-total-distance" className="block text-xs text-gray-500 mt-1"></span>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -551,7 +657,16 @@ const VehicleDetails: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Last Mileage Update</span>
-                    <span>{vehicle.lastMileageUpdate ? new Date(vehicle.lastMileageUpdate).toLocaleDateString() : 'N/A'}</span>
+                    <div className="text-right">
+                      {vehicle.lastMileageUpdate ? (
+                        <div>
+                          <div className="font-medium">{new Date(vehicle.lastMileageUpdate).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-400">{new Date(vehicle.lastMileageUpdate).toLocaleTimeString()}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">N/A</span>
+                      )}
+                    </div>
                   </div>
                   <button 
                     onClick={() => {
@@ -634,6 +749,12 @@ const VehicleDetails: React.FC = () => {
           {transactionHistory.length > 0 && (
             <TransactionHistory transactions={transactionHistory} />
           )}
+        </div>
+
+        {/* Combined row: Daily Batches (left) + Driving Insights Chart (right) */}
+        <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <DailyBatchesCard vehicleId={vehicle.id} />
+          <DailyBatchesChart vehicleId={vehicle.id} />
         </div>
       </div>
     </div>

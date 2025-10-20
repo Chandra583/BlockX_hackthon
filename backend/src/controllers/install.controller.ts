@@ -195,6 +195,9 @@ export const startInstallation = async (req: Request, res: Response) => {
       model: vehicle.vehicleModel,
       year: vehicle.year
     }, null, 2));
+    // Ensure install carries deviceId and initialMileage BEFORE anchoring so payload includes them
+    install.deviceId = deviceId?.toString();
+    install.initialMileage = initialMileage;
     
     const anchorResult = await anchorService.anchorInstallEvent(install, vehicle, ownerData, serviceProviderData, ownerWallet);
     
@@ -208,8 +211,7 @@ export const startInstallation = async (req: Request, res: Response) => {
 
     // Update installation
     install.startedAt = new Date();
-    install.deviceId = deviceId?.toString();
-    install.initialMileage = initialMileage;
+    // Persist fields (already set before anchoring)
     install.status = 'completed';
     install.solanaTx = anchorResult.solanaTx;
     install.arweaveTx = anchorResult.arweaveTx;

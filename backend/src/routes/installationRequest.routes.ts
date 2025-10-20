@@ -63,4 +63,11 @@ router.post('/:id/complete', authorize('service'), installationController.comple
  */
 router.get('/:id/raw', installationController.getRawInstallationRequest);
 
+/**
+ * POST /api/v1/installation-requests/:id/cancel
+ * Cancel installation request
+ * Access: Owner or Admin
+ */
+router.post('/:id/cancel', installationController.cancelInstallationRequest);
+
 export default router;

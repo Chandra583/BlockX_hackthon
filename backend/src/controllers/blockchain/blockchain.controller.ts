@@ -117,7 +117,7 @@ export class BlockchainController {
         throw new UnauthorizedError('User authentication required');
       }
 
-      const { vehicleId, vin, make, model, year, initialMileage, vehicleNumber } = req.body;
+      const { vehicleId, vin, make, model, year, initialMileage, vehicleNumber, walletAddress } = req.body;
       
       logger.info(`🚗 Vehicle registration request:`, { vehicleId, vin, make, model, year, initialMileage, vehicleNumber });
       
@@ -176,6 +176,8 @@ export class BlockchainController {
         lastMileageUpdate: new Date(),
         blockchainHash: blockchainRecord.transactionHash,
         blockchainAddress: blockchainRecord.blockchainAddress,
+        // Persist the provided walletAddress for admin visibility (optional field)
+        ownerWalletAddress: walletAddress || wallet.publicKey,
         verificationStatus: 'verified',
         trustScore: 0,
         isForSale: false,

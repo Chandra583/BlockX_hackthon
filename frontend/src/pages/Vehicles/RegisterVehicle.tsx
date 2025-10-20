@@ -15,6 +15,7 @@ const RegisterVehicle: React.FC = () => {
     model: '',
     year: '',
     initialMileage: '',
+    walletAddress: '',
     color: '',
     bodyType: 'sedan',
     fuelType: 'gasoline',
@@ -44,6 +45,14 @@ const RegisterVehicle: React.FC = () => {
         setLoading(false);
         return;
       }
+
+      // Confirm immutable mileage logging
+      const confirmMsg = `You are about to record the initial/current mileage (${formData.initialMileage} km) on the blockchain for vehicle ${formData.vehicleNumber}. This cannot be reset. Do you want to proceed?`;
+      const ok = window.confirm(confirmMsg);
+      if (!ok) {
+        setLoading(false);
+        return;
+      }
       
       const registrationData = {
         vin: formData.vin.toUpperCase(),
@@ -52,6 +61,7 @@ const RegisterVehicle: React.FC = () => {
         model: formData.model,
         year: parseInt(formData.year),
         initialMileage: parseInt(formData.initialMileage),
+        walletAddress: formData.walletAddress || undefined,
         color: formData.color || undefined,
         bodyType: formData.bodyType || undefined,
         fuelType: formData.fuelType || undefined,
@@ -129,6 +139,25 @@ const RegisterVehicle: React.FC = () => {
                   required
                 />
               </div>
+
+            {/* Wallet Address */}
+            <div className="md:col-span-2">
+              <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                Your Wallet Address (Solana)
+              </label>
+              <input
+                type="text"
+                id="walletAddress"
+                name="walletAddress"
+                value={formData.walletAddress}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Paste your wallet address"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Tip: Open the Wallet section, copy your address, and paste it here. We’ll still use your on-file wallet to sign transactions; this helps admin verify.
+              </p>
+            </div>
 
               {/* Make */}
               <div>

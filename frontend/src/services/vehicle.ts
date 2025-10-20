@@ -44,6 +44,7 @@ export interface VehicleRegistrationData {
   model: string;
   year: number;
   initialMileage: number;
+  walletAddress?: string;
   color?: string;
   bodyType?: string;
   fuelType?: string;
@@ -254,6 +255,13 @@ export class VehicleService {
    */
   static async getVehicleById(vehicleId: string): Promise<VehicleResponse> {
     return await apiService.get<VehicleResponse>(`/vehicles/${vehicleId}`);
+  }
+  
+  /**
+   * Get telemetry batches for a vehicle
+   */
+  static async getTelemetryBatches(vehicleId: string, limit: number = 30): Promise<any> {
+    return await apiService.get(`/vehicles/${vehicleId}/telemetry-batches`, { params: { limit } });
   }
   
   /**

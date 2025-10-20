@@ -13,6 +13,7 @@ interface InstallAssignment {
     model: string;
     year: number;
     vin: string;
+    currentMileage?: number;
     lastVerifiedMileage?: number;
   };
   owner: {
@@ -57,6 +58,7 @@ const SPInstalls: React.FC = () => {
             model: install.vehicle?.vehicleModel || install.vehicle?.model || '',
             year: install.vehicle?.year || 0,
             vin: install.vehicle?.vin || '',
+            currentMileage: (install.vehicle?.currentMileage ?? install.vehicleId?.currentMileage),
             lastVerifiedMileage: install.vehicle?.lastVerifiedMileage
           },
           owner: {

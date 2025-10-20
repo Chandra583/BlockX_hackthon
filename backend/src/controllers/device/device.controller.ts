@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 // Device data interface matching ESP32 data structure
 interface ESP32DeviceData {
   deviceID: string;
+  deviceId?: string;  // OBD Device ID for installation mapping
   status: 'obd_connected' | 'device_not_connected' | 'error';
   message: string;
   vin?: string;
@@ -41,6 +42,7 @@ export class DeviceController {
     let telemetryRecord: IVehicleTelemetry | null = null;
     let deviceRecord: IDevice | null = null;
     let testRecord: ITestResult | null = null;
+    let duration = 0;
 
     try {
       // Log raw request data for debugging
@@ -94,23 +96,36 @@ export class DeviceController {
       }
 
       // Find or create device record
-      logger.info('Attempting to find device:', { deviceID: deviceData.deviceID });
+      // Normalize identifier: prefer deviceId if provided, else deviceID
+      const normalizedObdId = (deviceData.deviceId && deviceData.deviceId.trim().length > 0)
+        ? deviceData.deviceId.trim()
+        : deviceData.deviceID.trim();
+
+      logger.info('Attempting to find device:', { deviceID: normalizedObdId });
       try {
-        deviceRecord = await Device.findOne({ deviceID: deviceData.deviceID });
-        logger.info('Device findOne result:', { found: !!deviceRecord, deviceID: deviceData.deviceID });
+        deviceRecord = await Device.findOne({ deviceID: normalizedObdId });
+        logger.info('Device findOne result:', { found: !!deviceRecord, deviceID: normalizedObdId });
       } catch (findError) {
         logger.error('Error finding device:', findError);
         throw new Error(`Failed to find device: ${findError.message}`);
       }
 
       if (!deviceRecord) {
-        logger.info('Creating new device:', { deviceID: deviceData.deviceID });
+        logger.info('Creating new device:', { deviceID: normalizedObdId });
         try {
+          // Create a dummy user ID for device registration (system user)
+          const systemUserId = new mongoose.Types.ObjectId();
+          
           const deviceData_safe = {
-            deviceID: deviceData.deviceID,
+            deviceID: normalizedObdId,
             deviceType: 'ESP32_Telematics' as const,
             status: 'active' as const,
             description: 'Auto-registered ESP32 device',
+            installationRequest: {
+              requestedBy: systemUserId,
+              requestedAt: new Date(),
+              priority: 'medium' as const
+            },
             configuration: {
               selectedVehicle: 99,
               sleepDurationMinutes: 2,
@@ -227,13 +242,21 @@ export class DeviceController {
         throw new Error(`Failed to create telemetry record: ${telemetryError.message}`);
       }
 
+      // Process device identifier mapping (supports deviceId or deviceID) and update vehicle mileage
+      const obDeviceId = (deviceData.deviceId && deviceData.deviceId.trim().length > 0)
+        ? deviceData.deviceId
+        : deviceData.deviceID;
+      if (obDeviceId && deviceData.mileage && deviceData.status === 'obd_connected') {
+        await DeviceController.processDeviceIdMapping(deviceData, telemetryRecord);
+      }
+
       // Process different status types and update validation
       switch (deviceData.status) {
         case 'obd_connected':
-          await DeviceController.processVehicleData(deviceData, telemetryRecord);
+          await DeviceController.processVehicleData({ ...deviceData, deviceId: normalizedObdId, deviceID: normalizedObdId }, telemetryRecord);
           break;
         case 'device_not_connected':
-          await DeviceController.processDeviceError(deviceData, telemetryRecord);
+          await DeviceController.processDeviceError({ ...deviceData, deviceId: normalizedObdId, deviceID: normalizedObdId }, telemetryRecord);
           break;
         default:
           logger.warn('Unknown device status:', deviceData.status);
@@ -241,14 +264,14 @@ export class DeviceController {
 
       // Create test result record
       try {
-        logger.info('Creating test result record:', { deviceID: deviceData.deviceID });
+        logger.info('Creating test result record:', { deviceID: normalizedObdId });
         const endTime = new Date();
-        const duration = endTime.getTime() - startTime.getTime();
+        duration = endTime.getTime() - startTime.getTime();
         
         const testData = {
           testType: 'device_status' as const,
           testName: `ESP32 ${deviceData.status} Test`,
-          deviceID: deviceData.deviceID,
+          deviceID: normalizedObdId,
           device: deviceRecord._id,
           status: 'passed' as const,
           result: 'success' as const,
@@ -306,7 +329,7 @@ export class DeviceController {
         status: 'success',
         message: 'Device status received and saved successfully',
         data: {
-          deviceID: deviceData.deviceID,
+          deviceID: normalizedObdId,
           telemetryId: telemetryRecord._id,
           testId: testRecord._id,
           processedAt: new Date().toISOString(),
@@ -627,6 +650,121 @@ export class DeviceController {
     } catch (error) {
       logger.error('Error processing device error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Process deviceId mapping to installations and update vehicle mileage
+   */
+  private static async processDeviceIdMapping(data: ESP32DeviceData, telemetryRecord: IVehicleTelemetry): Promise<void> {
+    try {
+      logger.info('Processing deviceId mapping:', {
+        deviceId: data.deviceId || data.deviceID,
+        mileage: data.mileage,
+        vin: data.vin
+      });
+
+      // Import InstallationRequest and Vehicle models
+      const { InstallationRequest } = await import('../../models');
+      const { default: Vehicle } = await import('../../models/core/Vehicle.model');
+
+      // Find active installation with matching deviceId
+      const activeInstallation = await InstallationRequest.findOne({
+        deviceId: (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID,
+        status: { $in: ['in_progress', 'assigned'] }
+      }).populate('vehicleId ownerId');
+
+      if (!activeInstallation) {
+        logger.warn('No active installation found for deviceId:', data.deviceId);
+        return;
+      }
+
+      logger.info('Found active installation:', {
+        installId: activeInstallation._id,
+        vehicleId: activeInstallation.vehicleId,
+        ownerId: activeInstallation.ownerId,
+        status: activeInstallation.status
+      });
+
+      // Get the vehicle
+      const vehicle = await Vehicle.findById(activeInstallation.vehicleId);
+      if (!vehicle) {
+        logger.error('Vehicle not found for installation:', activeInstallation.vehicleId);
+        return;
+      }
+
+      // Validate VIN if provided
+      if (data.vin && vehicle.vin !== data.vin) {
+        logger.warn('VIN mismatch:', {
+          deviceVin: data.vin,
+          vehicleVin: vehicle.vin,
+          vehicleId: vehicle._id
+        });
+        // Continue processing but log the mismatch
+      }
+
+      // Update vehicle mileage
+      const mileageRecord = {
+        mileage: data.mileage,
+        recordedBy: activeInstallation.ownerId,
+        recordedAt: new Date(),
+        source: 'automated',
+        notes: `OBD device ${(data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID} reading`,
+        verified: false,
+        deviceId: (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID
+      };
+
+      // Add to mileage history
+      vehicle.mileageHistory.push(mileageRecord);
+      
+      // Update current mileage and last update time
+      vehicle.currentMileage = data.mileage;
+      vehicle.lastMileageUpdate = new Date();
+      
+      // Recalculate trust score
+      vehicle.trustScore = vehicle.calculateTrustScore();
+      
+      await vehicle.save();
+
+      logger.info('Vehicle mileage updated successfully:', {
+        vehicleId: vehicle._id,
+        newMileage: data.mileage,
+        previousMileage: vehicle.currentMileage - (data.mileage - vehicle.currentMileage),
+        trustScore: vehicle.trustScore
+      });
+
+      // Update telemetry record with installation info
+      await VehicleTelemetry.updateOne(
+        { _id: telemetryRecord._id },
+        {
+          $set: {
+            'rawData.installId': activeInstallation._id,
+            'rawData.vehicleId': vehicle._id,
+            'rawData.ownerId': activeInstallation.ownerId
+          }
+        }
+      );
+
+      // Emit socket event for real-time updates (if socket.io is available)
+      try {
+        const { io } = await import('../../server');
+        if (io) {
+          io.emit('vehicle_mileage_updated', {
+            vehicleId: vehicle._id,
+            ownerId: activeInstallation.ownerId,
+            newMileage: data.mileage,
+            deviceId: data.deviceId,
+            timestamp: new Date()
+          });
+          logger.info('Socket event emitted for mileage update');
+        }
+      } catch (socketError) {
+        logger.warn('Failed to emit socket event:', socketError);
+      }
+
+    } catch (error) {
+      logger.error('Error processing deviceId mapping:', error);
+      // Don't throw - this is not critical for ESP32 functionality
     }
   }
 

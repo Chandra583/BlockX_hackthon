@@ -23,7 +23,13 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
   onSubmit 
 }) => {
   const [deviceId, setDeviceId] = useState('');
-  const [initialMileage, setInitialMileage] = useState(vehicle.currentMileage?.toString() || vehicle.lastVerifiedMileage?.toString() || '');
+  const [initialMileage, setInitialMileage] = useState(
+    vehicle.currentMileage !== undefined
+      ? vehicle.currentMileage.toString()
+      : vehicle.lastVerifiedMileage !== undefined
+      ? vehicle.lastVerifiedMileage.toString()
+      : ''
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -57,7 +63,13 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
   const handleClose = () => {
     // Reset form when closing
     setDeviceId('');
-    setInitialMileage(vehicle.currentMileage?.toString() || vehicle.lastVerifiedMileage?.toString() || '');
+    setInitialMileage(
+      vehicle.currentMileage !== undefined
+        ? vehicle.currentMileage.toString()
+        : vehicle.lastVerifiedMileage !== undefined
+        ? vehicle.lastVerifiedMileage.toString()
+        : ''
+    );
     setError('');
     setSuccess(false);
     setResult(null);
@@ -141,9 +153,9 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <h4 className="font-medium text-gray-900">{vehicle.year} {vehicle.make} {vehicle.model}</h4>
                   <p className="text-sm text-gray-500">VIN: {vehicle.vin}</p>
-                  {vehicle.lastVerifiedMileage !== undefined && (
+                  {(vehicle.currentMileage !== undefined || vehicle.lastVerifiedMileage !== undefined) && (
                     <p className="text-sm text-gray-500">
-                      Last Verified Mileage: {vehicle.lastVerifiedMileage.toLocaleString()}
+                      Admin verified mileage: {(vehicle.currentMileage ?? vehicle.lastVerifiedMileage ?? 0).toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -180,7 +192,7 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
 
                 <div className="mb-6">
                   <label htmlFor="initialMileage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Initial Mileage
+                   Enter miles when install time shoing
                   </label>
                   <input
                     type="number"
@@ -194,7 +206,7 @@ const InstallStartModal: React.FC<InstallStartModalProps> = ({
                   />
                   {(vehicle.currentMileage !== undefined || vehicle.lastVerifiedMileage !== undefined) && (
                     <p className="mt-1 text-sm text-gray-500">
-                      Last verified: {(vehicle.currentMileage || vehicle.lastVerifiedMileage || 0).toLocaleString()} miles
+                      Registered mileage: {(vehicle.currentMileage ?? vehicle.lastVerifiedMileage ?? 0).toLocaleString()} miles
                     </p>
                   )}
                 </div>

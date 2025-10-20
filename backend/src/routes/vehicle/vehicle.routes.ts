@@ -5,6 +5,7 @@ import Vehicle from '../../models/core/Vehicle.model';
 import { Notification } from '../../models/core/Notification.model';
 import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
+import { TelemetryBatch } from '../../models/TelemetryBatch.model';
 
 const router = Router();
 
@@ -373,6 +374,7 @@ router.get('/:vehicleId',
         data: {
           id: vehicle._id,
           vin: vehicle.vin,
+          vehicleNumber: vehicle.vehicleNumber,
           make: vehicle.make,
           model: vehicle.vehicleModel,
           year: vehicle.year,
@@ -484,3 +486,48 @@ router.get('/:vehicleId/blockchain-history',
 );
 
 export default router;
+
+/**
+ * GET /api/vehicles/:vehicleId/telemetry-batches
+ * Return daily batches of telemetry for a vehicle (latest first)
+ */
+router.get('/:vehicleId/telemetry-batches', async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    const { vehicleId } = req.params;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    const vehicle = await Vehicle.findOne({ _id: vehicleId, ownerId: userId });
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Vehicle not found or access denied' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 90);
+    const batches = await TelemetryBatch.find({ vehicleId: vehicleId })
+      .sort({ recordedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Telemetry batches retrieved successfully',
+      data: {
+        vehicleId,
+        total: batches.length,
+        batches: batches.map(b => ({
+          id: b._id,
+          recordedAt: b.recordedAt,
+          deviceId: b.deviceId,
+          lastRecordedMileage: b.lastRecordedMileage,
+          distanceDelta: b.distanceDelta,
+          dataPoints: b.batchData?.length || 0
+        }))
+      }
+    });
+  } catch (error) {
+    logger.error('❌ Failed to get telemetry batches:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve telemetry batches' });
+  }
+});

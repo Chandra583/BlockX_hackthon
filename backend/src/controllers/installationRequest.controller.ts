@@ -251,7 +251,7 @@ export const getOwnerVehicles = async (req: Request, res: Response) => {
       });
     }
 
-    // Build query
+    // Build base query
     const query: any = { ownerId };
     
     // Apply search filter
@@ -262,7 +262,18 @@ export const getOwnerVehicles = async (req: Request, res: Response) => {
       ];
     }
 
-    // Get vehicles with pagination
+    // Exclude vehicles that already have an active installation request
+    const activeRequests = await InstallationRequest.find({
+      ownerId,
+      status: { $in: ['requested', 'assigned', 'in_progress'] }
+    }).select('vehicleId');
+
+    const excludedVehicleIds = activeRequests.map((r: any) => r.vehicleId);
+    if (excludedVehicleIds.length > 0) {
+      query._id = { $nin: excludedVehicleIds };
+    }
+
+    // Get vehicles with pagination (only those without an active request)
     const vehicles = await Vehicle.find(query)
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -561,6 +572,76 @@ export const getRawInstallationRequest = async (req: Request, res: Response) => 
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve installation request',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Cancel installation request
+export const cancelInstallationRequest = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    // Find the installation request
+    const installRequest = await InstallationRequest.findById(id);
+    if (!installRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Installation request not found'
+      });
+    }
+
+    // Check if user can cancel (owner or admin)
+    if (userRole !== 'admin' && installRequest.ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only the owner or admin can cancel this request'
+      });
+    }
+
+    // Check if request can be cancelled (only requested status)
+    if (installRequest.status !== 'requested') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only requested installation requests can be cancelled'
+      });
+    }
+
+    // Update status to cancelled
+    installRequest.status = 'cancelled';
+    installRequest.history.push({
+      action: 'cancelled',
+      by: userId,
+      at: new Date()
+    });
+
+    await installRequest.save();
+
+    logger.info(`✅ Installation request ${id} cancelled by user ${userId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Installation request cancelled successfully',
+      data: {
+        id: installRequest._id,
+        status: installRequest.status,
+        cancelledAt: new Date()
+      }
+    });
+  } catch (error) {
+    logger.error('❌ Failed to cancel installation request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel installation request',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

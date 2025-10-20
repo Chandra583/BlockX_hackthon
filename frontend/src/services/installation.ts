@@ -66,7 +66,7 @@ export interface Vehicle {
 }
 
 export interface InstallationRequestCreateData {
-  ownerId: string;
+  ownerId?: string; // Optional - backend will extract from JWT token
   vehicleId: string;
   notes?: string;
 }
@@ -240,6 +240,13 @@ export class InstallationService {
    */
   static async getRawInstallationRequest(id: string): Promise<any> {
     return await apiService.get(`/v1/installation-requests/${id}/raw`);
+  }
+
+  /**
+   * Cancel installation request
+   */
+  static async cancelInstallationRequest(id: string): Promise<InstallationResponse> {
+    return await apiService.post<InstallationResponse>(`/v1/installation-requests/${id}/cancel`);
   }
 }
 

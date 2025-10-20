@@ -108,7 +108,7 @@ const VehicleList: React.FC = () => {
         model: vehicle.model,
         year: vehicle.year,
         color: vehicle.color,
-        currentMileage: vehicle.mileage || 0,
+        currentMileage: vehicle.currentMileage || 0,
         trustScore: (vehicle as any).trustScore || 100, // trustScore might not be in the TS interface but is in the API response
         verificationStatus: vehicle.verificationStatus,
         isForSale: vehicle.isForSale,
