@@ -26,6 +26,7 @@ import toast from 'react-hot-toast';
 import { solanaHelper } from '../../lib/solana';
 import DailyBatchesCard from '../../components/DailyBatchesCard';
 import DailyBatchesChart from '../../components/DailyBatchesChart';
+import MileageHistoryCard from '../../components/MileageHistoryCard';
 
 interface Vehicle {
   id: string;
@@ -125,11 +126,10 @@ const DeviceStatusCard: React.FC<{
   const [cancelLoading, setCancelLoading] = useState(false);
 
   // Check if there's an active request (requested, assigned, or in_progress)
-  const hasActiveRequest = installationRequest && 
-    (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress');
+  const hasActiveRequest = !!(installationRequest && (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress'));
   
-  // Check if device is installed
-  const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
+  // Device is considered installed when latest request shows completed
+  const isDeviceInstalled = !!(installationRequest && installationRequest.status === 'completed');
 
   // Fetch device installation transaction when device is installed
   useEffect(() => {
@@ -366,7 +366,17 @@ const VehicleDetails: React.FC = () => {
       }
     };
     window.addEventListener('batches-total-distance', handler as EventListener);
-    return () => window.removeEventListener('batches-total-distance', handler as EventListener);
+    const latestHandler = (e: any) => {
+      const el = document.getElementById('current-mileage-fallback');
+      if (el && e?.detail?.latestMileage !== undefined) {
+        el.textContent = `${Number(e.detail.latestMileage).toLocaleString()} km`;
+      }
+    };
+    window.addEventListener('batches-latest-mileage', latestHandler as EventListener);
+    return () => {
+      window.removeEventListener('batches-total-distance', handler as EventListener);
+      window.removeEventListener('batches-latest-mileage', latestHandler as EventListener);
+    };
   }, []);
 
   // Auto-refresh installation request data every 30 seconds
@@ -611,7 +621,7 @@ const VehicleDetails: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-500">Current Mileage</p>
                   <p className="font-medium">
-                    {vehicle.mileage.toLocaleString()} km
+                    <span id="current-mileage-fallback">{vehicle.mileage.toLocaleString()} km</span>
                   </p>
                   {vehicle.lastMileageUpdate && (
                     <p className="text-xs text-gray-400">
@@ -755,6 +765,11 @@ const VehicleDetails: React.FC = () => {
         <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DailyBatchesCard vehicleId={vehicle.id} />
           <DailyBatchesChart vehicleId={vehicle.id} />
+        </div>
+
+        {/* Mileage History */}
+        <div className="lg:col-span-3">
+          <MileageHistoryCard vehicleId={vehicle.id} />
         </div>
       </div>
     </div>

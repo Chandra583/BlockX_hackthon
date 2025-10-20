@@ -88,7 +88,7 @@ export const getInstallationRequests = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     const userRole = (req as any).user?.role;
-    const { ownerId, status, q, page = 1, limit = 20 } = req.query as any;
+    const { ownerId, vehicleId, status, q, page = 1, limit = 20 } = req.query as any;
 
     if (!userId) {
       return res.status(401).json({
@@ -106,6 +106,11 @@ export const getInstallationRequests = async (req: Request, res: Response) => {
     } else if (userRole !== 'admin') {
       // Regular users can only see their own requests
       query.ownerId = userId;
+    }
+    
+    // Apply vehicle filter
+    if (vehicleId) {
+      query.vehicleId = vehicleId;
     }
     
     // Apply status filter

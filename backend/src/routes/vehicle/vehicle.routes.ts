@@ -3,6 +3,7 @@ import { authenticate, authorize, rateLimit } from '../../middleware/auth.middle
 import { BlockchainController } from '../../controllers/blockchain/blockchain.controller';
 import Vehicle from '../../models/core/Vehicle.model';
 import { Notification } from '../../models/core/Notification.model';
+import MileageController from '../../controllers/mileage/mileage.controller';
 import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
 import { TelemetryBatch } from '../../models/TelemetryBatch.model';
@@ -484,6 +485,14 @@ router.get('/:vehicleId/blockchain-history',
     }
   }
 );
+
+/**
+ * GET /api/vehicles/:vehicleId/mileage
+ * Get vehicle mileage history (delegates to MileageController)
+ */
+router.get('/:vehicleId/mileage', (req, res) => {
+  return MileageController.getVehicleMileageHistory(req as any, res as any);
+});
 
 export default router;
 
