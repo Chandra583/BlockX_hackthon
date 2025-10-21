@@ -117,6 +117,81 @@ export class AnchorService {
   }
 
   /**
+   * Anchor mileage update event (e.g., daily OBD) to Solana (and optionally Arweave)
+   */
+  async anchorMileageUpdate(params: {
+    vehicle: IVehicleDocument;
+    newMileage: number;
+    previousMileage: number;
+    recordedBy: string; // userId
+    source: 'owner' | 'service' | 'inspection' | 'automated';
+    deviceId?: string;
+    ownerWallet: any; // Solana wallet (publicKey, secretKey)
+  }): Promise<AnchorResult> {
+    try {
+      const { vehicle, newMileage, previousMileage, recordedBy, source, deviceId, ownerWallet } = params;
+
+      // Build payload
+      const payload = {
+        vehicleId: vehicle._id.toString(),
+        vin: vehicle.vin,
+        vehicleNumber: vehicle.vehicleNumber,
+        newMileage,
+        previousMileage,
+        recordedBy,
+        source,
+        deviceId,
+        timestamp: new Date().toISOString(),
+        eventType: 'MILEAGE_UPDATE'
+      };
+
+      // Optional Arweave upload (small JSON payload)
+      let arweaveTx: string | undefined;
+      if (config.ARWEAVE_ENABLED) {
+        try {
+          const arweaveResult = await this.arweaveService.uploadData({
+            data: JSON.stringify(payload, null, 2),
+            contentType: 'application/json',
+            fileName: `mileage_${vehicle._id}_${Date.now()}.json`,
+            vehicleId: vehicle._id.toString(),
+            vin: vehicle.vin,
+            documentType: 'mileage_event',
+            userId: recordedBy,
+            metadata: { eventType: 'MILEAGE_UPDATE', timestamp: payload.timestamp }
+          });
+          arweaveTx = arweaveResult.transactionId;
+        } catch (e) {
+          logger.warn('Arweave upload failed for mileage event, continuing with Solana only:', e);
+        }
+      }
+
+      // Send Solana memo transaction using owner's wallet
+      const result = await this.solanaService.recordMileage(
+        vehicle._id.toString(),
+        vehicle.vin,
+        newMileage,
+        previousMileage,
+        recordedBy,
+        source,
+        ownerWallet
+      );
+
+      return {
+        success: true,
+        solanaTx: result.transactionHash,
+        arweaveTx,
+        message: 'Mileage update anchored to Solana'
+      };
+    } catch (error) {
+      logger.error('Failed to anchor mileage update:', error);
+      return {
+        success: false,
+        message: `Failed to anchor mileage: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  /**
    * Upload data to Arweave
    */
   private async uploadToArweave(payload: any): Promise<AnchorResult> {

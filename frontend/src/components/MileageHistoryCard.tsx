@@ -14,6 +14,7 @@ interface MileageRecordItem {
   source?: string;
   verified?: boolean;
   deviceId?: string;
+  blockchainHash?: string;
 }
 
 const sourceLabel = (s?: string) => {
@@ -47,7 +48,8 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
         recordedAt: r.recordedAt || r.createdAt,
         source: r.source,
         verified: r.verified,
-        deviceId: r.deviceId
+        deviceId: r.deviceId,
+        blockchainHash: r.blockchainHash
       }));
       setRecords(mapped);
 
@@ -132,7 +134,17 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
                     <div className="text-xs text-gray-500">{new Date(r.recordedAt).toLocaleString()} • {sourceLabel(r.source)}</div>
                   </div>
                 </div>
-                {r.deviceId && <div className="text-xs text-gray-500">Device: {r.deviceId}</div>}
+                <div className="flex items-center gap-2">
+                  {r.deviceId && <div className="text-xs text-gray-500">Device: {r.deviceId}</div>}
+                  {r.blockchainHash && (
+                    <button
+                      onClick={() => window.open(`https://explorer.solana.com/tx/${r.blockchainHash}${import.meta.env.MODE === 'production' ? '' : '?cluster=devnet'}`, '_blank', 'noopener,noreferrer')}
+                      className="inline-flex items-center px-2 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700"
+                    >
+                      View on Explorer
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

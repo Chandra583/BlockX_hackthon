@@ -180,7 +180,13 @@ export class MileageController {
             deviceId: lastOBDUpdate.deviceId,
             recordedAt: lastOBDUpdate.recordedAt
           } : null,
-          history: mileageHistory.map(record => record.toObject()),
+          history: mileageHistory.map(record => {
+            const obj = record.toObject();
+            return {
+              ...obj,
+              blockchainHash: obj.blockchainHash || undefined
+            };
+          }),
           pagination: {
             page,
             limit,

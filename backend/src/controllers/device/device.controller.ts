@@ -666,18 +666,46 @@ export class DeviceController {
       });
 
       // Import InstallationRequest and Vehicle models
-      const { InstallationRequest } = await import('../../models');
+      const { InstallationRequest } = await import('../../models/InstallationRequest.model');
       const { default: Vehicle } = await import('../../models/core/Vehicle.model');
 
-      // Find active installation with matching deviceId
-      const activeInstallation = await InstallationRequest.findOne({
+      // Find active installation with matching deviceId (including completed ones)
+      let activeInstallation = await InstallationRequest.findOne({
         deviceId: (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID,
-        status: { $in: ['in_progress', 'assigned'] }
+        status: { $in: ['in_progress', 'assigned', 'completed'] }
       }).populate('vehicleId ownerId');
 
+      // If no active one, try fallbacks: latest batch or any installation (including completed)
+      let mappedVehicleId: any = activeInstallation?.vehicleId || null;
       if (!activeInstallation) {
-        logger.warn('No active installation found for deviceId:', data.deviceId);
-        return;
+        logger.warn('No active installation found for deviceId:', data.deviceId || data.deviceID);
+        try {
+          const { TelemetryBatch } = await import('../../models/TelemetryBatch.model');
+          const deviceIdKey = (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID;
+          const latestBatch = await TelemetryBatch.findOne({ deviceId: deviceIdKey }).sort({ recordedAt: -1 });
+          if (latestBatch) {
+            mappedVehicleId = latestBatch.vehicleId;
+            logger.info('Using latest TelemetryBatch mapping for device', { deviceId: deviceIdKey, vehicleId: mappedVehicleId });
+          }
+        } catch (e) {
+          logger.warn('Failed to check TelemetryBatch fallback:', e);
+        }
+
+        if (!mappedVehicleId) {
+          const latestInstallAny = await InstallationRequest.findOne({
+            deviceId: (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID
+          }).sort({ updatedAt: -1 }).populate('vehicleId ownerId');
+          if (latestInstallAny) {
+            activeInstallation = latestInstallAny as any; // for ownerId/installId usage
+            mappedVehicleId = latestInstallAny.vehicleId;
+            logger.info('Using latest InstallationRequest mapping for device', { deviceId: data.deviceId || data.deviceID, vehicleId: mappedVehicleId, status: latestInstallAny.status });
+          }
+        }
+
+        if (!mappedVehicleId) {
+          logger.warn('No mapping found via installation or batches for deviceId:', data.deviceId || data.deviceID);
+          return;
+        }
       }
 
       logger.info('Found active installation:', {
@@ -688,9 +716,9 @@ export class DeviceController {
       });
 
       // Get the vehicle
-      const vehicle = await Vehicle.findById(activeInstallation.vehicleId);
+      const vehicle = await Vehicle.findById(mappedVehicleId || (activeInstallation?.vehicleId));
       if (!vehicle) {
-        logger.error('Vehicle not found for installation:', activeInstallation.vehicleId);
+        logger.error('Vehicle not found for resolved mapping:', mappedVehicleId || (activeInstallation?.vehicleId));
         return;
       }
 
@@ -706,8 +734,8 @@ export class DeviceController {
 
       // Update vehicle mileage
       const mileageRecord = {
-        mileage: data.mileage,
-        recordedBy: activeInstallation.ownerId,
+        mileage: data.mileage || 0,
+        recordedBy: (activeInstallation && activeInstallation.ownerId) ? activeInstallation.ownerId : vehicle.ownerId,
         recordedAt: new Date(),
         source: 'automated',
         notes: `OBD device ${(data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID} reading`,
@@ -719,7 +747,7 @@ export class DeviceController {
       vehicle.mileageHistory.push(mileageRecord);
       
       // Update current mileage and last update time
-      vehicle.currentMileage = data.mileage;
+      vehicle.currentMileage = data.mileage || vehicle.currentMileage;
       vehicle.lastMileageUpdate = new Date();
       
       // Recalculate trust score
@@ -732,8 +760,8 @@ export class DeviceController {
         await MileageHistory.create({
           vehicleId: vehicle._id,
           vin: vehicle.vin,
-          mileage: data.mileage,
-          recordedBy: activeInstallation.ownerId,
+          mileage: data.mileage || 0,
+          recordedBy: (activeInstallation && activeInstallation.ownerId) ? activeInstallation.ownerId : vehicle.ownerId,
           recordedAt: new Date(),
           source: 'automated',
           notes: `OBD device ${(data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID} reading`,
@@ -743,6 +771,101 @@ export class DeviceController {
         logger.info(`✅ Created MileageHistory record for OBD update: ${vehicle._id}`);
       } catch (mileageErr) {
         logger.warn('⚠️ Failed to create MileageHistory record:', mileageErr);
+      }
+
+      // Upsert/update TelemetryBatch snapshot for UI summaries (kept in sync with latest OBD mileage)
+      try {
+        const { TelemetryBatch } = await import('../../models/TelemetryBatch.model');
+        const deviceIdStr = (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID;
+
+        // Find the latest batch for this vehicle/device
+        let latestBatch = await TelemetryBatch.findOne({ vehicleId: vehicle._id, deviceId: deviceIdStr })
+          .sort({ recordedAt: -1 });
+
+        if (!latestBatch) {
+          // Try fallback by device only (older batch before vehicleId changed)
+          latestBatch = await TelemetryBatch.findOne({ deviceId: deviceIdStr }).sort({ recordedAt: -1 });
+        }
+
+        if (!latestBatch) {
+          // Create if none exists (e.g., installation started before, or cleanup happened)
+          if (!activeInstallation?._id) {
+            // Cannot create without installId (schema requires it)
+            logger.warn('Skipping TelemetryBatch creation: missing installId');
+          } else {
+            await TelemetryBatch.create({
+              installId: activeInstallation._id,
+            vehicleId: vehicle._id,
+            deviceId: deviceIdStr,
+            lastRecordedMileage: data.mileage,
+            distanceDelta: 0,
+            batchData: [],
+            recordedAt: new Date()
+            });
+            logger.info('🆕 TelemetryBatch created from OBD update', { vehicleId: vehicle._id, deviceId: deviceIdStr, mileage: data.mileage });
+          }
+        } else {
+          const prevMileage = Number(latestBatch.lastRecordedMileage) || 0;
+          const delta = Math.max(0, (data.mileage || 0) - prevMileage);
+          latestBatch.lastRecordedMileage = data.mileage || prevMileage;
+          latestBatch.distanceDelta = (Number(latestBatch.distanceDelta) || 0) + delta;
+          latestBatch.recordedAt = new Date();
+          // Ensure vehicleId sync
+          if (String(latestBatch.vehicleId) !== String(vehicle._id)) {
+            latestBatch.vehicleId = vehicle._id as any;
+          }
+          await latestBatch.save();
+          logger.info('✅ TelemetryBatch updated from OBD update', { vehicleId: vehicle._id, deviceId: deviceIdStr, mileage: data.mileage, delta });
+        }
+      } catch (batchErr) {
+        logger.warn('⚠️ Failed to upsert TelemetryBatch from OBD update:', batchErr);
+      }
+
+      // Anchor mileage update to Solana once per day per vehicle to reduce spam
+      try {
+        const { getAnchorService } = await import('../../services/anchor.service');
+        const anchorService = getAnchorService();
+        const { walletService } = await import('../../services/blockchain/wallet.service');
+
+        // Owner wallet is used for anchoring
+        const ownerWallet = await walletService.getUserWallet(vehicle.ownerId.toString());
+        if (!ownerWallet) {
+          logger.warn('Owner wallet not found; skipping mileage anchoring');
+        } else {
+          // Throttle: only anchor if last OBD update on chain is before today
+          const lastOBDHistory = await MileageHistory.findOne({ vehicleId: vehicle._id, source: 'automated', blockchainHash: { $exists: true, $ne: null } })
+            .sort({ recordedAt: -1 });
+          const isSameDay = lastOBDHistory && (new Date(lastOBDHistory.recordedAt)).toDateString() === (new Date()).toDateString();
+
+          if (!isSameDay) {
+            const previousMileage = typeof vehicle.currentMileage === 'number' ? vehicle.currentMileage : 0;
+            const anchorResult = await anchorService.anchorMileageUpdate({
+              vehicle,
+              newMileage: data.mileage || previousMileage,
+              previousMileage,
+              recordedBy: (activeInstallation && activeInstallation.ownerId) ? activeInstallation.ownerId.toString() : vehicle.ownerId.toString(),
+              source: 'automated',
+              deviceId: (data.deviceId && data.deviceId.trim().length > 0) ? data.deviceId : data.deviceID,
+              ownerWallet
+            });
+
+            if (anchorResult.success && anchorResult.solanaTx) {
+              // Save hash on the latest mileage history record for traceability
+              const latestHistory = await MileageHistory.findOne({ vehicleId: vehicle._id, source: 'automated' }).sort({ recordedAt: -1 });
+              if (latestHistory) {
+                latestHistory.blockchainHash = anchorResult.solanaTx;
+                await latestHistory.save();
+              }
+              logger.info('✅ Anchored mileage update to Solana:', anchorResult.solanaTx);
+            } else {
+              logger.warn('⚠️ Failed to anchor mileage update:', anchorResult.message);
+            }
+          } else {
+            logger.info('⏭️ Skipping mileage anchoring (already anchored today)');
+          }
+        }
+      } catch (anchorErr) {
+        logger.warn('⚠️ Mileage anchoring failed:', anchorErr);
       }
 
       logger.info('Vehicle mileage updated successfully:', {

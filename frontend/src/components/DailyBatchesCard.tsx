@@ -29,6 +29,8 @@ export const DailyBatchesCard: React.FC<{ vehicleId: string }> = ({ vehicleId })
       window.dispatchEvent(new CustomEvent('batches-total-distance', { detail: { totalKm } }));
       const latestMileage = list.length > 0 ? (list[0].lastRecordedMileage || 0) : 0;
       window.dispatchEvent(new CustomEvent('batches-latest-mileage', { detail: { latestMileage } }));
+      const latestDeviceId = list.length > 0 ? (list[0].deviceId || null) : null;
+      window.dispatchEvent(new CustomEvent('batches-device-id', { detail: { latestDeviceId } }));
     } catch (e: any) {
       setError('Failed to load telemetry batches');
     } finally {
@@ -71,9 +73,15 @@ export const DailyBatchesCard: React.FC<{ vehicleId: string }> = ({ vehicleId })
             <div className="text-right text-sm text-gray-700">
               {(() => {
                 const total = batches.reduce((a,b)=>a+(b.distanceDelta||0),0);
-                if (total > 0) return `Total Distance: ${total.toLocaleString()} km`;
                 const latestMileage = batches.length > 0 ? (batches[0].lastRecordedMileage || 0) : 0;
-                return `Total Distance: 0 km • Current Mileage: ${latestMileage.toLocaleString()} km`;
+                const latestDeviceId = batches.length > 0 ? (batches[0].deviceId || '-') : '-';
+                const totalText = total > 0 ? `Total Distance: ${total.toLocaleString()} km` : `Total Distance: 0 km • Current Mileage: ${latestMileage.toLocaleString()} km`;
+                return (
+                  <div>
+                    <div>{totalText}</div>
+                    <div className="text-xs text-gray-500">Device: {latestDeviceId}</div>
+                  </div>
+                );
               })()}
             </div>
           </div>
