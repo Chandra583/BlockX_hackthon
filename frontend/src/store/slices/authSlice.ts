@@ -42,7 +42,7 @@ const authSlice = createSlice({
       state.isLoading = true;
       state.error = null;
     },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string; refreshToken: string }>) => {
+    loginSuccess: (state, action: PayloadAction<{ user: User; token: string; refreshToken: string; rememberMe?: boolean }>) => {
       state.isLoading = false;
       state.isAuthenticated = true;
       state.user = action.payload.user;
@@ -53,6 +53,11 @@ const authSlice = createSlice({
       // Store tokens and user using JWT service
       JWTService.setTokens(action.payload.token, action.payload.refreshToken);
       JWTService.setUser(action.payload.user);
+      
+      // Dispatch custom event to reinitialize session manager
+      window.dispatchEvent(new CustomEvent('authLoginSuccess', { 
+        detail: { rememberMe: action.payload.rememberMe } 
+      }));
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.isLoading = false;

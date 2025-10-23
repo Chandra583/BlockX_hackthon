@@ -263,6 +263,37 @@ export class VehicleService {
   static async getTelemetryBatches(vehicleId: string, limit: number = 30): Promise<any> {
     return await apiService.get(`/vehicles/${vehicleId}/telemetry-batches`, { params: { limit } });
   }
+
+  /**
+   * Manually trigger batch consolidation for a specific date
+   */
+  static async consolidateBatch(vehicleId: string, date: string): Promise<any> {
+    try {
+      return await apiService.post(`/vehicles/${vehicleId}/consolidate-batch`, { date });
+    } catch (err: any) {
+      // Normalize error shape
+      return {
+        success: false,
+        message: err?.response?.data?.message || err?.message || 'Consolidation failed',
+        error: err?.response?.data?.error
+      } as any;
+    }
+  }
+
+  static async getMileageHistory(vehicleId: string, page: number = 1, limit: number = 50): Promise<any> {
+    try {
+      const response = await apiService.get(`/vehicles/${vehicleId}/mileage-history`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  }
   
   /**
    * Create a new vehicle (traditional database entry)
@@ -302,6 +333,7 @@ export class VehicleService {
       model: vehicleData.model,
       year: vehicleData.year,
       initialMileage: vehicleData.initialMileage,
+      walletAddress: vehicleData.walletAddress,
       color: vehicleData.color,
       bodyType: vehicleData.bodyType,
       fuelType: vehicleData.fuelType,

@@ -9,14 +9,8 @@ import {
   TrendingUp,
   BarChart3,
   RefreshCw,
-  Play,
-  Pause,
   Eye,
-  Download,
-  Filter,
-  Zap,
-  FileText,
-  Calendar,
+   Zap,
   Gauge
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -318,7 +312,7 @@ const BatchProcessingDashboard: React.FC = () => {
                             Batch: {batch.batchId}
                           </h3>
                           <StatusBadge 
-                            status={batch.tripStatus as any}
+                            status={batch.tripStatus as 'active' | 'inactive' | 'pending' | 'verified' | 'rejected' | 'suspended' | 'completed' | 'failed'}
                             icon={batch.tripStatus === 'completed' ? <CheckCircle className="w-3 h-3" /> : 
                                   batch.tripStatus === 'failed' ? <XCircle className="w-3 h-3" /> : 
                                   <Activity className="w-3 h-3" />}

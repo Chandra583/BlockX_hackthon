@@ -126,12 +126,19 @@ export const startInstallation = async (req: Request, res: Response) => {
       });
     }
 
-    // Create telemetry batch snapshot
+    // Create telemetry batch snapshot (ensure fields required by updated schema)
     try {
       const telemetryBatch = new TelemetryBatch({
         installId: install._id,
         vehicleId: vehicle._id,
         deviceId: deviceId.toString(), // Ensure deviceId is a string
+        // New schema fields (safe defaults for install-time snapshot)
+        date: new Date().toISOString().split('T')[0],
+        segments: [],
+        totalDistance: 0,
+        segmentsCount: 0,
+        status: 'pending',
+        // Legacy fields still used elsewhere
         lastRecordedMileage: initialMileage,
         distanceDelta: 0,
         batchData: [],
@@ -156,6 +163,11 @@ export const startInstallation = async (req: Request, res: Response) => {
           installId: install._id,
           vehicleId: vehicle._id,
           deviceId: deviceId.toString(),
+          date: new Date().toISOString().split('T')[0],
+          segments: [],
+          totalDistance: 0,
+          segmentsCount: 0,
+          status: 'pending',
           lastRecordedMileage: initialMileage,
           distanceDelta: 0,
           batchData: [],

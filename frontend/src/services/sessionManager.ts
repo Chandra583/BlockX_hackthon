@@ -23,10 +23,61 @@ export class SessionManager {
     checkInterval: 60 * 1000,    // Check every minute
   };
 
+  // Remember me configuration (30 days)
+  private static readonly REMEMBER_ME_CONFIG: SessionConfig = {
+    maxIdleTime: 30 * 24 * 60 * 60 * 1000, // 30 days
+    warningTime: 24 * 60 * 60 * 1000,     // 1 day before logout
+    checkInterval: 60 * 60 * 1000,         // Check every hour
+  };
+
   private constructor(config: Partial<SessionConfig> = {}) {
-    this.config = { ...SessionManager.DEFAULT_CONFIG, ...config };
+    // Check if user has "remember me" enabled by looking at token expiry
+    const rememberMe = this.checkRememberMeStatus();
+    const baseConfig = rememberMe ? SessionManager.REMEMBER_ME_CONFIG : SessionManager.DEFAULT_CONFIG;
+    this.config = { ...baseConfig, ...config };
     this.setupActivityListeners();
     this.startSessionCheck();
+  }
+
+  // Check if "remember me" is enabled by examining token expiry
+  private checkRememberMeStatus(): boolean {
+    try {
+      const state = store.getState();
+      const { refreshToken } = state.auth;
+      
+      if (!refreshToken) return false;
+      
+      // Decode the refresh token to check its expiry
+      const payload = this.decodeJWT(refreshToken);
+      if (!payload || !payload.exp) return false;
+      
+      // If refresh token expires in more than 7 days, it's likely "remember me"
+      const tokenExpiry = payload.exp * 1000; // Convert to milliseconds
+      const sevenDaysFromNow = Date.now() + (7 * 24 * 60 * 60 * 1000);
+      
+      return tokenExpiry > sevenDaysFromNow;
+    } catch (error) {
+      console.error('Error checking remember me status:', error);
+      return false;
+    }
+  }
+
+  // Decode JWT token (without verification)
+  private decodeJWT(token: string): any {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        window.atob(base64)
+          .split('')
+          .map((c) => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`)
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Error decoding JWT:', error);
+      return null;
+    }
   }
 
   // Singleton pattern
@@ -40,6 +91,19 @@ export class SessionManager {
   // Initialize session management
   static initialize(config?: Partial<SessionConfig>): void {
     SessionManager.getInstance(config);
+  }
+
+  // Reinitialize session manager (useful after login)
+  static reinitialize(): void {
+    SessionManager.destroy();
+    SessionManager.initialize();
+  }
+
+  // Set remember me status manually
+  static setRememberMe(rememberMe: boolean): void {
+    const config = rememberMe ? SessionManager.REMEMBER_ME_CONFIG : SessionManager.DEFAULT_CONFIG;
+    SessionManager.destroy();
+    SessionManager.initialize(config);
   }
 
   // Update last activity timestamp

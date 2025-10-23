@@ -58,6 +58,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         user: response.user,
         token: response.token,
         refreshToken: response.refreshToken,
+        rememberMe: data.rememberMe || false,
       }));
       
       console.log('Login successful, navigating...');

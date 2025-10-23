@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { VehicleService } from '../../services/vehicle';
 import toast from 'react-hot-toast';
+import { BlockchainService } from '../../services/blockchain';
 
 const RegisterVehicle: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +25,22 @@ const RegisterVehicle: React.FC = () => {
     condition: 'good',
     description: ''
   });
+
+  // Auto-fill wallet address from user wallet and lock the field
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        const wallet = await BlockchainService.getWallet();
+        const addr = wallet?.data?.walletAddress || '';
+        if (addr) {
+          setFormData(prev => ({ ...prev, walletAddress: addr }));
+        }
+      } catch {
+        // no wallet yet; leave empty
+      }
+    };
+    loadWallet();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -153,9 +170,10 @@ const RegisterVehicle: React.FC = () => {
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
                 placeholder="Paste your wallet address"
+                readOnly
               />
               <p className="mt-1 text-xs text-gray-500">
-                Tip: Open the Wallet section, copy your address, and paste it here. We’ll still use your on-file wallet to sign transactions; this helps admin verify.
+                This is auto-filled from your wallet. Manage it in Wallet section.
               </p>
             </div>
 

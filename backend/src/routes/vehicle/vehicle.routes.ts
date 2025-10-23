@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { authenticate, authorize, rateLimit } from '../../middleware/auth.middleware';
 import { BlockchainController } from '../../controllers/blockchain/blockchain.controller';
 import Vehicle from '../../models/core/Vehicle.model';
@@ -549,12 +550,172 @@ router.get('/:vehicleId/telemetry-batches', async (req: any, res: any) => {
           deviceId: b.deviceId,
           lastRecordedMileage: b.lastRecordedMileage,
           distanceDelta: b.distanceDelta,
-          dataPoints: b.batchData?.length || 0
+          dataPoints: b.batchData?.length || 0,
+          segmentsCount: b.segmentsCount || 0,
+          solanaTx: b.solanaTx,
+          arweaveTx: b.arweaveTx,
+          status: b.status,
+          lastError: b.lastError
         }))
       }
     });
   } catch (error) {
     logger.error('❌ Failed to get telemetry batches:', error);
     return res.status(500).json({ success: false, message: 'Failed to retrieve telemetry batches' });
+  }
+});
+
+/**
+ * POST /api/vehicles/:vehicleId/consolidate-batch
+ * Manually trigger batch consolidation for a specific date
+ */
+router.post('/:vehicleId/consolidate-batch', async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    const { vehicleId } = req.params;
+    const { date } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'Date is required' });
+    }
+
+    const vehicle = await Vehicle.findOne({ _id: vehicleId, ownerId: userId });
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Vehicle not found or access denied' });
+    }
+
+    // Import consolidation service
+    const { TelemetryConsolidationService } = await import('../../services/telemetryConsolidation.service');
+    
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid date format. Use YYYY-MM-DD' 
+      });
+    }
+    
+    const result = await TelemetryConsolidationService.consolidateDayBatch(vehicleId, date);
+    
+    if (result.success && result.solanaTx) {
+      return res.status(200).json({
+        success: true,
+        message: 'Batch consolidation completed successfully',
+        data: {
+          batchId: result.batchId,
+          arweaveTx: result.arweaveTx,
+          solanaTx: result.solanaTx,
+          merkleRoot: result.merkleRoot
+        }
+      });
+    } else if (result.success) {
+      // Consolidation flow completed but no chain tx (e.g., dry-run/testing)
+      return res.status(200).json({
+        success: true,
+        message: result.error || 'Batch consolidation completed (no blockchain tx in test mode)',
+        data: {
+          batchId: result.batchId,
+          arweaveTx: result.arweaveTx || null,
+          solanaTx: result.solanaTx || null,
+          merkleRoot: result.merkleRoot || null
+        }
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: 'Batch consolidation failed',
+        error: result.error
+      });
+    }
+  } catch (error: any) {
+    logger.error('❌ Failed to consolidate batch:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Failed to consolidate batch',
+      error: error?.message || 'Unknown error'
+    });
+  }
+});
+
+// Get mileage history for a vehicle
+router.get('/:vehicleId/mileage-history', async (req: any, res: any) => {
+  try {
+    const { vehicleId } = req.params;
+    const { page = 1, limit = 50 } = req.query;
+
+    // Validate vehicleId
+    if (!vehicleId || !mongoose.Types.ObjectId.isValid(vehicleId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid vehicle ID'
+      });
+    }
+
+    // Find vehicle
+    const vehicle = await Vehicle.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle not found'
+      });
+    }
+
+    // Get mileage history with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const mileageHistory = await MileageHistory.find({ vehicleId })
+      .populate('recordedBy', 'firstName lastName role fullName isLocked')
+      .sort({ recordedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await MileageHistory.countDocuments({ vehicleId });
+
+    // Get current mileage and other stats
+    const currentMileage = vehicle.currentMileage || 0;
+    const registeredMileage = vehicle.registeredMileage || 0;
+    const serviceVerifiedMileage = vehicle.serviceVerifiedMileage || 0;
+
+    // Get last OBD update
+    const lastOBDUpdate = await MileageHistory.findOne({ 
+      vehicleId, 
+      source: 'automated' 
+    }).sort({ recordedAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Mileage history retrieved successfully',
+      data: {
+        vehicleId,
+        vin: vehicle.vin,
+        currentMileage,
+        totalMileage: currentMileage,
+        registeredMileage,
+        serviceVerifiedMileage,
+        lastOBDUpdate: lastOBDUpdate ? {
+          mileage: lastOBDUpdate.mileage,
+          deviceId: lastOBDUpdate.deviceId,
+          recordedAt: lastOBDUpdate.recordedAt
+        } : null,
+        history: mileageHistory,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error: any) {
+    logger.error('❌ Failed to get mileage history:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get mileage history',
+      error: error?.message || 'Unknown error'
+    });
   }
 });

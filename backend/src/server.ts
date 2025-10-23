@@ -5,6 +5,7 @@ import { connectDatabase } from './config/database';
 import { app } from './app';
 import { logger } from './utils/logger';
 import { initializeSocketIO } from './utils/socketEmitter';
+import { DailyMerkleJob } from './jobs/dailyMerkleJob';
 
 // Import models to ensure they are registered with mongoose
 import './models/core/User.model';
@@ -117,6 +118,11 @@ const startServer = async (): Promise<void> => {
 
     // Initialize Socket.IO
     initializeSocketIO(server);
+
+    // Start daily Merkle job
+    console.log('🕐 Starting daily Merkle consolidation job...');
+    DailyMerkleJob.start();
+    console.log('✅ Daily Merkle job started');
 
     // Graceful shutdown
     process.on('SIGTERM', () => {

@@ -11,6 +11,7 @@ const WalletCreate = lazy(() => import('../pages/Wallet/WalletCreate'));
 const WalletDetails = lazy(() => import('../pages/Wallet/WalletDetails'));
 const VehicleList = lazy(() => import('../pages/Vehicles/VehicleList'));
 const VehicleDetails = lazy(() => import('../pages/Vehicles/VehicleDetails'));
+const MileageHistory = lazy(() => import('../pages/Vehicles/MileageHistory'));
 const DevicesList = lazy(() => import('../pages/Devices/DevicesList'));
 const AdminInstalls = lazy(() => import('../pages/Admin/AdminInstalls'));
 const SPInstalls = lazy(() => import('../pages/SP/SPInstalls'));
@@ -77,6 +78,14 @@ export const AppRouter: React.FC = () => {
             element={
               <ProtectedRoute>
                 <VehicleDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/vehicles/:id/mileage-history" 
+            element={
+              <ProtectedRoute>
+                <MileageHistory />
               </ProtectedRoute>
             } 
           />

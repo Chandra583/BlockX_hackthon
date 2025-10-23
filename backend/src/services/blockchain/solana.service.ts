@@ -214,21 +214,48 @@ export class SolanaService {
     try {
       const signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
       
-      // Build final data - add network without overriding existing fields
-      const installData = {
-        ...installationData,
-        network: this.isDevnet ? 'devnet' : 'mainnet'
+      // Build a buyer-trust focused payload (full fields) and auto-fallback to compact if oversize
+      const verboseInstallData = {
+        type: 'INSTALLATION_STARTED',
+        network: this.isDevnet ? 'devnet' : 'mainnet',
+        vehicleId: (installationData.vehicleId?.toString() || 'unknown').slice(-12), // Keep some length for trust
+        vin: (installationData.vin || 'unknown').slice(-12), // Keep some length for trust
+        deviceId: (installationData.deviceId || 'unknown').slice(-8), // Truncate device ID
+        initialMileage: installationData.mileage || installationData.initialMileage || 0,
+        ownerId: (installationData.ownerId?.toString() || 'unknown').slice(-8), // Truncate but keep readable
+        serviceId: (installationData.serviceProviderId?.toString() || 'unknown').slice(-8), // Truncate but keep readable
+        timestamp: new Date().toISOString()
       };
 
-      logger.info(`📝 Final installation data for blockchain:`, JSON.stringify(installData, null, 2));
+      const compactInstallData = {
+        t: 'INSTALL',
+        n: this.isDevnet ? 'dev' : 'main',
+        v: (installationData.vehicleId?.toString() || 'unknown').slice(-8),
+        vin: (installationData.vin || 'unknown').slice(-8),
+        d: (installationData.deviceId || 'unknown').slice(-8),
+        m: installationData.mileage || installationData.initialMileage || 0,
+        o: (installationData.ownerId?.toString() || 'unknown').slice(-8),
+        s: (installationData.serviceProviderId?.toString() || 'unknown').slice(-8),
+        ts: Math.floor(Date.now() / 1000)
+      };
+
+      // Choose payload that fits within memo size limit
+      let installMemoPayload: any = verboseInstallData;
+      const verboseSize = Buffer.byteLength(JSON.stringify(verboseInstallData));
+      if (verboseSize > 1200) {
+        installMemoPayload = compactInstallData;
+        logger.warn(`🔻 Installation memo too large (${verboseSize} bytes). Falling back to compact payload.`);
+      }
+
+      logger.info(`📝 Installation memo payload:`, JSON.stringify(installMemoPayload, null, 2));
 
       const transaction = new Transaction();
       
-      // Add memo instruction with installation data
+      // Add memo instruction with selected payload
       const memoInstruction = new TransactionInstruction({
         keys: [],
         programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
-        data: Buffer.from(JSON.stringify(installData))
+        data: Buffer.from(JSON.stringify(installMemoPayload))
       });
       
       transaction.add(memoInstruction);
@@ -271,25 +298,56 @@ export class SolanaService {
         logger.warn(`🚨 FRAUD ALERT: Mileage rollback detected for ${vin}: ${previousMileage} -> ${newMileage}`);
       }
 
-      const mileageData = {
-        vehicleId,
-        vin,
-        mileage: newMileage,
-        previousMileage,
-        recordedBy,
-        source,
-        timestamp: Date.now(),
-        action: 'UPDATE_MILEAGE',
-        fraudCheck: newMileage >= previousMileage ? 'PASS' : 'FAIL_ROLLBACK'
+      // Debug logging to see what we're receiving
+      logger.info(`🔍 Mileage update inputs: vehicleId=${vehicleId}, vin=${vin}, prevMileage=${previousMileage}, newMileage=${newMileage}, source=${source}, recordedBy=${recordedBy}`);
+
+      // Build verbose buyer-trust payload, fallback to compact if oversize
+      const verboseMileageData = {
+        type: 'UPDATE_MILEAGE',
+        network: this.isDevnet ? 'devnet' : 'mainnet',
+        vehicleId: vehicleId.slice(-12), // Keep some length for trust but not too long
+        vin: vin.slice(-12), // Keep some length for trust but not too long
+        prevMileage: previousMileage,
+        newMileage: newMileage,
+        delta: Math.max(0, newMileage - previousMileage),
+        source: source.charAt(0).toUpperCase(), // Single char but readable
+        recordedBy: recordedBy ? recordedBy.slice(0, 8) : 'unknown', // Truncate but keep readable
+        timestamp: new Date().toISOString(),
+        fraudCheck: newMileage >= previousMileage ? 'PASS' : 'FAIL'
       };
+
+      const compactData = {
+        t: 'UM',
+        n: this.isDevnet ? 'dev' : 'main',
+        v: vehicleId.slice(-8),
+        vin: vin.slice(-8),
+        pm: previousMileage,
+        m: newMileage,
+        d: Math.max(0, newMileage - previousMileage),
+        s: source.charAt(0),
+        r: (recordedBy || '?').charAt(0),
+        ts: Math.floor(Date.now() / 1000),
+        f: newMileage >= previousMileage ? 'P' : 'F'
+      };
+
+      let mileageMemoPayload: any = verboseMileageData;
+      const verboseMileageSize = Buffer.byteLength(JSON.stringify(verboseMileageData));
+      if (verboseMileageSize > 1200) {
+        mileageMemoPayload = compactData;
+        logger.warn(`🔻 Mileage memo too large (${verboseMileageSize} bytes). Falling back to compact payload.`);
+      } else {
+        logger.info(`✅ Using verbose mileage payload (${verboseMileageSize} bytes)`);
+      }
+
+      logger.info(`📝 Final mileage memo payload:`, JSON.stringify(mileageMemoPayload, null, 2));
 
       const transaction = new Transaction();
       
-      // Add memo instruction with mileage data
+      // Add memo instruction with selected payload
       const memoInstruction = new TransactionInstruction({
         keys: [],
         programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
-        data: Buffer.from(JSON.stringify(mileageData))
+        data: Buffer.from(JSON.stringify(mileageMemoPayload))
       });
       
       transaction.add(memoInstruction);

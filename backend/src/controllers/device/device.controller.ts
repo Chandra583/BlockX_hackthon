@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger';
 import { ApiError, ValidationError } from '../../utils/errors';
 import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITestResult } from '../../models';
 import MileageHistory from '../../models/core/MileageHistory.model';
+import { TelemetryConsolidationService } from '../../services/telemetryConsolidation.service';
 // import BatchProcessingService from '../../services/core/batchProcessing.service';
 import mongoose from 'mongoose';
 
@@ -323,6 +324,14 @@ export class DeviceController {
         // Don't throw here - test result is not critical for ESP32 functionality
         logger.warn('Continuing without test result due to error');
         testRecord = null;
+      }
+
+      // Check if this is the last trip of the day and trigger consolidation
+      try {
+        await DeviceController.checkAndTriggerConsolidation(deviceData, deviceRecord);
+      } catch (consolidationError) {
+        logger.warn('⚠️ Consolidation check failed:', consolidationError);
+        // Don't fail the main request if consolidation fails
       }
 
       // Send success response
@@ -832,12 +841,7 @@ export class DeviceController {
         if (!ownerWallet) {
           logger.warn('Owner wallet not found; skipping mileage anchoring');
         } else {
-          // Throttle: only anchor if last OBD update on chain is before today
-          const lastOBDHistory = await MileageHistory.findOne({ vehicleId: vehicle._id, source: 'automated', blockchainHash: { $exists: true, $ne: null } })
-            .sort({ recordedAt: -1 });
-          const isSameDay = lastOBDHistory && (new Date(lastOBDHistory.recordedAt)).toDateString() === (new Date()).toDateString();
-
-          if (!isSameDay) {
+          // Anchor all mileage updates to Solana for full traceability
             const previousMileage = typeof vehicle.currentMileage === 'number' ? vehicle.currentMileage : 0;
             const anchorResult = await anchorService.anchorMileageUpdate({
               vehicle,
@@ -860,9 +864,6 @@ export class DeviceController {
             } else {
               logger.warn('⚠️ Failed to anchor mileage update:', anchorResult.message);
             }
-          } else {
-            logger.info('⏭️ Skipping mileage anchoring (already anchored today)');
-          }
         }
       } catch (anchorErr) {
         logger.warn('⚠️ Mileage anchoring failed:', anchorErr);
@@ -1201,6 +1202,66 @@ export class DeviceController {
           message: 'Failed to register device'
         });
       }
+    }
+  }
+
+  /**
+   * Check if this is the last trip of the day and trigger consolidation
+   */
+  private static async checkAndTriggerConsolidation(
+    deviceData: ESP32DeviceData,
+    deviceRecord: IDevice
+  ): Promise<void> {
+    try {
+      // Only trigger for OBD data with mileage
+      if (!deviceData.mileage || deviceData.dataSource !== 'veepeak_obd') {
+        return;
+      }
+
+      const now = new Date();
+      const currentHour = now.getHours();
+      
+      // Check if this is likely the last trip of the day (after 10 PM or before 6 AM)
+      const isEndOfDay = currentHour >= 22 || currentHour <= 6;
+      
+      if (!isEndOfDay) {
+        return;
+      }
+
+      // Get the date for consolidation (yesterday if before 6 AM, today if after 10 PM)
+      const consolidationDate = currentHour <= 6 
+        ? new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        : now.toISOString().split('T')[0];
+
+      logger.info(`🔄 Checking for end-of-day consolidation: ${deviceData.deviceID} on ${consolidationDate}`);
+
+      // Check if vehicle exists
+      if (!deviceRecord.vehicle) {
+        logger.info(`📭 No vehicle associated with device ${deviceData.deviceID}, skipping consolidation`);
+        return;
+      }
+
+      // Trigger consolidation asynchronously (don't wait for completion)
+      setImmediate(async () => {
+        try {
+          const result = await TelemetryConsolidationService.consolidateDayBatch(
+            deviceRecord.vehicle!.toString(),
+            consolidationDate
+          );
+
+          if (result.success) {
+            logger.info(`✅ Immediate consolidation completed for vehicle ${deviceRecord.vehicle} on ${consolidationDate}`);
+          } else {
+            logger.warn(`⚠️ Immediate consolidation failed for vehicle ${deviceRecord.vehicle}: ${result.error}`);
+          }
+        } catch (error) {
+          logger.error(`❌ Immediate consolidation error for vehicle ${deviceRecord.vehicle}:`, error);
+        }
+      });
+
+    } catch (error) {
+      logger.error('❌ Error checking consolidation trigger:', error);
+      // Don't throw - this is not critical for the main flow
     }
   }
 }
