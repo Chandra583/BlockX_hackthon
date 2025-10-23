@@ -28,43 +28,79 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   const { activeSidebarItem } = useAppSelector((state) => state.ui);
 
   useEffect(() => {
-    // Set active item based on current path
+    // Set active item based on current path with role-based routing
     const path = location.pathname;
-    if (path.includes('/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
-    else if (path.includes('/wallet')) dispatch(setActiveSidebarItem('wallet'));
-    else if (path.includes('/vehicles')) dispatch(setActiveSidebarItem('vehicles'));
-    else if (path.includes('/devices')) dispatch(setActiveSidebarItem('devices'));
-    else if (path.includes('/history')) dispatch(setActiveSidebarItem('history'));
-    else if (path.includes('/marketplace')) dispatch(setActiveSidebarItem('marketplace'));
-    else if (path.includes('/admin')) dispatch(setActiveSidebarItem('admin'));
-    else if (path.includes('/sp')) dispatch(setActiveSidebarItem('sp'));
-  }, [location, dispatch]);
+    const role = user?.role?.toLowerCase();
+    
+    if (role === 'admin') {
+      if (path.includes('/admin/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
+      else if (path.includes('/admin/marketplace')) dispatch(setActiveSidebarItem('marketplace'));
+      else if (path.includes('/admin/installs')) dispatch(setActiveSidebarItem('installs'));
+      else if (path.includes('/admin/history')) dispatch(setActiveSidebarItem('history'));
+      else if (path.includes('/admin/users')) dispatch(setActiveSidebarItem('users'));
+    } else if (role === 'owner') {
+      if (path.includes('/owner/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
+      else if (path.includes('/owner/wallet')) dispatch(setActiveSidebarItem('wallet'));
+      else if (path.includes('/owner/vehicles')) dispatch(setActiveSidebarItem('vehicles'));
+      else if (path.includes('/owner/devices')) dispatch(setActiveSidebarItem('devices'));
+      else if (path.includes('/owner/history')) dispatch(setActiveSidebarItem('history'));
+      else if (path.includes('/owner/marketplace')) dispatch(setActiveSidebarItem('marketplace'));
+    } else if (role === 'service') {
+      if (path.includes('/sp/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
+      else if (path.includes('/sp/installs')) dispatch(setActiveSidebarItem('installs'));
+      else if (path.includes('/sp/devices')) dispatch(setActiveSidebarItem('devices'));
+    } else {
+      // Fallback for legacy routes
+      if (path.includes('/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
+      else if (path.includes('/wallet')) dispatch(setActiveSidebarItem('wallet'));
+      else if (path.includes('/vehicles')) dispatch(setActiveSidebarItem('vehicles'));
+      else if (path.includes('/devices')) dispatch(setActiveSidebarItem('devices'));
+      else if (path.includes('/history')) dispatch(setActiveSidebarItem('history'));
+      else if (path.includes('/marketplace')) dispatch(setActiveSidebarItem('marketplace'));
+    }
+  }, [location, dispatch, user?.role]);
 
   if (!isAuthenticated || !user) return null;
 
-  const commonLinks = [
-    { id: 'dashboard', label: 'Dashboard', href: '/dashboard/home', icon: LayoutDashboard },
-    { id: 'wallet', label: 'Wallet', href: '/wallet', icon: Wallet },
-    { id: 'vehicles', label: 'Vehicles', href: '/vehicles', icon: Car },
-    { id: 'devices', label: 'Devices', href: '/devices', icon: Smartphone },
-    { id: 'history', label: 'History', href: '/history', icon: History },
-    { id: 'marketplace', label: 'Marketplace', href: '/marketplace', icon: Store },
-  ];
-
-  const adminLinks = [
-    { id: 'admin-installs', label: 'Install Requests', href: '/admin/installs', icon: Settings },
-    { id: 'admin-users', label: 'Users', href: '/admin/users', icon: Users },
-  ];
-
-  const spLinks = [
-    { id: 'sp-installs', label: 'Install Assignments', href: '/sp/installs', icon: Wrench },
-  ];
-
-  const getLinks = () => {
-    if (user?.role === 'admin') return [...commonLinks, ...adminLinks];
-    if (user?.role === 'service') return [...commonLinks, ...spLinks];
-    return commonLinks;
+  const getRoleBasedLinks = () => {
+    const role = user?.role?.toLowerCase();
+    
+    switch (role) {
+      case 'admin':
+        return [
+          { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+          { id: 'marketplace', label: 'Marketplace', href: '/admin/marketplace', icon: Store },
+          { id: 'installs', label: 'Install Requests', href: '/admin/installs', icon: Settings },
+          { id: 'history', label: 'History', href: '/admin/history', icon: History },
+          { id: 'users', label: 'Users', href: '/admin/users', icon: Users },
+        ];
+      
+      case 'owner':
+        return [
+          { id: 'dashboard', label: 'Dashboard', href: '/owner/dashboard', icon: LayoutDashboard },
+          { id: 'wallet', label: 'Wallet', href: '/owner/wallet', icon: Wallet },
+          { id: 'vehicles', label: 'Vehicles', href: '/owner/vehicles', icon: Car },
+          { id: 'devices', label: 'Devices', href: '/owner/devices', icon: Smartphone },
+          { id: 'history', label: 'History', href: '/owner/history', icon: History },
+          { id: 'marketplace', label: 'Marketplace', href: '/owner/marketplace', icon: Store },
+        ];
+      
+      case 'service':
+        return [
+          { id: 'dashboard', label: 'Dashboard', href: '/sp/dashboard', icon: LayoutDashboard },
+          { id: 'installs', label: 'Assigned Installs', href: '/sp/installs', icon: Wrench },
+          { id: 'devices', label: 'Devices', href: '/sp/devices', icon: Smartphone },
+        ];
+      
+      default:
+        // Fallback for unknown roles
+        return [
+          { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        ];
+    }
   };
+
+  const getLinks = () => getRoleBasedLinks();
 
   return (
     <nav

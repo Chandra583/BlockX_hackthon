@@ -293,8 +293,10 @@ router.post('/register',
 
       // Create notifications: owner (pending) and admins (review request)
       try {
+        const NotificationService = (await import('../../services/notificationService')).default;
+        
         // Owner notification
-        await Notification.create({
+        await NotificationService.createNotification({
           userId,
           userRole: 'owner',
           title: 'Vehicle Submitted for Review',
@@ -302,6 +304,7 @@ router.post('/register',
           type: 'verification',
           priority: 'medium',
           channels: ['in_app'],
+          data: { vehicleId: newVehicle._id.toString() },
           actionUrl: `/vehicles`,
           actionLabel: 'View vehicles'
         });
@@ -309,7 +312,7 @@ router.post('/register',
         // Admin notifications
         const admins = await User.find({ role: 'admin' }).select('_id');
         if (admins.length) {
-          await Notification.insertMany(admins.map(a => ({
+          await NotificationService.createBulkNotifications(admins.map(a => ({
             userId: a._id.toString(),
             userRole: 'admin',
             title: 'New Vehicle Registration Request',
@@ -317,6 +320,7 @@ router.post('/register',
             type: 'update',
             priority: 'high',
             channels: ['in_app'],
+            data: { vehicleId: newVehicle._id.toString() },
             actionUrl: `/admin/vehicles?status=pending`,
             actionLabel: 'Review now'
           })));

@@ -4,31 +4,16 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
-import DashboardPage from './pages/DashboardPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import RoleGuard from './components/auth/RoleGuard';
+import RoleRedirect from './components/auth/RoleRedirect';
 import SessionWarning from './components/common/SessionWarning';
 import { config } from './config/env';
 import { Toaster } from 'react-hot-toast';
-
-// Import admin components
-import { UserList } from './components/admin';
-import AdminVehiclesPage from './components/admin/vehicles/AdminVehiclesPage';
 import { Layout } from './components/layout/Layout';
-// New feature pages/components
-import ServiceProviderManagement from './components/admin/ServiceProviderManagement';
-import BatchProcessingDashboard from './components/admin/BatchProcessingDashboard';
-import VehicleMarketplace from './components/marketplace/VehicleMarketplace';
 
-// New pages
-import DashboardHome from './pages/DashboardHome';
-import VehicleList from './pages/Vehicles/VehicleList';
-import VehicleDetails from './pages/Vehicles/VehicleDetails';
-import RegisterVehicle from './pages/Vehicles/RegisterVehicle';
-import DevicesList from './pages/Devices/DevicesList';
-import AdminInstalls from './pages/Admin/AdminInstalls';
-import SPInstalls from './pages/SP/SPInstalls';
-import History from './pages/History/History';
-import WalletPage from './pages/WalletPage';
+// Import role-based routes
+import { adminRoutes, ownerRoutes, spRoutes } from './routes/roleRoutes';
 
 const HomePage = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -70,38 +55,80 @@ function App() {
   return (
     <div className="App">
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        
+        {/* Role-based redirect for /dashboard */}
         <Route 
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <DashboardPage />
+              <RoleRedirect />
             </ProtectedRoute>
           } 
         />
         
-        {/* New dashboard routes */}
-        <Route 
-          path="/dashboard/home" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <DashboardHome />
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
+        {/* Admin Routes */}
+        {adminRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['admin']}>
+                  <Layout>
+                    {route.element}
+                  </Layout>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+        ))}
+        
+        {/* Owner Routes */}
+        {ownerRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['owner']}>
+                  <Layout>
+                    {route.element}
+                  </Layout>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+        ))}
+        
+        {/* Service Provider Routes */}
+        {spRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['service']}>
+                  <Layout>
+                    {route.element}
+                  </Layout>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+        ))}
+        
+        {/* Legacy route compatibility - redirect to role-specific routes */}
         <Route 
           path="/wallet" 
           element={
             <ProtectedRoute>
-              <Layout>
-                <WalletPage />
-              </Layout>
+              <RoleRedirect fallbackRoute="/login" />
             </ProtectedRoute>
           } 
         />
@@ -109,29 +136,7 @@ function App() {
           path="/vehicles" 
           element={
             <ProtectedRoute>
-              <Layout>
-                <VehicleList />
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/vehicles/:id" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <VehicleDetails />
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/vehicles/register" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <RegisterVehicle />
-              </Layout>
+              <RoleRedirect fallbackRoute="/login" />
             </ProtectedRoute>
           } 
         />
@@ -139,9 +144,7 @@ function App() {
           path="/devices" 
           element={
             <ProtectedRoute>
-              <Layout>
-                <DevicesList />
-              </Layout>
+              <RoleRedirect fallbackRoute="/login" />
             </ProtectedRoute>
           } 
         />
@@ -149,104 +152,20 @@ function App() {
           path="/history" 
           element={
             <ProtectedRoute>
-              <Layout>
-                <History />
-              </Layout>
+              <RoleRedirect fallbackRoute="/login" />
             </ProtectedRoute>
           } 
         />
-        
-        {/* Admin Routes */}
-        <Route 
-          path="/admin/users" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <UserList />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/service-providers" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <ServiceProviderManagement />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/batch-processing" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <BatchProcessingDashboard />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/installs" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <AdminInstalls />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Service Provider Routes */}
-        <Route 
-          path="/sp/installs" 
-          element={
-            <ProtectedRoute allowedRoles={['service']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <SPInstalls />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Marketplace (owner/buyer accessible) */}
         <Route 
           path="/marketplace" 
           element={
-            <ProtectedRoute allowedRoles={['owner','buyer','admin']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <VehicleMarketplace />
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/vehicles" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <AdminVehiclesPage />
-                </div>
-              </Layout>
+            <ProtectedRoute>
+              <RoleRedirect fallbackRoute="/login" />
             </ProtectedRoute>
           } 
         />
         
-        {/* Catch all route - redirect to dashboard if authenticated, otherwise to login */}
+        {/* Catch all route - redirect to role-specific dashboard or login */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       

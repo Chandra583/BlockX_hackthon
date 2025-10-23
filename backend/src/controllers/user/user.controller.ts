@@ -289,13 +289,39 @@ export class UserController {
   static async getActivityHistory(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const skip = (page - 1) * limit;
+
+      // Get recent notifications as activity items
+      const notifications = await Notification.find({ userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select('title message type createdAt data');
+
+      // Transform notifications to activity format
+      const activity = notifications.map(notification => ({
+        id: notification._id.toString(),
+        title: notification.title,
+        subtext: notification.message,
+        icon: UserController.getActivityIcon(notification.type),
+        entityId: notification.data?.vehicleId || notification.data?.deviceId || null,
+        createdAt: notification.createdAt,
+        type: notification.type
+      }));
 
       res.status(HttpStatusCodes.OK).json({
         status: 'success',
         message: 'Activity history retrieved successfully',
         data: {
-          activity: [],
-          message: 'Activity tracking will be implemented in future versions'
+          activity,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(activity.length / limit),
+            totalItems: activity.length,
+            limit
+          }
         }
       });
     } catch (error) {
@@ -305,6 +331,23 @@ export class UserController {
         message: 'Failed to fetch activity history'
       });
     }
+  }
+
+  /**
+   * Helper function to get activity icon based on notification type
+   */
+  static getActivityIcon(type: string): string {
+    const iconMap: { [key: string]: string } = {
+      'security': 'shield',
+      'fraud_alert': 'alert-triangle',
+      'transaction': 'dollar-sign',
+      'system': 'settings',
+      'verification': 'check-circle',
+      'reminder': 'clock',
+      'marketing': 'megaphone',
+      'update': 'refresh-cw'
+    };
+    return iconMap[type] || 'bell';
   }
 
   /**

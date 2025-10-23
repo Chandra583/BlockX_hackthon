@@ -13,6 +13,10 @@ import {
 import { useAppSelector } from '../hooks/redux';
 import QuickActionsDropdown from '../components/dashboard/QuickActionsDropdown';
 import { MetricCardSkeleton } from '../components/common/LoadingSkeleton';
+import NotificationBell from '../components/notifications/NotificationBell';
+import RecentActivity from '../components/activity/RecentActivity';
+import { NotificationService } from '../services/notifications';
+import useSocket from '../hooks/useSocket';
 
 interface DashboardStat {
   title: string;
@@ -27,14 +31,57 @@ const DashboardHome: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const { socket, on, off } = useSocket();
 
-  // Simulate loading
+  // Fetch initial data
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!user) return;
+
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch notifications for the dashboard
+        const notificationsRes = await NotificationService.getNotifications({ 
+          limit: 3, 
+          page: 1 
+        });
+        setNotifications(notificationsRes.data.notifications || []);
+        
+        // Fetch unread count
+        const unreadRes = await NotificationService.getNotifications({ 
+          unread: true, 
+          limit: 1, 
+          page: 1 
+        });
+        setUnreadCount(unreadRes.data.unreadCount || 0);
+        
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    const handleNewNotification = (data: { notification: any }) => {
+      setNotifications(prev => [data.notification, ...prev.slice(0, 2)]);
+      setUnreadCount(prev => prev + 1);
+    };
+
+    on('notification_created', handleNewNotification);
+
+    return () => {
+      off('notification_created', handleNewNotification);
+    };
+  }, [socket, user, on, off]);
 
   const ownerStats: DashboardStat[] = [
     {
@@ -71,32 +118,17 @@ const DashboardHome: React.FC = () => {
     }
   ];
 
-  const recentNotifications = [
-    {
-      id: 1,
-      type: 'info',
-      title: 'New vehicle registered',
-      message: 'Your Honda Civic has been successfully registered',
-      time: '2 hours ago',
-      read: false
-    },
-    {
-      id: 2,
-      type: 'warning',
-      title: 'TrustScore update',
-      message: 'Your Toyota Camry TrustScore decreased to 85',
-      time: '1 day ago',
-      read: true
-    },
-    {
-      id: 3,
-      type: 'success',
-      title: 'Device installed',
-      message: 'ESP32 device successfully installed on Ford Mustang',
-      time: '3 days ago',
-      read: true
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await NotificationService.markAsRead(notificationId);
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
     }
-  ];
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -122,7 +154,10 @@ const DashboardHome: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Welcome back, {user?.firstName} {user?.lastName}</p>
         </div>
-        <QuickActionsDropdown />
+        <div className="flex items-center space-x-4">
+          <NotificationBell />
+          <QuickActionsDropdown />
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -180,75 +215,49 @@ const DashboardHome: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Recent Notifications</h3>
-            <button className="text-sm text-primary-600 hover:text-primary-800">
+            <button 
+              onClick={() => window.location.href = '/notifications'}
+              className="text-sm text-primary-600 hover:text-primary-800"
+            >
               View all
             </button>
           </div>
           <div className="space-y-4">
-            {recentNotifications.map((notification) => (
-              <div 
-                key={notification.id} 
-                className={`p-4 rounded-lg border ${getNotificationColor(notification.type)} ${
-                  !notification.read ? 'ring-1 ring-blue-100' : ''
-                }`}
-              >
-                <div className="flex items-start space-x-3">
-                  {getNotificationIcon(notification.type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                    <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                    <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
-                  </div>
-                  {!notification.read && (
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  )}
-                </div>
+            {notifications.length === 0 ? (
+              <div className="text-center py-8">
+                <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No notifications yet</p>
               </div>
-            ))}
+            ) : (
+              notifications.map((notification) => (
+                <div 
+                  key={notification.id} 
+                  className={`p-4 rounded-lg border ${getNotificationColor(notification.type)} ${
+                    !notification.read ? 'ring-1 ring-blue-100' : ''
+                  } cursor-pointer hover:bg-gray-50 transition-colors`}
+                  onClick={() => handleMarkAsRead(notification.id)}
+                >
+                  <div className="flex items-start space-x-3">
+                    {getNotificationIcon(notification.type)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                      <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {new Date(notification.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {!notification.read && (
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 
         {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                <Car className="w-4 h-4 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Vehicle registered</p>
-                <p className="text-sm text-gray-600">Honda Civic - KA01AB1234</p>
-                <p className="text-xs text-gray-500">2 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <Shield className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">TrustScore updated</p>
-                <p className="text-sm text-gray-600">Toyota Camry - 85</p>
-                <p className="text-xs text-gray-500">1 day ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                <Smartphone className="w-4 h-4 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Device installed</p>
-                <p className="text-sm text-gray-600">ESP32_001234 on Ford Mustang</p>
-                <p className="text-xs text-gray-500">3 days ago</p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        <RecentActivity limit={6} />
       </div>
     </div>
   );

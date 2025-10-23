@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import notification animations */
+@import './styles/notifications.css';
+
 @layer base {
   html {
     @apply antialiased;

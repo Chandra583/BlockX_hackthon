@@ -24,7 +24,8 @@ export const useSocket = (): Socket | null => {
     }
 
     // Initialize socket connection
-    const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const newSocket = io(socketUrl, {
       auth: {
         userId: user.id,
         userRole: user.role
