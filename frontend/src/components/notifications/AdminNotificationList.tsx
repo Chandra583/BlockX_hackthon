@@ -6,10 +6,15 @@ import {
   AlertTriangle, 
   Info, 
   Clock,
+  Shield,
+  Database,
+  UserPlus,
+  Car,
+  Link,
   ExternalLink
 } from 'lucide-react';
 
-interface Notification {
+interface AdminNotification {
   id: string;
   title: string;
   message: string;
@@ -21,14 +26,14 @@ interface Notification {
   actionLabel?: string;
 }
 
-interface NotificationListProps {
-  notifications: Notification[];
+interface AdminNotificationListProps {
+  notifications: AdminNotification[];
   loading: boolean;
   onMarkAsRead: (id: string) => void;
   onClose: () => void;
 }
 
-const NotificationList: React.FC<NotificationListProps> = ({
+const AdminNotificationList: React.FC<AdminNotificationListProps> = ({
   notifications,
   loading,
   onMarkAsRead,
@@ -36,17 +41,22 @@ const NotificationList: React.FC<NotificationListProps> = ({
 }) => {
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'warning':
+      case 'security':
+        return <Shield className="w-5 h-5 text-red-500" />;
       case 'fraud_alert':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
-      case 'success':
-      case 'verification':
+        return <AlertTriangle className="w-5 h-5 text-red-500" />;
+      case 'system':
+        return <Database className="w-5 h-5 text-blue-500" />;
+      case 'user_registration':
+        return <UserPlus className="w-5 h-5 text-green-500" />;
+      case 'vehicle_approval':
+        return <Car className="w-5 h-5 text-blue-500" />;
+      case 'batch_anchor':
+        return <Link className="w-5 h-5 text-purple-500" />;
+      case 'transaction':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'reminder':
-        return <Clock className="w-5 h-5 text-blue-500" />;
-      case 'info':
-      case 'system':
-        return <Info className="w-5 h-5 text-blue-500" />;
+        return <Clock className="w-5 h-5 text-yellow-500" />;
       default:
         return <Bell className="w-5 h-5 text-gray-500" />;
     }
@@ -54,19 +64,36 @@ const NotificationList: React.FC<NotificationListProps> = ({
 
   const getNotificationColor = (type: string, read: boolean) => {
     const baseColors = {
-      warning: 'bg-yellow-50 border-yellow-200',
+      security: 'bg-red-50 border-red-200',
       fraud_alert: 'bg-red-50 border-red-200',
-      success: 'bg-green-50 border-green-200',
-      verification: 'bg-blue-50 border-blue-200',
-      reminder: 'bg-purple-50 border-purple-200',
-      system: 'bg-gray-50 border-gray-200',
-      default: 'bg-blue-50 border-blue-200'
+      system: 'bg-blue-50 border-blue-200',
+      user_registration: 'bg-green-50 border-green-200',
+      vehicle_approval: 'bg-blue-50 border-blue-200',
+      batch_anchor: 'bg-purple-50 border-purple-200',
+      transaction: 'bg-green-50 border-green-200',
+      reminder: 'bg-yellow-50 border-yellow-200',
+      default: 'bg-gray-50 border-gray-200'
     };
 
     const color = baseColors[type as keyof typeof baseColors] || baseColors.default;
     const unreadStyle = !read ? 'ring-1 ring-blue-100 bg-blue-50/50' : '';
     
     return `${color} ${unreadStyle}`;
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'bg-red-100 text-red-800';
+      case 'high':
+        return 'bg-orange-100 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -86,7 +113,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
     return date.toLocaleDateString();
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: AdminNotification) => {
     if (!notification.read) {
       onMarkAsRead(notification.id);
     }
@@ -115,7 +142,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
     return (
       <div className="p-6 text-center">
         <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-500 text-sm">No notifications yet</p>
+        <p className="text-gray-500 text-sm">No admin notifications yet</p>
       </div>
     );
   }
@@ -139,10 +166,15 @@ const NotificationList: React.FC<NotificationListProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
-                    {notification.title}
-                  </p>
-                  <p className={`text-sm mt-1 ${notification.read ? 'text-gray-500' : 'text-gray-600'}`}>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <p className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
+                      {notification.title}
+                    </p>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>
+                      {notification.priority}
+                    </span>
+                  </div>
+                  <p className={`text-sm ${notification.read ? 'text-gray-500' : 'text-gray-600'}`}>
                     {notification.message}
                   </p>
                   <p className="text-xs text-gray-400 mt-2">
@@ -168,15 +200,15 @@ const NotificationList: React.FC<NotificationListProps> = ({
         <button
           onClick={() => {
             onClose();
-            window.location.href = '/notifications';
+            window.location.href = '/admin/notifications';
           }}
           className="w-full text-sm text-primary-600 hover:text-primary-800 font-medium"
         >
-          View all notifications
+          View all admin notifications
         </button>
       </div>
     </div>
   );
 };
 
-export default NotificationList;
+export default AdminNotificationList;

@@ -62,6 +62,37 @@ export class NotificationService {
         }
       });
 
+      // Emit admin-specific events for admin role
+      if (data.userRole === 'admin') {
+        emitToRoom('admin', 'notification_created_admin', {
+          notification: {
+            id: notification._id.toString(),
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+            priority: notification.priority,
+            createdAt: notification.createdAt,
+            read: false,
+            actionUrl: notification.actionUrl,
+            actionLabel: notification.actionLabel
+          }
+        });
+
+        emitToRoom('admin', 'activity_created_admin', {
+          activity: {
+            id: notification._id.toString(),
+            title: notification.title,
+            subtext: notification.message,
+            icon: this.getActivityIcon(notification.type),
+            entityType: this.getEntityType(notification.type),
+            entityId: data.data?.vehicleId || data.data?.deviceId || null,
+            createdAt: notification.createdAt,
+            type: notification.type,
+            actionUrl: notification.actionUrl
+          }
+        });
+      }
+
       logger.info(`📧 Notification created and emitted: ${notification.title} for user ${data.userId}`);
       return notification;
     } catch (error) {
@@ -130,9 +161,30 @@ export class NotificationService {
       'reminder': 'clock',
       'marketing': 'megaphone',
       'update': 'refresh-cw',
-      'install_request': 'wrench'
+      'install_request': 'wrench',
+      'batch_anchor': 'link',
+      'user_registration': 'user-plus',
+      'vehicle_approval': 'car'
     };
     return iconMap[type] || 'bell';
+  }
+
+  /**
+   * Helper function to get entity type based on notification type
+   */
+  static getEntityType(type: string): string {
+    const entityMap: { [key: string]: string } = {
+      'security': 'security',
+      'fraud_alert': 'fraud',
+      'transaction': 'transaction',
+      'system': 'system',
+      'verification': 'vehicle',
+      'install_request': 'device',
+      'batch_anchor': 'batch',
+      'user_registration': 'user',
+      'vehicle_approval': 'vehicle'
+    };
+    return entityMap[type] || 'general';
   }
 }
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../../controllers/admin/admin.controller';
+import { AdminNotificationController } from '../../controllers/admin/adminNotificationController';
 import { authenticate, requireAdmin, rateLimit } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -109,5 +110,35 @@ router.post('/vehicles/:vehicleId/approve', strictAdminRateLimit, AdminControlle
  * @body    { reason }
  */
 router.post('/vehicles/:vehicleId/reject', strictAdminRateLimit, AdminController.rejectVehicle);
+
+/**
+ * @route   GET /api/admin/notifications
+ * @desc    Get admin notifications
+ * @access  Private (Admin only)
+ * @query   page, limit
+ */
+router.get('/notifications', adminRateLimit, AdminNotificationController.getNotifications);
+
+/**
+ * @route   POST /api/admin/notifications/:id/read
+ * @desc    Mark admin notification as read
+ * @access  Private (Admin only)
+ */
+router.post('/notifications/:id/read', adminRateLimit, AdminNotificationController.markAsRead);
+
+/**
+ * @route   POST /api/admin/notifications/read-all
+ * @desc    Mark all admin notifications as read
+ * @access  Private (Admin only)
+ */
+router.post('/notifications/read-all', adminRateLimit, AdminNotificationController.markAllAsRead);
+
+/**
+ * @route   GET /api/admin/activity
+ * @desc    Get admin activity feed
+ * @access  Private (Admin only)
+ * @query   page, limit
+ */
+router.get('/activity', adminRateLimit, AdminNotificationController.getActivity);
 
 export default router; 

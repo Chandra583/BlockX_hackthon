@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X } from 'lucide-react';
+import { Bell, X, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSelector } from '../../hooks/redux';
-import { NotificationService } from '../../services/notifications';
+import { AdminNotificationService } from '../../api/adminNotifications';
 import useSocket from '../../hooks/useSocket';
-import NotificationList from './NotificationList';
+import AdminNotificationList from './AdminNotificationList';
 
-interface NotificationBellProps {
+interface AdminNotificationBellProps {
   className?: string;
 }
 
-const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) => {
+const AdminNotificationBell: React.FC<AdminNotificationBellProps> = ({ className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -22,20 +22,20 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
 
   // Fetch initial notifications and unread count
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
+    if (!isAuthenticated || !user || user.role !== 'admin') return;
 
     const fetchNotifications = async () => {
       try {
         setLoading(true);
         const [notificationsRes, unreadRes] = await Promise.all([
-          NotificationService.getNotifications({ limit: 5, page: 1 }),
-          NotificationService.getNotifications({ unread: true, limit: 1, page: 1 })
+          AdminNotificationService.getNotifications({ limit: 5, page: 1 }),
+          AdminNotificationService.getNotifications({ unread: true, limit: 1, page: 1 })
         ]);
         
         setNotifications(notificationsRes.data.notifications || []);
         setUnreadCount(unreadRes.data.unreadCount || 0);
       } catch (error) {
-        console.error('Failed to fetch notifications:', error);
+        console.error('Failed to fetch admin notifications:', error);
       } finally {
         setLoading(false);
       }
@@ -46,7 +46,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
 
   // Listen for real-time notification updates
   useEffect(() => {
-    if (!socket || !user) return;
+    if (!socket || !user || user.role !== 'admin') return;
 
     const handleNewNotification = (data: { notification: any }) => {
       setNotifications(prev => [data.notification, ...prev.slice(0, 4)]);
@@ -59,37 +59,37 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
 
     const handleActivityUpdate = (data: { activity: any }) => {
       // Activity updates don't affect notification count but may trigger UI updates
-      console.log('Activity update received:', data.activity);
+      console.log('Admin activity update received:', data.activity);
     };
 
-    on('notification_created', handleNewNotification);
-    on('activity_created', handleActivityUpdate);
+    on('notification_created_admin', handleNewNotification);
+    on('activity_created_admin', handleActivityUpdate);
 
     return () => {
-      off('notification_created', handleNewNotification);
-      off('activity_created', handleActivityUpdate);
+      off('notification_created_admin', handleNewNotification);
+      off('activity_created_admin', handleActivityUpdate);
     };
   }, [socket, user, on, off]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await NotificationService.markAsRead(notificationId);
+      await AdminNotificationService.markAsRead(notificationId);
       setNotifications(prev => 
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      console.error('Failed to mark admin notification as read:', error);
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await NotificationService.markAllAsRead();
+      await AdminNotificationService.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
+      console.error('Failed to mark all admin notifications as read:', error);
     }
   };
 
@@ -99,15 +99,18 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
 
   return (
     <div className={`relative ${className}`}>
-      {/* Notification Bell Button */}
+      {/* Admin Notification Bell Button */}
       <button
         onClick={toggleDropdown}
         className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg transition-colors"
-        aria-label={`Notifications, ${unreadCount} unread`}
+        aria-label={`Admin Notifications, ${unreadCount} unread`}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
-        <Bell className="w-6 h-6" />
+        <div className="relative">
+          <Bell className="w-6 h-6" />
+          <Crown className="w-3 h-3 absolute -top-1 -right-1 text-yellow-500" />
+        </div>
         
         {/* Unread Badge */}
         {unreadCount > 0 && (
@@ -136,7 +139,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
           >
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                <div className="flex items-center space-x-2">
+                  <Crown className="w-5 h-5 text-yellow-500" />
+                  <h3 className="text-lg font-semibold text-gray-900">Admin Notifications</h3>
+                </div>
                 <div className="flex items-center space-x-2">
                   {unreadCount > 0 && (
                     <button
@@ -157,7 +163,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
               </div>
             </div>
 
-            <NotificationList
+            <AdminNotificationList
               notifications={notifications}
               loading={loading}
               onMarkAsRead={handleMarkAsRead}
@@ -170,4 +176,4 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) =
   );
 };
 
-export default NotificationBell;
+export default AdminNotificationBell;

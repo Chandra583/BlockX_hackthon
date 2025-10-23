@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import notification animations */
-@import './styles/notifications.css';
+/* Import admin notification animations */
+@import './styles/admin-notifications.css';
 
 @layer base {
   html {

@@ -18,6 +18,8 @@ import {
 import AdminService, { type AdminStats } from '../../services/admin';
 import MetricCard from './MetricCard';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import AdminNotificationBell from '../notifications/AdminNotificationBell';
+import AdminRecentActivity from '../activity/AdminRecentActivity';
 
 interface EnhancedAdminDashboardProps {
   user: {
@@ -224,14 +226,17 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
             Welcome back, {user.firstName}! Here's what's happening with your platform.
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="btn-secondary flex items-center"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center space-x-4">
+          <AdminNotificationBell />
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="btn-secondary flex items-center"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -383,68 +388,6 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <Settings className="w-5 h-5 mr-2" />
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button 
-            onClick={() => navigate('/admin/users')}
-            className="p-4 border-2 border-blue-200 rounded-lg hover:bg-blue-50 transition-colors text-left"
-          >
-            <Users className="w-8 h-8 text-blue-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">User Management</h3>
-            <p className="text-sm text-gray-600 mt-1">Manage users, roles, and permissions</p>
-          </button>
-          
-          <button 
-            onClick={() => alert('Security Center - Coming Soon!')}
-            className="p-4 border-2 border-red-200 rounded-lg hover:bg-red-50 transition-colors text-left"
-          >
-            <Shield className="w-8 h-8 text-red-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">Security Center</h3>
-            <p className="text-sm text-gray-600 mt-1">Monitor threats and fraud alerts</p>
-          </button>
-          
-          <button 
-            onClick={() => alert('Analytics Dashboard - Coming Soon!')}
-            className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left"
-          >
-            <TrendingUp className="w-8 h-8 text-green-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">Analytics</h3>
-            <p className="text-sm text-gray-600 mt-1">View system performance metrics</p>
-          </button>
-          
-          <button 
-            onClick={() => alert('Database Management - Coming Soon!')}
-            className="p-4 border-2 border-purple-200 rounded-lg hover:bg-purple-50 transition-colors text-left"
-          >
-            <Database className="w-8 h-8 text-purple-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">Database</h3>
-            <p className="text-sm text-gray-600 mt-1">Monitor database health</p>
-          </button>
-          
-          <button 
-            onClick={() => alert('Audit Logs - Coming Soon!')}
-            className="p-4 border-2 border-orange-200 rounded-lg hover:bg-orange-50 transition-colors text-left"
-          >
-            <FileText className="w-8 h-8 text-orange-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">Audit Logs</h3>
-            <p className="text-sm text-gray-600 mt-1">Review system activity logs</p>
-          </button>
-          
-          <button 
-            onClick={() => alert('System Settings - Coming Soon!')}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-          >
-            <Settings className="w-8 h-8 text-gray-600 mb-2" />
-            <h3 className="font-semibold text-gray-900">Settings</h3>
-            <p className="text-sm text-gray-600 mt-1">Configure system settings</p>
-          </button>
-        </div>
-      </div>
 
       {/* Blockchain Status */}
       {systemStats?.blockchainStatus && (
@@ -484,6 +427,41 @@ export const EnhancedAdminDashboard: React.FC<EnhancedAdminDashboardProps> = ({ 
           </div>
         </div>
       )}
+
+      {/* Admin Activity Section - Full Width */}
+      <div className="grid grid-cols-1 gap-6">
+        <AdminRecentActivity limit={10} />
+      </div>
+
+      {/* System Health Status */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-900">Database</span>
+            </div>
+            <span className="text-sm text-green-600 font-medium">Online</span>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-900">API Server</span>
+            </div>
+            <span className="text-sm text-green-600 font-medium">Online</span>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-900">Blockchain</span>
+            </div>
+            <span className="text-sm text-green-600 font-medium">Connected</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
