@@ -4,10 +4,13 @@ import { motion } from 'framer-motion';
 import { VehicleService } from '../../services/vehicle';
 import toast from 'react-hot-toast';
 import { BlockchainService } from '../../services/blockchain';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 
 const RegisterVehicle: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingData, setPendingData] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     vin: '',
@@ -52,43 +55,45 @@ const RegisterVehicle: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.vin || !formData.vehicleNumber || !formData.make || 
+        !formData.model || !formData.year || !formData.initialMileage) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Prepare registration data
+    const registrationData = {
+      vin: formData.vin.toUpperCase(),
+      vehicleNumber: formData.vehicleNumber.toUpperCase(),
+      make: formData.make,
+      model: formData.model,
+      year: parseInt(formData.year),
+      initialMileage: parseInt(formData.initialMileage),
+      walletAddress: formData.walletAddress || undefined,
+      color: formData.color || undefined,
+      bodyType: formData.bodyType || undefined,
+      fuelType: formData.fuelType || undefined,
+      transmission: formData.transmission || undefined,
+      engineSize: formData.engineSize || undefined,
+      condition: formData.condition || undefined,
+      description: formData.description || undefined
+    };
+
+    // Store data and show confirmation modal
+    setPendingData(registrationData);
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmRegistration = async () => {
+    if (!pendingData) return;
+    
     setLoading(true);
+    setShowConfirmation(false);
     
     try {
-      // Validate required fields
-      if (!formData.vin || !formData.vehicleNumber || !formData.make || 
-          !formData.model || !formData.year || !formData.initialMileage) {
-        toast.error('Please fill in all required fields');
-        setLoading(false);
-        return;
-      }
-
-      // Confirm immutable mileage logging
-      const confirmMsg = `You are about to record the initial/current mileage (${formData.initialMileage} km) on the blockchain for vehicle ${formData.vehicleNumber}. This cannot be reset. Do you want to proceed?`;
-      const ok = window.confirm(confirmMsg);
-      if (!ok) {
-        setLoading(false);
-        return;
-      }
-      
-      const registrationData = {
-        vin: formData.vin.toUpperCase(),
-        vehicleNumber: formData.vehicleNumber.toUpperCase(),
-        make: formData.make,
-        model: formData.model,
-        year: parseInt(formData.year),
-        initialMileage: parseInt(formData.initialMileage),
-        walletAddress: formData.walletAddress || undefined,
-        color: formData.color || undefined,
-        bodyType: formData.bodyType || undefined,
-        fuelType: formData.fuelType || undefined,
-        transmission: formData.transmission || undefined,
-        engineSize: formData.engineSize || undefined,
-        condition: formData.condition || undefined,
-        description: formData.description || undefined
-      };
-      
-      const response = await VehicleService.registerVehicleOnBlockchain(registrationData);
+      const response = await VehicleService.registerVehicleOnBlockchain(pendingData);
       
       if (response.success) {
         toast.success('Vehicle registered successfully! Awaiting admin verification.');
@@ -101,6 +106,7 @@ const RegisterVehicle: React.FC = () => {
       toast.error(error.response?.data?.message || 'Failed to register vehicle');
     } finally {
       setLoading(false);
+      setPendingData(null);
     }
   };
 
@@ -398,6 +404,19 @@ const RegisterVehicle: React.FC = () => {
           </form>
         </div>
       </motion.div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleConfirmRegistration}
+        title="Confirm Vehicle Registration"
+        message={`You are about to record the initial/current mileage (${pendingData?.initialMileage || formData.initialMileage} km) on the blockchain for vehicle ${pendingData?.vehicleNumber || formData.vehicleNumber}. This cannot be reset. Do you want to proceed?`}
+        confirmText="Register Vehicle"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={loading}
+      />
     </div>
   );
 };

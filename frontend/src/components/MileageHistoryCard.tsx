@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { History, Gauge, ExternalLink, Copy, CheckCircle, TrendingUp, Car, Calendar, Hash, Eye, Clock, ArrowRight, X } from 'lucide-react';
 import VehicleService from '../services/vehicle';
 import { useNavigate } from 'react-router-dom';
+import { FixedMileageHistoryTable } from './vehicle/FixedMileageHistoryTable';
 
 interface MileageHistoryCardProps {
   vehicleId: string;
@@ -16,6 +17,12 @@ interface MileageRecordItem {
   verified?: boolean;
   deviceId?: string;
   blockchainHash?: string;
+  // FIXED: Add validation fields
+  previousMileage?: number;
+  newMileage?: number;
+  delta?: number;
+  flagged?: boolean;
+  validationStatus?: 'VALID' | 'INVALID' | 'ROLLBACK_DETECTED' | 'SUSPICIOUS' | 'PENDING';
 }
 
 const sourceLabel = (s?: string) => {
@@ -167,182 +174,20 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
             </div>
           )}
 
-          {/* Modern Mileage History Table */}
+          {/* FIXED: Modern Mileage History Table with Validation */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-gray-500 uppercase mb-3">Recent Updates</div>
             
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 pb-2">
-              <div className="col-span-2">Mileage</div>
-              <div className="col-span-2">Delta</div>
-              <div className="col-span-3">Date & Time</div>
-              <div className="col-span-2">Source</div>
-              <div className="col-span-2">Device</div>
-              <div className="col-span-1">Actions</div>
-            </div>
-
-            {/* Table Rows */}
-            {records.slice(0, 5).map((r, index) => {
-              const previousRecord = index < records.length - 1 ? records[index + 1] : null;
-              const delta = previousRecord ? r.mileage - previousRecord.mileage : 0;
-              const isPositiveDelta = delta > 0;
-              const isNegativeDelta = delta < 0;
-              const date = new Date(r.recordedAt);
-              const formattedDate = date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-              });
-              const formattedTime = date.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit' 
-              });
-
-              const getSourceIcon = (source?: string) => {
-                switch (source) {
-                  case 'automated':
-                    return <Car className="w-3 h-3 text-blue-500" />;
-                  case 'owner':
-                    return <CheckCircle className="w-3 h-3 text-green-500" />;
-                  case 'service':
-                    return <Eye className="w-3 h-3 text-orange-500" />;
-                  default:
-                    return <Clock className="w-3 h-3 text-gray-500" />;
-                }
-              };
-
-              const getSourceColor = (source?: string) => {
-                switch (source) {
-                  case 'automated':
-                    return 'bg-blue-100 text-blue-800';
-                  case 'owner':
-                    return 'bg-green-100 text-green-800';
-                  case 'service':
-                    return 'bg-orange-100 text-orange-800';
-                  default:
-                    return 'bg-gray-100 text-gray-800';
-                }
-              };
-
-              const copyToClipboard = async (text: string, hash: string) => {
-                try {
-                  await navigator.clipboard.writeText(text);
-                  setCopiedHash(hash);
-                  setTimeout(() => setCopiedHash(null), 2000);
-                } catch (err) {
-                  console.error('Failed to copy:', err);
-                }
-              };
-
-              const getSolanaExplorerUrl = (txHash: string) => {
-                const cluster = import.meta.env.VITE_SOLANA_CLUSTER || 'devnet';
-                return `https://explorer.solana.com/tx/${txHash}?cluster=${cluster}`;
-              };
-
-              return (
-                <motion.div
-                  key={r.id || r.recordedAt}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
-                  className="grid grid-cols-12 gap-2 items-center py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                >
-                  {/* Mileage */}
-                  <div className="col-span-2">
-                    <div className="flex items-center">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {r.mileage.toLocaleString()} km
-                      </div>
-                      {r.verified && (
-                        <CheckCircle className="w-3 h-3 text-green-500 ml-1" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Delta */}
-                  <div className="col-span-2">
-                    {delta !== 0 && (
-                      <div className={`flex items-center text-xs ${
-                        isPositiveDelta ? 'text-green-600' : 
-                        isNegativeDelta ? 'text-red-600' : 'text-gray-500'
-                      }`}>
-                        <TrendingUp 
-                          className={`w-3 h-3 mr-1 ${
-                            isNegativeDelta ? 'rotate-180' : ''
-                          }`} 
-                        />
-                        <span className="font-medium">
-                          {isPositiveDelta ? '+' : ''}{delta} km
-                        </span>
-                      </div>
-                    )}
-                    {delta === 0 && (
-                      <span className="text-gray-400 text-xs">No change</span>
-                    )}
-                  </div>
-
-                  {/* Date & Time */}
-                  <div className="col-span-3">
-                    <div className="flex items-center">
-                      <Calendar className="w-3 h-3 text-gray-400 mr-1" />
-                      <div>
-                        <div className="text-xs font-medium text-gray-900">{formattedDate}</div>
-                        <div className="text-xs text-gray-500">{formattedTime}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Source */}
-                  <div className="col-span-2">
-                    <div className="flex items-center">
-                      {getSourceIcon(r.source)}
-                      <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${getSourceColor(r.source)}`}>
-                        {sourceLabel(r.source)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Device */}
-                  <div className="col-span-2">
-                    <div className="flex items-center">
-                      <Car className="w-3 h-3 text-gray-400 mr-1" />
-                      <span className="text-xs font-mono text-gray-600">
-                        {r.deviceId}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="col-span-1">
-                    {r.blockchainHash && (
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => copyToClipboard(r.blockchainHash!, r.id || r.recordedAt)}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          title="Copy hash"
-                        >
-                          {copiedHash === (r.id || r.recordedAt) ? (
-                            <CheckCircle className="w-3 h-3 text-green-500" />
-                          ) : (
-                            <Copy className="w-3 h-3 text-gray-400" />
-                          )}
-                        </button>
-                        <a
-                          href={getSolanaExplorerUrl(r.blockchainHash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          title="View on Explorer"
-                        >
-                          <ExternalLink className="w-3 h-3 text-blue-500" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+            {/* FIXED: Use FixedMileageHistoryTable component */}
+            <FixedMileageHistoryTable 
+              records={records.slice(0, 5)}
+              onCopyHash={(hash) => {
+                navigator.clipboard.writeText(hash);
+                setCopiedHash(hash);
+                setTimeout(() => setCopiedHash(null), 2000);
+              }}
+              copiedHash={copiedHash}
+            />
           </div>
 
           {/* View Full History Button */}

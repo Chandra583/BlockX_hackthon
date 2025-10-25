@@ -12,13 +12,11 @@ import { ErrorBoundary } from './components/common/ErrorBoundary.tsx'
 // Initialize token refresh service
 TokenRefreshService.initialize();
 
-// Initialize session manager (will auto-detect remember me status)
-SessionManager.initialize();
-
-// Listen for login success events to update session manager
-window.addEventListener('authLoginSuccess', (event: any) => {
-  const { rememberMe } = event.detail;
-  SessionManager.setRememberMe(rememberMe);
+// Initialize session manager
+SessionManager.initialize({
+  maxIdleTime: 30 * 60 * 1000, // 30 minutes will be logged out
+  warningTime: 5 * 60 * 1000,  // 5 minutes before logout
+  checkInterval: 60 * 1000,    // Check every minute
 });
 
 // Import test utilities for development

@@ -62,6 +62,18 @@ export class TelemetryConsolidationService {
         throw new Error(`Vehicle ${vehicleId} not found`);
       }
 
+      // Validate vehicle has currentMileage
+      if (vehicle.currentMileage === undefined || vehicle.currentMileage === null) {
+        logger.warn(`⚠️ Vehicle ${vehicleId} has no currentMileage, defaulting to 0`);
+      } else {
+        logger.info(`✅ Vehicle ${vehicleId} currentMileage: ${vehicle.currentMileage}`);
+      }
+      
+      // Additional validation for vehicle data
+      if (typeof vehicle.currentMileage !== 'number' && vehicle.currentMileage !== undefined && vehicle.currentMileage !== null) {
+        logger.warn(`⚠️ Vehicle ${vehicleId} currentMileage is not a number: ${typeof vehicle.currentMileage}, value: ${vehicle.currentMileage}`);
+      }
+
       // Query telemetry segments for the day (robust: try multiple selectors)
       const startOfDay = new Date(date + 'T00:00:00.000Z');
       const endOfDay = new Date(date + 'T23:59:59.999Z');
@@ -190,6 +202,10 @@ export class TelemetryConsolidationService {
       
       // Create or update batch record
       let batch;
+      const currentMileage = typeof vehicle.currentMileage === 'number' ? vehicle.currentMileage : 0;
+      
+      logger.info(`📊 Batch data: currentMileage=${currentMileage}, totalDistance=${totalDistance}, segmentsCount=${segments.length}`);
+      
       if (existingBatch) {
         batch = existingBatch;
         batch.status = 'consolidating';
@@ -197,6 +213,8 @@ export class TelemetryConsolidationService {
         batch.totalDistance = totalDistance;
         batch.segmentsCount = segments.length;
         batch.merkleRoot = merkleRoot;
+        batch.lastRecordedMileage = currentMileage;
+        batch.distanceDelta = totalDistance;
       } else {
         batch = new TelemetryBatch({
           installId: installId || new mongoose.Types.ObjectId(),
@@ -208,13 +226,99 @@ export class TelemetryConsolidationService {
           segmentsCount: segments.length,
           merkleRoot,
           status: 'consolidating',
-          lastRecordedMileage: vehicle.mileage,
+          lastRecordedMileage: currentMileage,
           distanceDelta: totalDistance,
           recordedAt: new Date()
         });
       }
       
-      await batch.save();
+      // Validate batch data before saving
+      if (typeof batch.lastRecordedMileage !== 'number') {
+        logger.error(`❌ Invalid lastRecordedMileage: ${batch.lastRecordedMileage} (type: ${typeof batch.lastRecordedMileage})`);
+        throw new Error('lastRecordedMileage is required and must be a valid number');
+      }
+      
+      if (typeof batch.distanceDelta !== 'number') {
+        logger.error(`❌ Invalid distanceDelta: ${batch.distanceDelta} (type: ${typeof batch.distanceDelta})`);
+        throw new Error('distanceDelta is required and must be a valid number');
+      }
+      
+      if (batch.lastRecordedMileage < 0) {
+        logger.error(`❌ Invalid lastRecordedMileage: ${batch.lastRecordedMileage} (cannot be negative)`);
+        throw new Error('lastRecordedMileage cannot be negative');
+      }
+      
+      if (batch.distanceDelta < 0) {
+        logger.error(`❌ Invalid distanceDelta: ${batch.distanceDelta} (cannot be negative)`);
+        throw new Error('distanceDelta cannot be negative');
+      }
+      
+      logger.info(`💾 Saving batch with lastRecordedMileage: ${currentMileage}, distanceDelta: ${totalDistance}`);
+      
+      // Additional validation for required fields
+      if (!batch.vehicleId) {
+        throw new Error('vehicleId is required');
+      }
+      
+      if (!batch.deviceId) {
+        throw new Error('deviceId is required');
+      }
+      
+      if (!batch.date) {
+        throw new Error('date is required');
+      }
+      
+      if (!Array.isArray(batch.segments)) {
+        throw new Error('segments must be an array');
+      }
+      
+      if (typeof batch.totalDistance !== 'number') {
+        throw new Error('totalDistance must be a number');
+      }
+      
+      if (typeof batch.segmentsCount !== 'number') {
+        throw new Error('segmentsCount must be a number');
+      }
+      
+      if (batch.segmentsCount < 0) {
+        throw new Error('segmentsCount cannot be negative');
+      }
+      
+      if (batch.totalDistance < 0) {
+        throw new Error('totalDistance cannot be negative');
+      }
+      
+      // Validate segments data
+      if (batch.segments.length > 0) {
+        for (let i = 0; i < batch.segments.length; i++) {
+          const segment = batch.segments[i];
+          if (!segment.startTime || !segment.endTime) {
+            throw new Error(`Segment ${i} is missing startTime or endTime`);
+          }
+          if (typeof segment.distance !== 'number' || segment.distance < 0) {
+            throw new Error(`Segment ${i} has invalid distance: ${segment.distance}`);
+          }
+          if (segment.startTime >= segment.endTime) {
+            throw new Error(`Segment ${i} has invalid time range: startTime >= endTime`);
+          }
+        }
+      }
+      
+      try {
+        await batch.save();
+        logger.info(`✅ Batch saved successfully with ID: ${batch._id}`);
+      } catch (saveError: any) {
+        logger.error(`❌ Failed to save batch:`, saveError);
+        if (saveError.name === 'ValidationError') {
+          logger.error(`❌ Validation errors:`, saveError.errors);
+          // Log specific validation errors
+          for (const field in saveError.errors) {
+            const error = saveError.errors[field];
+            logger.error(`❌ Field ${field}: ${error.message}`);
+          }
+        }
+        throw new Error(`Failed to save batch: ${saveError.message}`);
+      }
       
       // Upload to Arweave (optional - continue if fails)
       try {

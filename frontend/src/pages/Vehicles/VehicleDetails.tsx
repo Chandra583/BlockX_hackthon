@@ -27,6 +27,9 @@ import { solanaHelper } from '../../lib/solana';
 import DailyBatchesCard from '../../components/DailyBatchesCard';
 import DailyBatchesChart from '../../components/DailyBatchesChart';
 import MileageHistoryCard from '../../components/MileageHistoryCard';
+import { FraudAlertCard } from '../../components/vehicle/FraudAlertCard';
+import { OBDDataValidationCard } from '../../components/vehicle/OBDDataValidationCard';
+import TelemetryService from '../../services/telemetry';
 
 interface Vehicle {
   id: string;
@@ -345,12 +348,16 @@ const VehicleDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
+  const [fraudAlerts, setFraudAlerts] = useState<any[]>([]);
+  const [obdValidationData, setObdValidationData] = useState<any>(null);
+  const [fraudDataLoading, setFraudDataLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
       Promise.all([
         fetchVehicleDetails(id),
-        fetchInstallationRequest(id)
+        fetchInstallationRequest(id),
+        fetchFraudDetectionData(id)
       ]).finally(() => {
         setLoading(false);
       });
@@ -422,6 +429,68 @@ const VehicleDetails: React.FC = () => {
       setError('Failed to fetch vehicle details');
       console.error('Error fetching vehicle:', err);
       toast.error('Can\'t reach vehicle API. Contact support.');
+    }
+  };
+
+  const fetchFraudDetectionData = async (vehicleId: string) => {
+    try {
+      setFraudDataLoading(true);
+      
+      // Try to fetch fraud alerts and OBD validation data from API
+      try {
+        const [alertsResponse, obdResponse] = await Promise.allSettled([
+          TelemetryService.getFraudAlerts(vehicleId),
+          TelemetryService.getLatestOBDData(vehicleId)
+        ]);
+
+        if (alertsResponse.status === 'fulfilled' && alertsResponse.value?.data) {
+          setFraudAlerts(alertsResponse.value.data);
+        }
+
+        if (obdResponse.status === 'fulfilled' && obdResponse.value?.data) {
+          setObdValidationData(obdResponse.value.data);
+        }
+      } catch (apiError) {
+        console.log('API endpoints not available yet, using mock data for demonstration');
+        
+        // Mock data for demonstration until backend endpoints are ready
+        setFraudAlerts([
+          {
+            id: 'alert_1',
+            type: 'ODOMETER_ROLLBACK',
+            severity: 'high',
+            message: '🚨 ODOMETER ROLLBACK DETECTED: Mileage decreased from 66,000 km to 82 km',
+            detectedAt: new Date().toISOString(),
+            status: 'active',
+            details: {
+              expectedValue: 66000,
+              actualValue: 82,
+              reason: 'Odometer tampering - mileage decreased by 65,918 km'
+            }
+          }
+        ]);
+
+        setObdValidationData({
+          deviceID: 'OBD3001',
+          status: 'obd_connected',
+          validationStatus: 'INVALID',
+          lastReading: {
+            mileage: 82,
+            speed: 0,
+            rpm: 0,
+            engineTemp: 85,
+            fuelLevel: 60,
+            dataQuality: 99,
+            recordedAt: new Date().toISOString()
+          },
+          tamperingDetected: true,
+          fraudScore: 95
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching fraud detection data:', error);
+    } finally {
+      setFraudDataLoading(false);
     }
   };
 
@@ -767,6 +836,12 @@ const VehicleDetails: React.FC = () => {
         <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DailyBatchesCard vehicleId={vehicle.id} />
           <DailyBatchesChart vehicleId={vehicle.id} />
+        </div>
+
+        {/* Fraud Detection Section */}
+        <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <FraudAlertCard alerts={fraudAlerts} loading={fraudDataLoading} />
+          <OBDDataValidationCard validationData={obdValidationData} loading={fraudDataLoading} />
         </div>
 
         {/* Mileage History */}

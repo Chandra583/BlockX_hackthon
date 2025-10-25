@@ -3,10 +3,12 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 // Lazy load all pages for better performance
 const DashboardHome = lazy(() => import('../pages/DashboardHome'));
-const WalletCreate = lazy(() => import('../pages/Wallet/WalletCreate'));
+
 const WalletDetails = lazy(() => import('../pages/Wallet/WalletDetails'));
+const WalletPage = lazy(() => import('../pages/Wallet/WalletPage'));
 const VehicleList = lazy(() => import('../pages/Vehicles/VehicleList'));
 const VehicleDetails = lazy(() => import('../pages/Vehicles/VehicleDetails'));
+const RegisterVehicle = lazy(() => import('../pages/Vehicles/RegisterVehicle'));
 const MileageHistory = lazy(() => import('../pages/Vehicles/MileageHistory'));
 const DevicesList = lazy(() => import('../pages/Devices/DevicesList'));
 const AdminInstalls = lazy(() => import('../pages/Admin/AdminInstalls'));
@@ -95,7 +97,7 @@ export const ownerRoutes: Array<{ path: string; element: React.ReactElement }> =
   {
     path: '/owner/wallet',
     element: React.createElement(Suspense, { fallback: React.createElement(PageLoader) },
-      React.createElement(WalletCreate)
+      React.createElement(WalletPage)
     )
   },
   {
@@ -108,6 +110,12 @@ export const ownerRoutes: Array<{ path: string; element: React.ReactElement }> =
     path: '/owner/vehicles',
     element: React.createElement(Suspense, { fallback: React.createElement(PageLoader) },
       React.createElement(VehicleList)
+    )
+  },
+  {
+    path: '/owner/vehicles/register',
+    element: React.createElement(Suspense, { fallback: React.createElement(PageLoader) },
+      React.createElement(RegisterVehicle)
     )
   },
   {

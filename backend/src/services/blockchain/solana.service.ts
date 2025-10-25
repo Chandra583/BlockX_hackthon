@@ -301,18 +301,19 @@ export class SolanaService {
       // Debug logging to see what we're receiving
       logger.info(`🔍 Mileage update inputs: vehicleId=${vehicleId}, vin=${vin}, prevMileage=${previousMileage}, newMileage=${newMileage}, source=${source}, recordedBy=${recordedBy}`);
 
-      // Build verbose buyer-trust payload, fallback to compact if oversize
+      // FIXED: Build verbose buyer-trust payload with correct field names
       const verboseMileageData = {
-        type: 'UPDATE_MILEAGE',
+        eventType: 'UPDATE_MILEAGE', // FIXED: Use eventType instead of type
         network: this.isDevnet ? 'devnet' : 'mainnet',
         vehicleId: vehicleId.slice(-12), // Keep some length for trust but not too long
         vin: vin.slice(-12), // Keep some length for trust but not too long
-        prevMileage: previousMileage,
-        newMileage: newMileage,
-        delta: Math.max(0, newMileage - previousMileage),
-        source: source.charAt(0).toUpperCase(), // Single char but readable
-        recordedBy: recordedBy ? recordedBy.slice(0, 8) : 'unknown', // Truncate but keep readable
+        previousMileage: previousMileage, // FIXED: Use previousMileage (not prevMileage)
+        newMileage: newMileage, // FIXED: Use newMileage (not newMileage)
+        delta: newMileage - previousMileage, // FIXED: Allow negative delta for flagged records
+        deviceId: 'OBD', // FIXED: Add deviceId field
         timestamp: new Date().toISOString(),
+        recordedBy: source, // FIXED: Use source as recordedBy ('service'|'owner'|'device')
+        notes: `Mileage update: ${previousMileage} -> ${newMileage} km (${newMileage - previousMileage >= 0 ? '+' : ''}${newMileage - previousMileage} km)`,
         fraudCheck: newMileage >= previousMileage ? 'PASS' : 'FAIL'
       };
 

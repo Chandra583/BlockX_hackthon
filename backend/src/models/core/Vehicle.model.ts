@@ -30,7 +30,7 @@ export interface IVehicleDocument extends Document {
   nextServiceDue?: Date;
   registrationExpiry?: Date;
   insuranceExpiry?: Date;
-  lastVerifiedMileage?: number;
+  lastVerifiedMileage: number; // FIXED: Required field for authoritative mileage
   
   // Methods
   updateMileage(mileage: number, source: string, recordedBy: string, location?: any): Promise<void>;
@@ -426,7 +426,8 @@ const VehicleSchema = new Schema({
   },
   lastVerifiedMileage: {
     type: Number,
-    min: 0,
+    required: true,
+    min: [0, 'Last verified mileage cannot be negative'],
     default: 0
   },
   blockchainHash: {

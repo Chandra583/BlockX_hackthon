@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { WalletCard } from '../components/blockchain/WalletCard';
-import { EnhancedTransactionHistory } from '../components/blockchain/EnhancedTransactionHistory';
-import { useAppSelector } from '../hooks/redux';
+import { WalletCard } from '../../components/blockchain/WalletCard';
+import { EnhancedTransactionHistory } from '../../components/blockchain/EnhancedTransactionHistory';
+import { useAppSelector } from '../../hooks/redux';
 import { toast } from 'react-hot-toast';
-import BlockchainService from '../services/blockchain';
+import BlockchainService from '../../services/blockchain';
 
 const WalletPage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);

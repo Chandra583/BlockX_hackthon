@@ -12,6 +12,13 @@ import { config } from './config/env';
 import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
 
+// Import common components
+import VehicleList from './pages/Vehicles/VehicleList';
+import VehicleDetails from './pages/Vehicles/VehicleDetails';
+import MileageHistory from './pages/Vehicles/MileageHistory';
+import DevicesList from './pages/Devices/DevicesList';
+import { MileageHistoryTest } from './components/vehicle/MileageHistoryTest';
+
 // Import role-based routes
 import { adminRoutes, ownerRoutes, spRoutes } from './routes/roleRoutes';
 
@@ -123,25 +130,49 @@ function App() {
           />
         ))}
         
-        {/* Legacy route compatibility - redirect to role-specific routes */}
-        <Route 
-          path="/wallet" 
-          element={
-            <ProtectedRoute>
-              <RoleRedirect fallbackRoute="/login" />
-            </ProtectedRoute>
-          } 
-        />
+        {/* Common routes that work for all roles */}
         <Route 
           path="/vehicles" 
           element={
             <ProtectedRoute>
-              <RoleRedirect fallbackRoute="/login" />
+              <Layout>
+                <VehicleList />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/vehicles/:id" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VehicleDetails />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/vehicles/:id/mileage-history" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MileageHistory />
+              </Layout>
             </ProtectedRoute>
           } 
         />
         <Route 
           path="/devices" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DevicesList />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/wallet" 
           element={
             <ProtectedRoute>
               <RoleRedirect fallbackRoute="/login" />
@@ -163,6 +194,12 @@ function App() {
               <RoleRedirect fallbackRoute="/login" />
             </ProtectedRoute>
           } 
+        />
+        
+        {/* Test route for mileage history component */}
+        <Route 
+          path="/test/mileage-history" 
+          element={<MileageHistoryTest />} 
         />
         
         {/* Catch all route - redirect to role-specific dashboard or login */}

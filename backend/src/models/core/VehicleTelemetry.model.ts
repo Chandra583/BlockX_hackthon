@@ -26,6 +26,17 @@ export interface IVehicleTelemetry extends Document {
     diagnosticCodes?: number;
   };
   
+  // FIXED: Mileage validation fields
+  mileageValidation: {
+    reportedMileage: number; // What device reported
+    previousMileage: number; // Authoritative previous mileage from vehicle
+    newMileage: number; // Calculated new mileage (should equal reportedMileage if valid)
+    delta: number; // newMileage - previousMileage
+    flagged: boolean; // true if rollback detected
+    validationStatus: 'VALID' | 'INVALID' | 'ROLLBACK_DETECTED' | 'SUSPICIOUS' | 'PENDING';
+    reason?: string; // Why flagged
+  };
+  
   // Location data (if available)
   location?: {
     latitude?: number;
@@ -45,7 +56,7 @@ export interface IVehicleTelemetry extends Document {
     freeHeap?: number;
   };
   
-  // Anti-tampering and validation
+  // Anti-tampering and validation (DEPRECATED - use mileageValidation)
   validation: {
     lastKnownMileage?: number;
     mileageIncrement?: number;
@@ -170,6 +181,41 @@ const VehicleTelemetrySchema = new Schema<IVehicleTelemetry>({
     diagnosticCodes: Number
   },
   
+  // FIXED: New mileage validation schema
+  mileageValidation: {
+    reportedMileage: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    previousMileage: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    newMileage: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    delta: {
+      type: Number,
+      required: true
+    },
+    flagged: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    validationStatus: {
+      type: String,
+      enum: ['VALID', 'INVALID', 'ROLLBACK_DETECTED', 'SUSPICIOUS', 'PENDING'],
+      default: 'PENDING',
+      index: true
+    },
+    reason: String
+  },
+  
   location: {
     latitude: {
       type: Number,
@@ -209,6 +255,7 @@ const VehicleTelemetrySchema = new Schema<IVehicleTelemetry>({
     freeHeap: Number
   },
   
+  // DEPRECATED: Keep for backwards compatibility
   validation: {
     lastKnownMileage: Number,
     mileageIncrement: Number,
@@ -255,7 +302,6 @@ const VehicleTelemetrySchema = new Schema<IVehicleTelemetry>({
       default: true
     }
   }
-  
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -265,26 +311,7 @@ const VehicleTelemetrySchema = new Schema<IVehicleTelemetry>({
 // Indexes for efficient queries
 VehicleTelemetrySchema.index({ deviceID: 1, 'rawData.receivedAt': -1 });
 VehicleTelemetrySchema.index({ vin: 1, 'rawData.receivedAt': -1 });
-VehicleTelemetrySchema.index({ status: 1, 'rawData.receivedAt': -1 });
-VehicleTelemetrySchema.index({ 'validation.tamperingDetected': 1 });
-VehicleTelemetrySchema.index({ 'obd.mileage': 1, 'rawData.receivedAt': -1 });
-VehicleTelemetrySchema.index({ dataSource: 1, 'rawData.receivedAt': -1 });
-
-// Virtual for time since reading
-VehicleTelemetrySchema.virtual('ageMins').get(function() {
-  if (this.rawData?.receivedAt) {
-    return Math.floor((Date.now() - this.rawData.receivedAt.getTime()) / (1000 * 60));
-  }
-  return 0;
-});
-
-// Virtual for alert level based on validation
-VehicleTelemetrySchema.virtual('alertLevel').get(function() {
-  if (this.validation?.tamperingDetected) return 'CRITICAL';
-  if (this.status === 'device_not_connected') return 'WARNING';
-  if (this.dataQuality < 50) return 'WARNING';
-  if (this.deviceHealth?.batteryVoltage && this.deviceHealth.batteryVoltage < 12.0) return 'WARNING';
-  return 'NORMAL';
-});
+VehicleTelemetrySchema.index({ 'mileageValidation.flagged': 1 });
+VehicleTelemetrySchema.index({ 'mileageValidation.validationStatus': 1 });
 
 export const VehicleTelemetry = mongoose.model<IVehicleTelemetry>('VehicleTelemetry', VehicleTelemetrySchema);

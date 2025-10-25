@@ -84,10 +84,10 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user }) => {
   const [hasWallet, setHasWallet] = useState<boolean>(false);
   const [walletLoading, setWalletLoading] = useState(true);
 
-  // Redirect to new dashboard
-  useEffect(() => {
-    navigate('/dashboard/home');
-  }, [navigate]);
+  // Redirect to new dashboard - TEMPORARILY DISABLED FOR TESTING
+  // useEffect(() => {
+  //   navigate('/dashboard/home');
+  // }, [navigate]);
 
   // Fetch user's wallet on component mount
   useEffect(() => {
