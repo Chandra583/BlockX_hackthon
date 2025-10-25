@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Shield, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Shield, CheckCircle, XCircle, Clock, TrendingDown, AlertCircle, Zap } from 'lucide-react';
 
 interface FraudAlert {
   id: string;
@@ -25,37 +25,53 @@ export const FraudAlertCard: React.FC<FraudAlertCardProps> = ({ alerts, loading 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'high':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-800 border-red-300/50 backdrop-blur-sm';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-800 border-yellow-300/50 backdrop-blur-sm';
       case 'low':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-800 border-blue-300/50 backdrop-blur-sm';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gradient-to-r from-gray-500/20 to-slate-500/20 text-gray-800 border-gray-300/50 backdrop-blur-sm';
     }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'high':
-        return <XCircle className="w-5 h-5 text-red-600" />;
+        return <motion.div
+          animate={{ rotate: [0, -10, 10, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+        >
+          <XCircle className="w-6 h-6 text-red-600" />
+        </motion.div>;
       case 'medium':
-        return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
+        return <motion.div
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 1, repeat: Infinity }}
+        >
+          <AlertTriangle className="w-6 h-6 text-yellow-600" />
+        </motion.div>;
       case 'low':
-        return <Shield className="w-5 h-5 text-blue-600" />;
+        return <Shield className="w-6 h-6 text-blue-600" />;
       default:
-        return <Shield className="w-5 h-5 text-gray-600" />;
+        return <Shield className="w-6 h-6 text-gray-600" />;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Active</span>;
+        return <motion.span 
+          animate={{ scale: [1, 1.05, 1] }}
+          transition={{ duration: 1, repeat: Infinity }}
+          className="px-3 py-1 text-xs font-bold bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shadow-lg"
+        >
+          Active
+        </motion.span>;
       case 'resolved':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Resolved</span>;
+        return <span className="px-3 py-1 text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full shadow-lg">Resolved</span>;
       case 'investigating':
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Investigating</span>;
+        return <span className="px-3 py-1 text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-full shadow-lg">Investigating</span>;
       default:
         return null;
     }
@@ -68,95 +84,165 @@ export const FraudAlertCard: React.FC<FraudAlertCardProps> = ({ alerts, loading 
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative bg-white/60 backdrop-blur-xl rounded-3xl border-2 border-white/40 p-8 shadow-2xl overflow-hidden"
+      >
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-white/40 rounded-2xl w-1/3"></div>
+          <div className="h-24 bg-white/40 rounded-2xl"></div>
+          <div className="h-24 bg-white/40 rounded-2xl"></div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="relative bg-white/60 backdrop-blur-xl rounded-3xl border-2 border-white/40 p-8 shadow-2xl overflow-hidden"
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <Shield className="w-6 h-6 text-red-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Fraud Alerts</h3>
-        </div>
-        {alerts.length > 0 && (
-          <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
-            {alerts.length} Alert{alerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-
-      {alerts.length === 0 ? (
-        <div className="text-center py-8">
-          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">No Fraud Alerts</p>
-          <p className="text-sm text-gray-500 mt-1">All vehicle data is validated and secure</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {alerts.map((alert, index) => (
+      {/* Animated background */}
+      <motion.div
+        className="absolute inset-0 opacity-10"
+        animate={{
+          background: [
+            "linear-gradient(45deg, #ef4444 0%, #dc2626 100%)",
+            "linear-gradient(45deg, #dc2626 0%, #b91c1c 100%)",
+            "linear-gradient(45deg, #b91c1c 0%, #ef4444 100%)"
+          ]
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
             <motion.div
-              key={alert.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              className={`p-4 rounded-lg border-2 ${getSeverityColor(alert.severity)}`}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              className="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl shadow-lg"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3 flex-1">
-                  {getSeverityIcon(alert.severity)}
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-semibold text-gray-900">{alert.type}</p>
-                      {getStatusBadge(alert.status)}
-                    </div>
-                    <p className="text-sm text-gray-700 mb-2">{alert.message}</p>
-                    
-                    {alert.details && (
-                      <div className="mt-2 p-2 bg-white bg-opacity-50 rounded text-xs space-y-1">
-                        {alert.details.expectedValue !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Expected:</span>
-                            <span className="font-medium">{alert.details.expectedValue} km</span>
-                          </div>
-                        )}
-                        {alert.details.actualValue !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Actual:</span>
-                            <span className="font-medium">{alert.details.actualValue} km</span>
-                          </div>
-                        )}
-                        {alert.details.reason && (
-                          <div className="mt-1 pt-1 border-t border-gray-300">
-                            <span className="text-gray-600">Reason:</span>
-                            <span className="ml-1 font-medium">{alert.details.reason}</span>
-                          </div>
-                        )}
+              <Shield className="w-7 h-7 text-white" />
+            </motion.div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">Fraud Alerts</h3>
+              <p className="text-gray-600">Security monitoring & detection</p>
+            </div>
+          </div>
+          {alerts.length > 0 && (
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl shadow-lg font-bold"
+            >
+              {alerts.length} Alert{alerts.length !== 1 ? 's' : ''}
+            </motion.div>
+          )}
+        </div>
+
+        {alerts.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center py-12"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg"
+            >
+              <CheckCircle className="w-10 h-10 text-white" />
+            </motion.div>
+            <h4 className="text-xl font-bold text-gray-900 mb-2">No Fraud Alerts</h4>
+            <p className="text-gray-600 font-medium">All vehicle data is validated and secure</p>
+            <p className="text-sm text-gray-500 mt-2">System monitoring active</p>
+          </motion.div>
+        ) : (
+          <div className="space-y-4">
+            {alerts.map((alert, index) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                className={`relative p-6 rounded-2xl border-2 backdrop-blur-sm shadow-lg ${getSeverityColor(alert.severity)}`}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start space-x-4 flex-1">
+                    <motion.div
+                      whileHover={{ rotate: 10 }}
+                      className="p-2 bg-white/60 rounded-xl shadow-sm"
+                    >
+                      {getSeverityIcon(alert.severity)}
+                    </motion.div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-lg font-bold text-gray-900">{alert.type}</h4>
+                        {getStatusBadge(alert.status)}
                       </div>
-                    )}
+                      <p className="text-sm text-gray-700 mb-3 font-medium">{alert.message}</p>
                     
-                    <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatDate(alert.detectedAt)}</span>
+                      {alert.details && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          transition={{ delay: 0.2 }}
+                          className="mt-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/40 shadow-sm"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {alert.details.expectedValue !== undefined && (
+                              <div className="flex items-center justify-between p-3 bg-white/40 rounded-lg">
+                                <div className="flex items-center space-x-2">
+                                  <TrendingDown className="w-4 h-4 text-green-600" />
+                                  <span className="text-sm font-medium text-gray-700">Expected:</span>
+                                </div>
+                                <span className="font-bold text-gray-900">{alert.details.expectedValue.toLocaleString()} km</span>
+                              </div>
+                            )}
+                            {alert.details.actualValue !== undefined && (
+                              <div className="flex items-center justify-between p-3 bg-white/40 rounded-lg">
+                                <div className="flex items-center space-x-2">
+                                  <AlertCircle className="w-4 h-4 text-red-600" />
+                                  <span className="text-sm font-medium text-gray-700">Actual:</span>
+                                </div>
+                                <span className="font-bold text-red-600">{alert.details.actualValue.toLocaleString()} km</span>
+                              </div>
+                            )}
+                          </div>
+                          {alert.details.reason && (
+                            <div className="mt-4 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border-l-4 border-red-500">
+                              <div className="flex items-center space-x-2">
+                                <Zap className="w-4 h-4 text-red-600" />
+                                <span className="text-sm font-medium text-gray-700">Reason:</span>
+                              </div>
+                              <p className="text-sm text-gray-800 mt-1 font-medium">{alert.details.reason}</p>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                      
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="flex items-center space-x-2 mt-4 p-3 bg-white/40 rounded-lg"
+                      >
+                        <Clock className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 font-medium">{formatDate(alert.detectedAt)}</span>
+                      </motion.div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 };

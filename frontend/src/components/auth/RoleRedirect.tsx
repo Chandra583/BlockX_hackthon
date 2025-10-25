@@ -1,5 +1,5 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/redux';
 
 interface RoleRedirectProps {
@@ -10,6 +10,8 @@ export const RoleRedirect: React.FC<RoleRedirectProps> = ({
   fallbackRoute = '/login' 
 }) => {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const location = useLocation();
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   // If not authenticated, redirect to login
   if (!isAuthenticated || !user) {
@@ -42,10 +44,23 @@ export const RoleRedirect: React.FC<RoleRedirectProps> = ({
 
   const dashboardRoute = getRoleDashboardRoute(user.role);
   
+  // Prevent infinite redirects by checking if we're already on the target route
+  if (location.pathname === dashboardRoute) {
+    return null; // Don't redirect if already on the target route
+  }
+
+  // Only redirect once
+  useEffect(() => {
+    if (!hasRedirected) {
+      setHasRedirected(true);
+    }
+  }, [hasRedirected]);
+  
   return <Navigate to={dashboardRoute} replace />;
 };
 
 export default RoleRedirect;
+
 
 
 

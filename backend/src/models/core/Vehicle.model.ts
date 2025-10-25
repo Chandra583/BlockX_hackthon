@@ -386,6 +386,11 @@ const VehicleSchema = new Schema({
     min: [0, 'Trust score cannot be negative'],
     max: [100, 'Trust score cannot exceed 100']
   },
+  trustHistoryCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   fraudAlerts: [FraudAlertSchema],
   isForSale: {
     type: Boolean,

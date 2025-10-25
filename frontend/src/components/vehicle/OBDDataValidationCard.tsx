@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, CheckCircle, XCircle, AlertTriangle, Clock, Gauge } from 'lucide-react';
+import { Activity, CheckCircle, XCircle, AlertTriangle, Clock, Gauge, Zap, TrendingUp, Thermometer, Fuel, Smartphone } from 'lucide-react';
 
 interface OBDValidationData {
   deviceID: string;
@@ -29,50 +29,72 @@ export const OBDDataValidationCard: React.FC<OBDDataValidationCardProps> = ({ va
     switch (status) {
       case 'VALID':
         return (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-            <CheckCircle className="w-4 h-4" />
-            <span className="font-medium">Valid</span>
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl shadow-lg font-bold"
+          >
+            <CheckCircle className="w-5 h-5" />
+            <span>Valid</span>
+          </motion.div>
         );
       case 'INVALID':
         return (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-800 rounded-full">
-            <XCircle className="w-4 h-4" />
-            <span className="font-medium">Invalid</span>
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl shadow-lg font-bold"
+          >
+            <XCircle className="w-5 h-5" />
+            <span>Invalid</span>
+          </motion.div>
         );
       case 'SUSPICIOUS':
         return (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="font-medium">Suspicious</span>
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-2xl shadow-lg font-bold"
+          >
+            <AlertTriangle className="w-5 h-5" />
+            <span>Suspicious</span>
+          </motion.div>
         );
       case 'IMPOSSIBLE_DISTANCE':
         return (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-800 rounded-full">
-            <XCircle className="w-4 h-4" />
-            <span className="font-medium">Impossible Distance</span>
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl shadow-lg font-bold"
+          >
+            <XCircle className="w-5 h-5" />
+            <span>Impossible Distance</span>
+          </motion.div>
         );
       case 'ROLLBACK_DETECTED':
         return (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-800 rounded-full">
-            <XCircle className="w-4 h-4" />
-            <span className="font-medium">Odometer Rollback</span>
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl shadow-lg font-bold"
+          >
+            <XCircle className="w-5 h-5" />
+            <span>Odometer Rollback</span>
+          </motion.div>
         );
       default:
         return (
-          <div className="flex items-center space-x-2 px-3 py-1 bg-gray-100 text-gray-800 rounded-full">
-            <Clock className="w-4 h-4" />
-            <span className="font-medium">Pending</span>
+          <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-500 to-slate-500 text-white rounded-2xl shadow-lg font-bold">
+            <Clock className="w-5 h-5" />
+            <span>Pending</span>
           </div>
         );
     }
   };
 
   const getDeviceStatusColor = (status: string) => {
+    if (!status) return 'text-gray-500';
+    
     switch (status) {
       case 'obd_connected':
         return 'text-green-600';
@@ -88,129 +110,270 @@ export const OBDDataValidationCard: React.FC<OBDDataValidationCardProps> = ({ va
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    if (!dateString) return 'Unknown';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative bg-white/60 backdrop-blur-xl rounded-3xl border-2 border-white/40 p-8 shadow-2xl overflow-hidden"
+      >
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-white/40 rounded-2xl w-1/2"></div>
+          <div className="h-32 bg-white/40 rounded-2xl"></div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   if (!validationData) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="text-center py-8">
-          <Activity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No OBD data available</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative bg-white/60 backdrop-blur-xl rounded-3xl border-2 border-white/40 p-8 shadow-2xl overflow-hidden"
+      >
+        <div className="text-center py-12">
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-20 h-20 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg"
+          >
+            <Activity className="w-10 h-10 text-white" />
+          </motion.div>
+          <h4 className="text-xl font-bold text-gray-900 mb-2">No OBD Data Available</h4>
+          <p className="text-gray-600 font-medium">Device not connected or no recent readings</p>
+          <p className="text-sm text-gray-500 mt-2">Check device installation status</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="relative bg-white/60 backdrop-blur-xl rounded-3xl border-2 border-white/40 p-8 shadow-2xl overflow-hidden"
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <Activity className={`w-6 h-6 ${getDeviceStatusColor(validationData.status)}`} />
-          <h3 className="text-lg font-semibold text-gray-900">Recent OBD Data</h3>
-        </div>
-        {getValidationStatusBadge(validationData.validationStatus)}
-      </div>
-
-      {/* Device Status */}
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Device ID:</span>
-          <span className="font-medium">{validationData.deviceID}</span>
-        </div>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-sm text-gray-600">Status:</span>
-          <span className={`font-medium capitalize ${getDeviceStatusColor(validationData.status)}`}>
-            {validationData.status.replace('_', ' ')}
-          </span>
-        </div>
-      </div>
-
-      {/* Latest Reading */}
-      {validationData.lastReading && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <div className="flex items-center space-x-2 mb-1">
-                <Gauge className="w-4 h-4 text-blue-600" />
-                <span className="text-xs text-gray-600">Mileage</span>
-              </div>
-              <p className="text-lg font-bold text-gray-900">{validationData.lastReading.mileage} km</p>
-            </div>
-            
-            <div className="p-3 bg-green-50 rounded-lg">
-              <div className="flex items-center space-x-2 mb-1">
-                <Activity className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-gray-600">Speed</span>
-              </div>
-              <p className="text-lg font-bold text-gray-900">{validationData.lastReading.speed} km/h</p>
-            </div>
-
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <span className="text-xs text-gray-600">RPM</span>
-              <p className="text-lg font-bold text-gray-900">{validationData.lastReading.rpm}</p>
-            </div>
-
-            <div className="p-3 bg-orange-50 rounded-lg">
-              <span className="text-xs text-gray-600">Engine Temp</span>
-              <p className="text-lg font-bold text-gray-900">{validationData.lastReading.engineTemp}°C</p>
-            </div>
-
-            <div className="p-3 bg-yellow-50 rounded-lg">
-              <span className="text-xs text-gray-600">Fuel Level</span>
-              <p className="text-lg font-bold text-gray-900">{validationData.lastReading.fuelLevel}%</p>
-            </div>
-
-            <div className="p-3 bg-indigo-50 rounded-lg">
-              <span className="text-xs text-gray-600">Data Quality</span>
-              <p className="text-lg font-bold text-gray-900">{validationData.lastReading.dataQuality}%</p>
+      {/* Animated background */}
+      <motion.div
+        className="absolute inset-0 opacity-10"
+        animate={{
+          background: [
+            "linear-gradient(45deg, #3b82f6 0%, #1d4ed8 100%)",
+            "linear-gradient(45deg, #1d4ed8 0%, #1e40af 100%)",
+            "linear-gradient(45deg, #1e40af 0%, #3b82f6 100%)"
+          ]
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg"
+            >
+              <Activity className="w-7 h-7 text-white" />
+            </motion.div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">Recent OBD Data</h3>
+              <p className="text-gray-600">Real-time vehicle diagnostics</p>
             </div>
           </div>
+          {getValidationStatusBadge(validationData.validationStatus || 'PENDING')}
+        </div>
 
-          {/* Tampering Warning */}
-          {validationData.tamperingDetected && (
+        {/* Device Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-6 p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/40 shadow-sm"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3 bg-white/40 rounded-xl">
+              <div className="flex items-center space-x-2">
+                <Smartphone className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">Device ID:</span>
+              </div>
+              <span className="font-bold text-gray-900">{validationData.deviceID || 'Unknown'}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-white/40 rounded-xl">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium text-gray-700">Status:</span>
+              </div>
+              <span className={`font-bold capitalize ${getDeviceStatusColor(validationData.status)}`}>
+                {validationData.status?.replace('_', ' ') || 'Unknown'}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Latest Reading */}
+        {validationData.lastReading && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="space-y-6"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="p-4 bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-sm rounded-2xl border border-blue-300/50 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="p-2 bg-blue-500 rounded-xl"
+                  >
+                    <Gauge className="w-5 h-5 text-white" />
+                  </motion.div>
+                  <span className="text-sm font-bold text-gray-700">Mileage</span>
+                </div>
+                <p className="text-2xl font-black text-gray-900">{validationData.lastReading.mileage.toLocaleString()} km</p>
+              </motion.div>
+              
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="p-4 bg-gradient-to-br from-green-500/20 to-green-600/20 backdrop-blur-sm rounded-2xl border border-green-300/50 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="p-2 bg-green-500 rounded-xl"
+                  >
+                    <TrendingUp className="w-5 h-5 text-white" />
+                  </motion.div>
+                  <span className="text-sm font-bold text-gray-700">Speed</span>
+                </div>
+                <p className="text-2xl font-black text-gray-900">{validationData.lastReading.speed} km/h</p>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-sm rounded-2xl border border-purple-300/50 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    className="p-2 bg-purple-500 rounded-xl"
+                  >
+                    <Activity className="w-5 h-5 text-white" />
+                  </motion.div>
+                  <span className="text-sm font-bold text-gray-700">RPM</span>
+                </div>
+                <p className="text-2xl font-black text-gray-900">{validationData.lastReading.rpm.toLocaleString()}</p>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="p-4 bg-gradient-to-br from-orange-500/20 to-orange-600/20 backdrop-blur-sm rounded-2xl border border-orange-300/50 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="p-2 bg-orange-500 rounded-xl"
+                  >
+                    <Thermometer className="w-5 h-5 text-white" />
+                  </motion.div>
+                  <span className="text-sm font-bold text-gray-700">Engine Temp</span>
+                </div>
+                <p className="text-2xl font-black text-gray-900">{validationData.lastReading.engineTemp}°C</p>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 backdrop-blur-sm rounded-2xl border border-yellow-300/50 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity }}
+                    className="p-2 bg-yellow-500 rounded-xl"
+                  >
+                    <Fuel className="w-5 h-5 text-white" />
+                  </motion.div>
+                  <span className="text-sm font-bold text-gray-700">Fuel Level</span>
+                </div>
+                <p className="text-2xl font-black text-gray-900">{validationData.lastReading.fuelLevel}%</p>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="p-4 bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 backdrop-blur-sm rounded-2xl border border-indigo-300/50 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ scale: [1, 1.15, 1] }}
+                    transition={{ duration: 1.8, repeat: Infinity }}
+                    className="p-2 bg-indigo-500 rounded-xl"
+                  >
+                    <Zap className="w-5 h-5 text-white" />
+                  </motion.div>
+                  <span className="text-sm font-bold text-gray-700">Data Quality</span>
+                </div>
+                <p className="text-2xl font-black text-gray-900">{validationData.lastReading.dataQuality}%</p>
+              </motion.div>
+            </div>
+
+            {/* Tampering Warning */}
+            {validationData.tamperingDetected && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="p-6 bg-gradient-to-r from-red-500/20 to-red-600/20 backdrop-blur-sm border-2 border-red-300/50 rounded-2xl shadow-lg"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <motion.div
+                    animate={{ rotate: [0, -10, 10, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+                    className="p-2 bg-red-500 rounded-xl"
+                  >
+                    <AlertTriangle className="w-6 h-6 text-white" />
+                  </motion.div>
+                  <span className="text-lg font-bold text-red-900">Tampering Detected!</span>
+                </div>
+                <p className="text-sm text-red-800 font-medium">
+                  Suspicious data pattern detected. Fraud score: {validationData.fraudScore}%
+                </p>
+              </motion.div>
+            )}
+
+            {/* Last Updated */}
             <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              className="p-3 bg-red-50 border border-red-200 rounded-lg"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="flex items-center justify-between p-4 bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40"
             >
               <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <span className="font-medium text-red-900">Tampering Detected!</span>
+                <Clock className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-600">Last updated</span>
               </div>
-              <p className="text-sm text-red-700 mt-1">
-                Suspicious data pattern detected. Fraud score: {validationData.fraudScore}%
-              </p>
+              <span className="text-sm font-bold text-gray-900">{formatDate(validationData.lastReading.recordedAt)}</span>
             </motion.div>
-          )}
-
-          {/* Last Updated */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-            <div className="flex items-center space-x-1 text-xs text-gray-500">
-              <Clock className="w-3 h-3" />
-              <span>Last updated</span>
-            </div>
-            <span className="text-xs text-gray-600">{formatDate(validationData.lastReading.recordedAt)}</span>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </div>
     </motion.div>
   );
 };

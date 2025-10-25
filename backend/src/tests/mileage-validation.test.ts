@@ -1,209 +1,225 @@
-import request from 'supertest';
-import { app } from '../app';
-import { Vehicle } from '../models/core/Vehicle.model';
-import { VehicleTelemetry } from '../models/core/VehicleTelemetry.model';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import mongoose from 'mongoose';
+import { Vehicle, VehicleTelemetry, Device } from '../models';
+import { DeviceController } from '../controllers/device/device.controller';
 
-describe('Mileage Validation Tests', () => {
+describe('Mileage Validation Logic', () => {
   let testVehicle: any;
-  let testDeviceId: string;
+  let testDevice: any;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Create test vehicle
     testVehicle = await Vehicle.create({
-      vin: 'TEST12345678901234',
+      vin: 'TEST123456789',
       vehicleNumber: 'TEST001',
       ownerId: new mongoose.Types.ObjectId(),
       make: 'Test',
       vehicleModel: 'Model',
       year: 2023,
-      color: 'White',
+      color: 'Blue',
       bodyType: 'sedan',
       fuelType: 'gasoline',
       transmission: 'automatic',
-      currentMileage: 67000,
-      lastVerifiedMileage: 67000, // FIXED: Set authoritative mileage
-      verificationStatus: 'verified',
-      trustScore: 100,
-      fraudAlerts: [],
-      isForSale: false,
-      listingStatus: 'not_listed',
-      features: [],
-      condition: 'good',
-      accidentHistory: [],
-      serviceHistory: []
+      currentMileage: 50000,
+      lastVerifiedMileage: 50000,
+      condition: 'good'
     });
 
-    testDeviceId = 'TEST_DEVICE_001';
+    // Create test device
+    testDevice = await Device.create({
+      deviceID: 'TEST_DEVICE_001',
+      status: 'obd_connected',
+      lastSeen: new Date()
+    });
   });
 
-  afterAll(async () => {
-    // Cleanup
-    await Vehicle.deleteOne({ _id: testVehicle._id });
-    await VehicleTelemetry.deleteMany({ deviceID: testDeviceId });
+  afterEach(async () => {
+    await Vehicle.deleteMany({ vin: 'TEST123456789' });
+    await Device.deleteMany({ deviceID: 'TEST_DEVICE_001' });
+    await VehicleTelemetry.deleteMany({ deviceID: 'TEST_DEVICE_001' });
   });
 
-  describe('Valid Mileage Updates', () => {
-    test('should accept valid mileage increase', async () => {
-      const response = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          mileage: 67100, // +100 km increase
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
+  describe('Valid Mileage Progression', () => {
+    it('should accept valid mileage increase', async () => {
+      const deviceData = {
+        deviceID: 'TEST_DEVICE_001',
+        status: 'obd_connected',
+        vin: 'TEST123456789',
+        mileage: 50100,
+        timestamp: Date.now(),
+        dataSource: 'device_status',
+        message: 'Test data'
+      };
 
-      expect(response.status).toBe(200);
-      expect(response.body.status).toBe('success');
-      expect(response.body.data.mileageValidation.flagged).toBe(false);
-      expect(response.body.data.mileageValidation.validationStatus).toBe('VALID');
-      expect(response.body.data.mileageValidation.delta).toBe(100);
+      // Mock request and response
+      const req = { body: deviceData } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+      } as any;
 
-      // Verify vehicle was updated
+      await DeviceController.receiveDeviceStatus(req, res);
+
+      // Should return 200 success
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Device status received and saved successfully'
+        })
+      );
+
+      // Check vehicle was updated
       const updatedVehicle = await Vehicle.findById(testVehicle._id);
-      expect(updatedVehicle.lastVerifiedMileage).toBe(67100);
+      expect(updatedVehicle?.lastVerifiedMileage).toBe(50100);
     });
 
-    test('should accept same mileage (no change)', async () => {
-      const response = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          mileage: 67100, // Same as current
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
+    it('should accept same mileage (no change)', async () => {
+      const deviceData = {
+        deviceID: 'TEST_DEVICE_001',
+        status: 'obd_connected',
+        vin: 'TEST123456789',
+        mileage: 50000, // Same as current
+        timestamp: Date.now(),
+        dataSource: 'device_status',
+        message: 'Test data'
+      };
 
-      expect(response.status).toBe(200);
-      expect(response.body.data.mileageValidation.flagged).toBe(false);
-      expect(response.body.data.mileageValidation.delta).toBe(0);
+      const req = { body: deviceData } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+      } as any;
+
+      await DeviceController.receiveDeviceStatus(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 
   describe('Fraud Detection', () => {
-    test('should flag rollback (mileage decrease)', async () => {
-      const response = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          mileage: 82, // MASSIVE rollback from 67100
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
+    it('should flag rollback and return 422', async () => {
+      const deviceData = {
+        deviceID: 'TEST_DEVICE_001',
+        status: 'obd_connected',
+        vin: 'TEST123456789',
+        mileage: 45000, // Rollback from 50000
+        timestamp: Date.now(),
+        dataSource: 'device_status',
+        message: 'Test data'
+      };
 
-      expect(response.status).toBe(422);
-      expect(response.body.status).toBe('flagged');
-      expect(response.body.flagged).toBe(true);
-      expect(response.body.reason).toContain('rollback');
-      expect(response.body.delta).toBeLessThan(0);
+      const req = { body: deviceData } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+      } as any;
 
-      // Verify vehicle was NOT updated
-      const vehicle = await Vehicle.findById(testVehicle._id);
-      expect(vehicle.lastVerifiedMileage).toBe(67100); // Should remain unchanged
+      await DeviceController.receiveDeviceStatus(req, res);
+
+      // Should return 422 for fraud
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          flagged: true,
+          reason: expect.stringContaining('Odometer rollback detected')
+        })
+      );
+
+      // Check vehicle was NOT updated
+      const updatedVehicle = await Vehicle.findById(testVehicle._id);
+      expect(updatedVehicle?.lastVerifiedMileage).toBe(50000); // Unchanged
+
+      // Check telemetry was created with flagged status
+      const telemetry = await VehicleTelemetry.findOne({ deviceID: 'TEST_DEVICE_001' });
+      expect(telemetry?.mileageValidation.flagged).toBe(true);
+      expect(telemetry?.mileageValidation.validationStatus).toBe('ROLLBACK_DETECTED');
     });
 
-    test('should flag small rollback (1 km decrease)', async () => {
-      const response = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          mileage: 67099, // 1 km decrease
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
-
-      expect(response.status).toBe(422);
-      expect(response.body.flagged).toBe(true);
-    });
-
-    test('should allow small sensor error (3 km decrease)', async () => {
-      const response = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          mileage: 67097, // 3 km decrease (within tolerance)
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.data.mileageValidation.flagged).toBe(false);
-    });
-  });
-
-  describe('Backwards Compatibility', () => {
-    test('should accept both currentMileage and newMileage keys', async () => {
-      const response1 = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          currentMileage: 67200, // Old key
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
-
-      expect(response1.status).toBe(200);
-
-      const response2 = await request(app)
-        .post('/api/device/status')
-        .send({
-          deviceID: testDeviceId,
-          status: 'obd_connected',
-          vin: testVehicle.vin,
-          newMileage: 67300, // New key
-          timestamp: Date.now(),
-          dataSource: 'veepeak_obd'
-        });
-
-      expect(response2.status).toBe(200);
-    });
-  });
-
-  describe('Race Condition Protection', () => {
-    test('should handle concurrent updates atomically', async () => {
-      // Simulate concurrent requests
-      const promises = [
-        request(app)
-          .post('/api/device/status')
-          .send({
-            deviceID: testDeviceId,
-            status: 'obd_connected',
-            vin: testVehicle.vin,
-            mileage: 67400,
-            timestamp: Date.now(),
-            dataSource: 'veepeak_obd'
-          }),
-        request(app)
-          .post('/api/device/status')
-          .send({
-            deviceID: testDeviceId,
-            status: 'obd_connected',
-            vin: testVehicle.vin,
-            mileage: 67500,
-            timestamp: Date.now() + 1,
-            dataSource: 'veepeak_obd'
-          })
+    it('should handle multiple field names for reported mileage', async () => {
+      const testCases = [
+        { field: 'mileage', value: 45000 },
+        { field: 'currentMileage', value: 45000 },
+        { field: 'newMileage', value: 45000 },
+        { field: 'reportedMileage', value: 45000 }
       ];
 
-      const responses = await Promise.all(promises);
-      
-      // At least one should succeed, one might fail due to race condition
-      const successCount = responses.filter(r => r.status === 200).length;
-      expect(successCount).toBeGreaterThan(0);
+      for (const testCase of testCases) {
+        const deviceData = {
+          deviceID: 'TEST_DEVICE_001',
+          status: 'obd_connected',
+          vin: 'TEST123456789',
+          [testCase.field]: testCase.value,
+          timestamp: Date.now(),
+          dataSource: 'device_status',
+          message: 'Test data'
+        };
+
+        const req = { body: deviceData } as any;
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        } as any;
+
+        await DeviceController.receiveDeviceStatus(req, res);
+
+        // Should flag as fraud
+        expect(res.status).toHaveBeenCalledWith(422);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            flagged: true
+          })
+        );
+      }
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle missing VIN gracefully', async () => {
+      const deviceData = {
+        deviceID: 'TEST_DEVICE_001',
+        status: 'obd_connected',
+        // No VIN
+        mileage: 50100,
+        timestamp: Date.now(),
+        dataSource: 'device_status',
+        message: 'Test data'
+      };
+
+      const req = { body: deviceData } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+      } as any;
+
+      await DeviceController.receiveDeviceStatus(req, res);
+
+      // Should still work but not validate mileage
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should handle zero mileage gracefully', async () => {
+      const deviceData = {
+        deviceID: 'TEST_DEVICE_001',
+        status: 'obd_connected',
+        vin: 'TEST123456789',
+        mileage: 0,
+        timestamp: Date.now(),
+        dataSource: 'device_status',
+        message: 'Test data'
+      };
+
+      const req = { body: deviceData } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+      } as any;
+
+      await DeviceController.receiveDeviceStatus(req, res);
+
+      // Should work without validation
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 });
-

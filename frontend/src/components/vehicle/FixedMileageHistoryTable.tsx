@@ -61,11 +61,19 @@ export const FixedMileageHistoryTable: React.FC<FixedMileageHistoryTableProps> =
             <span>Suspicious</span>
           </div>
         );
-      default:
+      case 'PENDING':
         return (
           <div className="flex items-center space-x-1 px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
             <Clock className="w-3 h-3" />
             <span>Pending</span>
+          </div>
+        );
+      default:
+        // Default to Valid for normal records, Pending only for truly unknown status
+        return (
+          <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+            <CheckCircle className="w-3 h-3" />
+            <span>Valid</span>
           </div>
         );
     }
@@ -104,15 +112,33 @@ export const FixedMileageHistoryTable: React.FC<FixedMileageHistoryTableProps> =
     return `https://explorer.solana.com/tx/${txHash}?cluster=${cluster}`;
   };
 
+  const getSourceLabel = (source?: string) => {
+    if (!source) return 'unknown';
+    if (source === 'service' || source === 'service_record') return 'service';
+    if (source === 'automated' || source === 'obd_device') return 'OBD device';
+    return source;
+  };
+
   // FIXED: Calculate delta from DB fields, not by comparing records
   const calculateDelta = (record: MileageRecord) => {
-    if (record.delta !== undefined) {
-      return record.delta; // Use DB delta if available
+    // Use DB delta if available and not zero
+    if (record.delta !== undefined && record.delta !== null) {
+      return record.delta;
     }
-    if (record.previousMileage !== undefined && record.newMileage !== undefined) {
-      return record.newMileage - record.previousMileage; // Calculate from DB fields
+    
+    // Calculate from DB fields if available
+    if (record.previousMileage !== undefined && record.newMileage !== undefined && 
+        record.previousMileage !== null && record.newMileage !== null) {
+      return record.newMileage - record.previousMileage;
     }
-    return 0; // Fallback
+    
+    // If we have mileage but no previous/new, try to use the mileage as newMileage
+    if (record.mileage !== undefined && record.mileage !== null) {
+      // This is a fallback - we'll show 0 for now, but ideally we'd have proper previous mileage
+      return 0;
+    }
+    
+    return 0; // Final fallback
   };
 
   return (
@@ -183,7 +209,9 @@ export const FixedMileageHistoryTable: React.FC<FixedMileageHistoryTableProps> =
                       </span>
                     </div>
                   ) : (
-                    <span className="text-gray-400 text-xs">No change</span>
+                    <span className="text-gray-400 text-xs">
+                      {record.previousMileage !== undefined ? 'No change' : 'Unknown'}
+                    </span>
                   )}
                 </td>
 
@@ -208,7 +236,7 @@ export const FixedMileageHistoryTable: React.FC<FixedMileageHistoryTableProps> =
                   <div className="flex items-center">
                     {getSourceIcon(record.source)}
                     <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${getSourceColor(record.source)}`}>
-                      {record.source || 'unknown'}
+                      {getSourceLabel(record.source)}
                     </span>
                   </div>
                 </td>

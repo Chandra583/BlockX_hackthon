@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import { ApiError, ValidationError } from '../../utils/errors';
-import { Device, VehicleTelemetry, TestResult, Vehicle, IDevice, IVehicleTelemetry, ITestResult } from '../../models';
+import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITestResult, Vehicle } from '../../models';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import { TelemetryConsolidationService } from '../../services/telemetryConsolidation.service';
-import { TrustEvent } from '../../models/core/TrustEvent.model';
-import { emitToUser } from '../../utils/socketEmitter';
+import { emitEvent, emitToUser } from '../../utils/socketEmitter';
 // import BatchProcessingService from '../../services/core/batchProcessing.service';
 import mongoose from 'mongoose';
 
@@ -202,28 +201,12 @@ export class DeviceController {
       //   }
       // }
 
-      // Find vehicle by VIN for telemetry linking
-      let vehicleRecord = null;
-      if (deviceData.vin) {
-        try {
-          vehicleRecord = await Vehicle.findOne({ vin: deviceData.vin });
-          if (vehicleRecord) {
-            logger.info(`Found vehicle for VIN ${deviceData.vin}: ${vehicleRecord._id}`);
-          } else {
-            logger.warn(`Vehicle not found for VIN: ${deviceData.vin}`);
-          }
-        } catch (vehicleError) {
-          logger.error('Error finding vehicle:', vehicleError);
-        }
-      }
-
       // Create telemetry record
       try {
         logger.info('Creating telemetry record:', { deviceID: deviceData.deviceID });
         const telemetryData = {
           deviceID: deviceData.deviceID,
           device: deviceRecord._id,
-          vehicle: vehicleRecord?._id, // FIXED: Link to vehicle
           status: deviceData.status,
           message: deviceData.message || 'ESP32 data received',
           dataSource: deviceData.dataSource || 'device_status',
@@ -281,14 +264,9 @@ export class DeviceController {
       }
 
       // Process different status types and update validation
-      let fraudDetected = false;
-      let fraudDetails = null;
-      
       switch (deviceData.status) {
         case 'obd_connected':
-          const processResult = await DeviceController.processVehicleData({ ...deviceData, deviceId: normalizedObdId, deviceID: normalizedObdId }, telemetryRecord);
-          fraudDetected = processResult?.fraudDetected || false;
-          fraudDetails = processResult?.fraudDetails || null;
+          await DeviceController.processVehicleData({ ...deviceData, deviceId: normalizedObdId, deviceID: normalizedObdId }, telemetryRecord);
           break;
         case 'device_not_connected':
           await DeviceController.processDeviceError({ ...deviceData, deviceId: normalizedObdId, deviceID: normalizedObdId }, telemetryRecord);
@@ -367,40 +345,21 @@ export class DeviceController {
         // Don't fail the main request if consolidation fails
       }
 
-      // Send appropriate response based on fraud detection
-      if (fraudDetected) {
-        res.status(422).json({
-          success: false,
-          flagged: true,
-          reason: fraudDetails?.validationStatus || 'Fraud detected',
+      // Send success response
+      res.status(200).json({
+        status: 'success',
+        message: 'Device status received and saved successfully',
+        data: {
+          deviceID: normalizedObdId,
           telemetryId: telemetryRecord._id,
-          message: 'Telemetry flagged for fraud detection',
-          data: {
-            vehicleId: fraudDetails?.vehicleId,
-            previousMileage: fraudDetails?.previousMileage,
-            reportedMileage: fraudDetails?.mileage,
-            delta: fraudDetails?.delta,
-            validationStatus: fraudDetails?.validationStatus,
-            validationErrors: fraudDetails?.validationErrors
-          },
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        res.status(200).json({
-          status: 'success',
-          message: 'Device status received and saved successfully',
-          data: {
-            deviceID: normalizedObdId,
-            telemetryId: telemetryRecord._id,
-            testId: testRecord._id,
-            processedAt: new Date().toISOString(),
-            dataReceived: true,
-            databaseSaved: true,
-            duration: duration
-          },
-          timestamp: new Date().toISOString()
-        });
-      }
+          testId: testRecord._id,
+          processedAt: new Date().toISOString(),
+          dataReceived: true,
+          databaseSaved: true,
+          duration: duration
+        },
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error) {
       logger.error('Error processing device status:', {
@@ -485,7 +444,7 @@ export class DeviceController {
   /**
    * Process successful vehicle data from ESP32
    */
-  private static async processVehicleData(data: ESP32DeviceData, telemetryRecord: IVehicleTelemetry): Promise<{ fraudDetected: boolean; fraudDetails?: any }> {
+  private static async processVehicleData(data: ESP32DeviceData, telemetryRecord: IVehicleTelemetry): Promise<void> {
     try {
       logger.info('Processing vehicle data:', {
         deviceID: data.deviceID,
@@ -499,135 +458,65 @@ export class DeviceController {
       let tamperingDetected = false;
       let validationStatus = 'VALID';
       const validationErrors: string[] = [];
-      let vehicle = null;
 
-      // 1. FIXED: Mileage validation against vehicle's authoritative lastVerifiedMileage
-      if (data.mileage && data.mileage > 0 && data.vin) {
-        // Find vehicle by VIN to get authoritative mileage
-        vehicle = await Vehicle.findOne({ vin: data.vin });
-        
-        if (vehicle) {
-          const previousMileage = vehicle.lastVerifiedMileage || 0;
-          const reportedMileage = data.mileage;
-          const delta = reportedMileage - previousMileage;
+      // 1. Mileage validation and fraud detection
+      if (data.mileage && data.mileage > 0) {
+        // Get last mileage reading for this device
+        const lastReading = await VehicleTelemetry.findOne(
+          { 
+            deviceID: data.deviceID,
+            'obd.mileage': { $exists: true, $gt: 0 },
+            _id: { $ne: telemetryRecord._id }
+          },
+          {},
+          { sort: { 'rawData.receivedAt': -1 } }
+        );
+
+        if (lastReading && lastReading.obd.mileage) {
+          const mileageIncrement = data.mileage - lastReading.obd.mileage;
+          const timeDiff = (new Date().getTime() - lastReading.rawData.receivedAt.getTime()) / (1000 * 60 * 60); // hours
           
-          logger.info(`Mileage validation: Previous=${previousMileage}, Reported=${reportedMileage}, Delta=${delta}`);
-          
-          // FRAUD DETECTION: Odometer rollback
-          if (reportedMileage < previousMileage) {
+          // Odometer rollback detection
+          if (mileageIncrement < -5) {
             tamperingDetected = true;
             validationStatus = 'ROLLBACK_DETECTED';
-            validationErrors.push(`Odometer rollback: ${reportedMileage} < ${previousMileage} (${delta} km decrease)`);
-            logger.error(`🚨 FRAUD ALERT: Odometer rollback detected on ${data.deviceID}: ${previousMileage} -> ${reportedMileage} km (${delta} km decrease)`);
-            
-            // Create fraud alert in vehicle record
-            const fraudAlert = {
-              alertType: 'odometer_rollback',
-              severity: 'high',
-              description: `Odometer rollback detected: Mileage decreased from ${previousMileage} km to ${reportedMileage} km`,
-              reportedBy: vehicle.ownerId, // Use vehicle owner as reporter
-              reportedAt: new Date(),
-              status: 'active',
-              evidence: [],
-              investigationNotes: `Delta: ${delta} km (decrease)`
-            };
-            
-            // Add fraud alert to vehicle
-            vehicle.fraudAlerts.push(fraudAlert);
-            await vehicle.save();
-            
-            logger.error(`🚨 FRAUD ALERT CREATED for vehicle ${vehicle._id}: ${fraudAlert.description}`);
-            
-            // Create trust event for fraud detection
-            try {
-              const trustEvent = new TrustEvent({
-                vehicleId: vehicle._id,
-                change: -30, // Configurable impact
-                previousScore: vehicle.trustScore,
-                newScore: Math.max(0, vehicle.trustScore - 30),
-                reason: `Mileage rollback detected: ${reportedMileage} km vs ${previousMileage} km`,
-                details: {
-                  telemetryId: telemetryRecord._id,
-                  reportedMileage,
-                  previousMileage,
-                  deviceId: data.deviceID,
-                  fraudAlertId: vehicle.fraudAlerts[vehicle.fraudAlerts.length - 1]?._id
-                },
-                source: 'fraudEngine',
-                createdBy: vehicle.ownerId
-              });
-
-              await trustEvent.save();
-              
-              // Update vehicle trust score
-              vehicle.trustScore = Math.max(0, vehicle.trustScore - 30);
-              vehicle.trustHistoryCount = (vehicle.trustHistoryCount || 0) + 1;
-              await vehicle.save();
-
-              // Emit socket event
-              emitToUser(vehicle.ownerId.toString(), 'trustscore_changed', {
-                vehicleId: vehicle._id,
-                previousScore: vehicle.trustScore + 30,
-                newScore: vehicle.trustScore,
-                eventId: trustEvent._id,
-                reason: trustEvent.reason,
-                change: -30
-              });
-              
-              logger.info(`📉 TRUST EVENT CREATED: Score decreased by 30 points for vehicle ${vehicle._id}`);
-            } catch (trustError) {
-              logger.error('Failed to create trust event:', trustError);
-            }
+            validationErrors.push(`Odometer rollback: ${Math.abs(mileageIncrement)} km decrease`);
+            logger.error(`🚨 FRAUD ALERT: Odometer rollback detected on ${data.deviceID}: ${lastReading.obd.mileage} -> ${data.mileage} km`);
+          }
+          
+          // Impossible distance increase
+          else if (timeDiff > 0 && mileageIncrement > (timeDiff * 120)) { // Max 120 km/h average
+            tamperingDetected = true;
+            validationStatus = 'IMPOSSIBLE_DISTANCE';
+            validationErrors.push(`Impossible distance: ${mileageIncrement} km in ${timeDiff.toFixed(1)} hours`);
+            logger.error(`🚨 FRAUD ALERT: Impossible distance increase on ${data.deviceID}: ${mileageIncrement} km in ${timeDiff.toFixed(1)} hours`);
+          }
+          
+          // Large mileage jump
+          else if (mileageIncrement > 1000 && timeDiff < 24) {
+            tamperingDetected = true;
+            validationStatus = 'SUDDEN_JUMP';
+            validationErrors.push(`Large mileage jump: ${mileageIncrement} km in ${timeDiff.toFixed(1)} hours`);
+            logger.warn(`⚠️ SUSPICIOUS: Large mileage jump on ${data.deviceID}: ${mileageIncrement} km`);
           }
           
           // Update telemetry with validation results
-          logger.info(`Updating telemetry record ${telemetryRecord._id} with fraud flags:`, {
-            tamperingDetected,
-            validationStatus,
-            flagged: tamperingDetected,
-            delta
-          });
-          
-          const updateResult = await VehicleTelemetry.updateOne(
+          await VehicleTelemetry.updateOne(
             { _id: telemetryRecord._id },
             {
               $set: {
+                'validation.lastKnownMileage': lastReading.obd.mileage,
+                'validation.mileageIncrement': mileageIncrement,
                 'validation.tamperingDetected': tamperingDetected,
-                'validation.validationStatus': validationStatus,
-                'mileageValidation.previousMileage': previousMileage,
-                'mileageValidation.newMileage': reportedMileage,
-                'mileageValidation.delta': delta,
-                'mileageValidation.flagged': tamperingDetected,
-                'mileageValidation.validationStatus': validationStatus,
-                'mileageValidation.reason': tamperingDetected ? `Odometer rollback: ${reportedMileage} < ${previousMileage}` : 'Valid mileage progression'
+                'validation.validationStatus': validationStatus
               }
             }
           );
-          
-          logger.info(`Telemetry update result:`, {
-            matchedCount: updateResult.matchedCount,
-            modifiedCount: updateResult.modifiedCount,
-            acknowledged: updateResult.acknowledged
-          });
-          
-          // If valid, update vehicle's lastVerifiedMileage
-          if (!tamperingDetected && reportedMileage >= previousMileage) {
-            await Vehicle.findByIdAndUpdate(vehicle._id, {
-              $set: {
-                lastVerifiedMileage: reportedMileage,
-                currentMileage: reportedMileage,
-                lastMileageUpdate: new Date()
-              }
-            });
-            logger.info(`✅ Valid mileage update: ${previousMileage} -> ${reportedMileage} km`);
-          }
-        } else {
-          logger.warn(`Vehicle not found for VIN: ${data.vin}`);
         }
 
         logger.info(`Mileage reading: ${data.mileage} km from ${data.deviceID} (Status: ${validationStatus})`);
       }
-      
+
       // 2. Vehicle health monitoring
       const healthAlerts: string[] = [];
       
@@ -701,18 +590,6 @@ export class DeviceController {
           }
         );
       }
-
-      // Return fraud detection result
-      return {
-        fraudDetected: tamperingDetected,
-        fraudDetails: tamperingDetected ? {
-          validationStatus,
-          validationErrors,
-          mileage: data.mileage,
-          previousMileage: vehicle?.lastVerifiedMileage,
-          delta: data.mileage - (vehicle?.lastVerifiedMileage || 0)
-        } : null
-      };
 
     } catch (error) {
       logger.error('Error processing vehicle data:', error);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { History, Gauge, ExternalLink, Copy, CheckCircle, TrendingUp, Car, Calendar, Hash, Eye, Clock, ArrowRight, X } from 'lucide-react';
 import VehicleService from '../services/vehicle';
+import TelemetryService from '../services/telemetry';
 import { useNavigate } from 'react-router-dom';
 import { FixedMileageHistoryTable } from './vehicle/FixedMileageHistoryTable';
 
@@ -52,18 +53,77 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
     try {
       setLoading(true);
       setError(null);
+      
+      // Try to fetch from telemetry API first (with fraud detection data)
+      try {
+        const telemetryRes = await TelemetryService.getTelemetryHistory(vehicleId, 10, 0);
+        if (telemetryRes?.data?.data && telemetryRes.data.data.length > 0) {
+          console.log('✅ Using telemetry API data with fraud detection');
+          const mapped: MileageRecordItem[] = telemetryRes.data.data.map((r: any) => ({
+            id: r.id,
+            mileage: r.mileage,
+            recordedAt: r.recordedAt,
+            source: r.source,
+            verified: r.verified,
+            deviceId: r.deviceId,
+            blockchainHash: r.blockchainHash,
+            // FIXED: Add validation fields from telemetry API
+            previousMileage: r.previousMileage,
+            newMileage: r.newMileage,
+            delta: r.delta,
+            flagged: r.flagged,
+            validationStatus: r.validationStatus
+          }));
+          setRecords(mapped);
+          return;
+        }
+      } catch (telemetryError) {
+        console.log('Telemetry API not available, falling back to vehicle service');
+      }
+      
+      // Fallback to vehicle service
       const res = await VehicleService.getVehicleMileageHistory(vehicleId);
       const data = res?.data?.data || res?.data;
       const history = data?.history || data?.records || [];
-      const mapped: MileageRecordItem[] = history.map((r: any) => ({
-        id: r._id || r.id,
-        mileage: r.mileage,
-        recordedAt: r.recordedAt || r.createdAt,
-        source: r.source,
-        verified: r.verified,
-        deviceId: r.deviceId,
-        blockchainHash: r.blockchainHash
-      }));
+      
+      // Calculate delta for each record if not provided
+      const mapped: MileageRecordItem[] = history.map((r: any, index: number) => {
+        let delta = r.delta;
+        let previousMileage = r.previousMileage;
+        let newMileage = r.newMileage;
+        
+        // If delta not provided, calculate it
+        if (delta === undefined) {
+          if (index < history.length - 1) {
+            // Compare with next record (chronologically earlier)
+            const nextRecord = history[index + 1];
+            previousMileage = nextRecord.mileage;
+            newMileage = r.mileage;
+            delta = r.mileage - nextRecord.mileage;
+          } else {
+            // First record (most recent), no previous to compare
+            delta = 0;
+            previousMileage = r.mileage;
+            newMileage = r.mileage;
+          }
+        }
+        
+        return {
+          id: r._id || r.id,
+          mileage: r.mileage,
+          recordedAt: r.recordedAt || r.createdAt,
+          source: r.source,
+          verified: r.verified,
+          deviceId: r.deviceId,
+          blockchainHash: r.blockchainHash,
+          // FIXED: Add validation fields with calculated values
+          previousMileage,
+          newMileage,
+          delta,
+          flagged: r.flagged || false,
+          validationStatus: r.validationStatus || (r.flagged ? 'INVALID' : 'VALID')
+        };
+      });
       setRecords(mapped);
 
       // Set summary
@@ -88,6 +148,36 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
   const loadAllRecords = async () => {
     try {
       setModalLoading(true);
+      
+      // Try to fetch from telemetry API first (with fraud detection data)
+      try {
+        const telemetryRes = await TelemetryService.getTelemetryHistory(vehicleId, 100, 0);
+        if (telemetryRes?.data?.data && telemetryRes.data.data.length > 0) {
+          console.log('✅ Using telemetry API data for full history');
+          const mapped: MileageRecordItem[] = telemetryRes.data.data.map((r: any) => ({
+            id: r.id,
+            mileage: r.mileage,
+            recordedAt: r.recordedAt,
+            source: r.source,
+            verified: r.verified,
+            deviceId: r.deviceId,
+            blockchainHash: r.blockchainHash,
+            // FIXED: Add validation fields from telemetry API
+            previousMileage: r.previousMileage,
+            newMileage: r.newMileage,
+            delta: r.delta,
+            flagged: r.flagged,
+            validationStatus: r.validationStatus
+          }));
+          console.log('Mapped records:', mapped); // Debug log
+          setAllRecords(mapped);
+          return;
+        }
+      } catch (telemetryError) {
+        console.log('Telemetry API not available for full history, falling back to vehicle service');
+      }
+      
+      // Fallback to vehicle service
       const res = await VehicleService.getMileageHistory(vehicleId, 1, 100); // Load up to 100 records
       console.log('API Response:', res); // Debug log
       
@@ -96,15 +186,44 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
       const history = data?.history || [];
       console.log('History data:', history); // Debug log
       
-      const mapped: MileageRecordItem[] = history.map((r: any) => ({
-        id: r._id || r.id,
-        mileage: r.mileage,
-        recordedAt: r.recordedAt || r.createdAt,
-        source: r.source,
-        verified: r.verified,
-        deviceId: r.deviceId,
-        blockchainHash: r.blockchainHash
-      }));
+      // Calculate delta for each record if not provided
+      const mapped: MileageRecordItem[] = history.map((r: any, index: number) => {
+        let delta = r.delta;
+        let previousMileage = r.previousMileage;
+        let newMileage = r.newMileage;
+        
+        // If delta not provided, calculate it
+        if (delta === undefined) {
+          if (index < history.length - 1) {
+            // Compare with next record (chronologically earlier)
+            const nextRecord = history[index + 1];
+            previousMileage = nextRecord.mileage;
+            newMileage = r.mileage;
+            delta = r.mileage - nextRecord.mileage;
+          } else {
+            // First record (most recent), no previous to compare
+            delta = 0;
+            previousMileage = r.mileage;
+            newMileage = r.mileage;
+          }
+        }
+        
+        return {
+          id: r._id || r.id,
+          mileage: r.mileage,
+          recordedAt: r.recordedAt || r.createdAt,
+          source: r.source,
+          verified: r.verified,
+          deviceId: r.deviceId,
+          blockchainHash: r.blockchainHash,
+          // FIXED: Add validation fields with calculated values
+          previousMileage,
+          newMileage,
+          delta,
+          flagged: r.flagged || false,
+          validationStatus: r.validationStatus || (r.flagged ? 'INVALID' : 'VALID')
+        };
+      });
       
       console.log('Mapped records:', mapped); // Debug log
       setAllRecords(mapped);

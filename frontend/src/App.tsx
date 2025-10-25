@@ -17,17 +17,55 @@ import VehicleList from './pages/Vehicles/VehicleList';
 import VehicleDetails from './pages/Vehicles/VehicleDetails';
 import MileageHistory from './pages/Vehicles/MileageHistory';
 import DevicesList from './pages/Devices/DevicesList';
-import { MileageHistoryTest } from './components/vehicle/MileageHistoryTest';
+import { DashboardRedirect } from './components/auth/DashboardRedirect';
 
 // Import role-based routes
 import { adminRoutes, ownerRoutes, spRoutes } from './routes/roleRoutes';
 
 const HomePage = () => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user, isLoading } = useAppSelector((state) => state.auth);
 
-  // If user is authenticated, redirect to dashboard
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+  // Debug logging
+  console.log('HomePage render:', { isAuthenticated, user: user?.role, isLoading });
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, redirect to role-specific dashboard
+  if (isAuthenticated && user) {
+    const getRoleDashboardRoute = (role: string): string => {
+      const normalizedRole = role.toLowerCase();
+      
+      switch (normalizedRole) {
+        case 'admin':
+          return '/admin/dashboard';
+        case 'owner':
+          return '/owner/dashboard';
+        case 'service':
+          return '/sp/dashboard';
+        case 'buyer':
+          return '/buyer/dashboard';
+        case 'insurance':
+          return '/insurance/dashboard';
+        case 'government':
+          return '/government/dashboard';
+        default:
+          return '/login';
+      }
+    };
+
+    const dashboardRoute = getRoleDashboardRoute(user.role);
+    console.log('Redirecting to:', dashboardRoute);
+    return <Navigate to={dashboardRoute} replace />;
   }
 
   return (
@@ -69,12 +107,12 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         
-        {/* Role-based redirect for /dashboard */}
+        {/* Dashboard redirect */}
         <Route 
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <RoleRedirect />
+              <DashboardRedirect />
             </ProtectedRoute>
           } 
         />
@@ -196,11 +234,6 @@ function App() {
           } 
         />
         
-        {/* Test route for mileage history component */}
-        <Route 
-          path="/test/mileage-history" 
-          element={<MileageHistoryTest />} 
-        />
         
         {/* Catch all route - redirect to role-specific dashboard or login */}
         <Route path="*" element={<Navigate to="/" replace />} />

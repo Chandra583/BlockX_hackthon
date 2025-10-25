@@ -52,14 +52,14 @@ export class TelemetryService {
    * Get fraud alerts for a vehicle
    */
   static async getFraudAlerts(vehicleId: string): Promise<{ data: FraudAlert[] }> {
-    return await apiService.get(`/vehicles/${vehicleId}/fraud-alerts`);
+    return await apiService.get(`/telemetry/fraud-alerts/${vehicleId}`);
   }
 
   /**
    * Get latest OBD validation data
    */
   static async getLatestOBDData(vehicleId: string): Promise<{ data: OBDValidationData }> {
-    return await apiService.get(`/vehicles/${vehicleId}/telemetry/latest`);
+    return await apiService.get(`/telemetry/latest-obd/${vehicleId}`);
   }
 
   /**

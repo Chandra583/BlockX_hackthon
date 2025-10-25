@@ -11,6 +11,8 @@ import vehicleBlockchainRoutes from './vehicleBlockchain.routes';
 import installsRoutes from './installs.routes';
 import installationRequestRoutes from './installationRequest.routes';
 import serviceInstallsRoutes from './serviceInstalls.routes';
+import telemetryRoutes from './telemetry/telemetry.routes';
+import trustRoutes from './trust/trust.routes';
 // New routes - Service Providers, Batch Processing, Marketplace (temporarily disabled)
 // import serviceProviderRoutes from './admin/serviceProvider.routes';
 // import batchProcessingRoutes from './admin/batchProcessing.routes';
@@ -41,6 +43,12 @@ router.use('/v1/installation-requests', installationRequestRoutes);
 
 // Mount service installs routes
 router.use('/service', serviceInstallsRoutes);
+
+// Mount telemetry routes
+router.use('/telemetry', telemetryRoutes);
+
+// Mount trust routes
+router.use('/trust', trustRoutes);
 
 // Mount new feature routes (temporarily disabled for debugging)
 // router.use('/admin/service-providers', serviceProviderRoutes);

@@ -1,35 +1,39 @@
 import { Request, Response } from 'express';
-import { VehicleTelemetry, Vehicle, Device, TestResult } from '../../models';
 import { logger } from '../../utils/logger';
+import { ApiError, ValidationError } from '../../utils/errors';
+import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITestResult, Vehicle } from '../../models';
+import MileageHistory from '../../models/core/MileageHistory.model';
+import { TelemetryConsolidationService } from '../../services/telemetryConsolidation.service';
 import { emitEvent, emitToUser } from '../../utils/socketEmitter';
+import mongoose from 'mongoose';
 
+// Device data interface matching ESP32 data structure
 interface ESP32DeviceData {
   deviceID: string;
-  deviceId?: string;
-  status: 'obd_connected' | 'device_not_connected' | 'error' | 'discovery_mode';
+  deviceId?: string;  // OBD Device ID for installation mapping
+  status: 'obd_connected' | 'device_not_connected' | 'error';
+  message: string;
   vin?: string;
   mileage?: number;
   currentMileage?: number;
   newMileage?: number;
   reportedMileage?: number;
-  speed?: number;
   rpm?: number;
+  speed?: number;
   engineTemp?: number;
   fuelLevel?: number;
-  dataQuality?: number;
-  timestamp: number;
-  message?: string;
-  dataSource?: string;
-  location?: {
-    latitude: number;
-    longitude: number;
-    accuracy: number;
-  };
   batteryVoltage?: number;
-  bootCount?: number;
+  dataQuality?: number;
   odometerPID?: string;
+  bootCount?: number;
+  timestamp: number;
+  dataSource: string;
   veepeakConnected?: boolean;
-  httpAttempts?: number;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+    accuracy?: number;
+  };
 }
 
 export class DeviceController {
@@ -39,9 +43,9 @@ export class DeviceController {
    */
   static async receiveDeviceStatus(req: Request, res: Response): Promise<void> {
     const startTime = new Date();
-    let telemetryRecord: any = null;
-    let deviceRecord: any = null;
-    let testRecord: any = null;
+    let telemetryRecord: IVehicleTelemetry | null = null;
+    let deviceRecord: IDevice | null = null;
+    let testRecord: ITestResult | null = null;
 
     try {
       // Log raw request data for debugging
