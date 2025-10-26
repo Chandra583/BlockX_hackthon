@@ -44,6 +44,14 @@ export class NotificationService {
   static async markAllAsRead(): Promise<{ status: string; message: string; data: { markedCount: number } }> {
     return await apiService.patch(`/users/notifications/read-all`, {});
   }
+
+  static async markNotificationAsRead(id: string): Promise<{ status: string; message: string }> {
+    return await apiService.patch(`/users/notifications/${id}/read`, {});
+  }
+
+  static async markAllNotificationsAsRead(): Promise<{ status: string; message: string; data: { markedCount: number } }> {
+    return await apiService.patch(`/users/notifications/read-all`, {});
+  }
 }
 
 export default NotificationService;

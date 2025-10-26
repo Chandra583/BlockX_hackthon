@@ -6,7 +6,7 @@ import { useAppSelector } from '../hooks/redux';
 // Import role-specific dashboard components
 import { EnhancedAdminDashboard } from '../components/dashboard/EnhancedAdminDashboard';
 import { BuyerDashboard } from '../components/dashboard/BuyerDashboard';
-import { OwnerDashboard } from '../components/dashboard/OwnerDashboard';
+import OwnerDashboard from './OwnerDashboard/Dashboard';
 import { ServiceDashboard } from '../components/dashboard/ServiceDashboard';
 import { InsuranceDashboard } from '../components/dashboard/InsuranceDashboard';
 import { GovernmentDashboard } from '../components/dashboard/GovernmentDashboard';
@@ -67,11 +67,9 @@ const DashboardPage: React.FC = () => {
       role: user.role
     };
 
-    // For owners, redirect to the new dashboard home
+    // For owners, use the new OwnerDashboard
     if (user.role === 'owner') {
-      // Redirect to the new dashboard home
-      navigate('/dashboard/home', { replace: true });
-      return <DashboardHome />;
+      return <OwnerDashboard />;
     }
 
     switch (user.role) {

@@ -4,6 +4,9 @@ import { authenticate } from '../../middleware/auth.middleware';
 
 const router = Router();
 
+// Get user trust score
+router.get('/user-score/:userId', authenticate, TrustController.getUserTrustScore);
+
 // Get trust history for a vehicle
 router.get('/:vehicleId/history', authenticate, TrustController.getTrustHistory);
 

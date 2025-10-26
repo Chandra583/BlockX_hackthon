@@ -3,6 +3,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 // Lazy load all pages for better performance
 const DashboardHome = lazy(() => import('../pages/DashboardHome'));
+const NewOwnerDashboard = lazy(() => import('../pages/OwnerDashboard/Dashboard'));
 
 const WalletDetails = lazy(() => import('../pages/Wallet/WalletDetails'));
 const WalletPage = lazy(() => import('../pages/Wallet/WalletPage'));
@@ -91,7 +92,7 @@ export const ownerRoutes: Array<{ path: string; element: React.ReactElement }> =
   {
     path: '/owner/dashboard',
     element: React.createElement(Suspense, { fallback: React.createElement(PageLoader) },
-      React.createElement(DashboardHome)
+      React.createElement(NewOwnerDashboard)
     )
   },
   {

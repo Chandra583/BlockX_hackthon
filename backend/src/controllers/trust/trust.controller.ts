@@ -6,6 +6,79 @@ import { logger } from '../../utils/logger';
 
 export class TrustController {
   /**
+   * Get user trust score
+   * GET /api/trust/user-score/:userId
+   */
+  static async getUserTrustScore(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const currentUserId = (req as any).user?.id;
+
+      // Check if user is accessing their own data or is admin
+      if (userId !== currentUserId && (req as any).user?.role !== 'admin') {
+        res.status(403).json({
+          success: false,
+          message: 'Access denied'
+        });
+        return;
+      }
+
+      // Get all vehicles owned by this user
+      const vehicles = await Vehicle.find({ ownerId: userId });
+      
+      if (vehicles.length === 0) {
+        res.json({
+          success: true,
+          data: {
+            trustScore: 100,
+            averageScore: 100,
+            totalVehicles: 0,
+            positiveEvents: 0,
+            negativeEvents: 0,
+            history: []
+          }
+        });
+        return;
+      }
+
+      // Calculate average trust score
+      const totalScore = vehicles.reduce((sum, vehicle) => sum + (vehicle.trustScore || 100), 0);
+      const averageScore = Math.round(totalScore / vehicles.length);
+
+      // Get recent trust events for all vehicles
+      const vehicleIds = vehicles.map(v => v._id);
+      const recentEvents = await TrustEvent.find({ vehicleId: { $in: vehicleIds } })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('vehicleId', 'vin make model year');
+
+      // Count positive and negative events
+      const allEvents = await TrustEvent.find({ vehicleId: { $in: vehicleIds } });
+      const positiveEvents = allEvents.filter(event => event.change > 0).length;
+      const negativeEvents = allEvents.filter(event => event.change < 0).length;
+
+      res.json({
+        success: true,
+        data: {
+          trustScore: averageScore,
+          averageScore,
+          totalVehicles: vehicles.length,
+          positiveEvents,
+          negativeEvents,
+          history: recentEvents
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error fetching user trust score:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch user trust score'
+      });
+    }
+  }
+
+  /**
    * Get trust history for a vehicle
    * GET /api/trust/:vehicleId/history
    */

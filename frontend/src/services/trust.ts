@@ -1,81 +1,118 @@
 import { apiService } from './api';
 
 export interface TrustEvent {
-  _id: string;
-  change: number;
-  previousScore: number;
-  newScore: number;
-  reason: string;
-  source: string;
-  createdAt: string;
-  createdBy?: {
-    firstName: string;
-    lastName: string;
-  };
-  details: {
-    telemetryId?: string;
-    installId?: string;
-    solanaTx?: string;
-    arweaveTx?: string;
-    reportedMileage?: number;
-    previousMileage?: number;
-    deviceId?: string;
-    fraudAlertId?: string;
-  };
+  id: string;
+  type: string;
+  description: string;
+  impact: number;
+  timestamp: string;
+  metadata?: any;
 }
 
-export interface TrustHistoryResponse {
-  success: boolean;
-  data: TrustEvent[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}
-
-export interface ManualAdjustRequest {
-  change: number;
-  reason: string;
-  details?: any;
+export interface TrustScore {
+  currentScore: number;
+  averageScore: number;
+  totalEvents: number;
+  positiveEvents: number;
+  negativeEvents: number;
+  history: TrustEvent[];
 }
 
 export class TrustService {
   /**
-   * Get trust history for a vehicle
+   * Get user trust score
+   * GET /api/trust/user-score
    */
-  static async getTrustHistory(
-    vehicleId: string,
-    options: {
-      page?: number;
-      limit?: number;
-      filter?: 'all' | 'negative' | 'positive';
-    } = {}
-  ): Promise<TrustHistoryResponse> {
-    const params = new URLSearchParams();
-    if (options.page) params.append('page', options.page.toString());
-    if (options.limit) params.append('limit', options.limit.toString());
-    if (options.filter) params.append('filter', options.filter);
-
-    const queryString = params.toString();
-    const url = `/trust/${vehicleId}/history${queryString ? `?${queryString}` : ''}`;
-    
-    return await apiService.get(url);
+  static async getUserTrustScore() {
+    try {
+      const response = await apiService.get('/trust/user-score');
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch user trust score:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get specific trust event details
+   * Get vehicle trust score
+   * GET /api/trust/vehicle/:vehicleId
    */
-  static async getTrustEvent(vehicleId: string, eventId: string): Promise<{ success: boolean; data: TrustEvent }> {
-    return await apiService.get(`/trust/${vehicleId}/event/${eventId}`);
+  static async getVehicleTrustScore(vehicleId: string) {
+    try {
+      const response = await apiService.get(`/trust/vehicle/${vehicleId}`);
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch vehicle trust score:', error);
+      throw error;
+    }
   }
 
   /**
-   * Manual trust score adjustment (admin only)
+   * Get trust score history
+   * GET /api/trust/:vehicleId/history
    */
-  static async manualAdjust(vehicleId: string, payload: ManualAdjustRequest): Promise<any> {
-    return await apiService.post(`/trust/${vehicleId}/manual-adjust`, payload);
+  static async getTrustScoreHistory(vehicleId: string) {
+    try {
+      const response = await apiService.get(`/trust/${vehicleId}/history`);
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch trust score history:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get trust events
+   * GET /api/trust/events
+   */
+  static async getTrustEvents(params?: { limit?: number; page?: number }) {
+    try {
+      const response = await apiService.get('/trust/events', { params });
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch trust events:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update trust score
+   * POST /api/trust/update
+   */
+  static async updateTrustScore(data: {
+    vehicleId: string;
+    eventType: string;
+    impact: number;
+    description: string;
+    metadata?: any;
+  }) {
+    try {
+      const response = await apiService.post('/trust/update', data);
+      return response;
+    } catch (error) {
+      console.error('Failed to update trust score:', error);
+      throw error;
+    }
+  }
+
+  static async getUserTrustScoreById(userId: string): Promise<any> {
+    try {
+      const response = await apiService.get(`/trust/user-score/${userId}`);
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch user trust score:', error);
+      throw error;
+    }
+  }
+
+  static async getTrustHistory(userId: string): Promise<any> {
+    try {
+      const response = await apiService.get(`/trust/${userId}/history`);
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch trust history:', error);
+      throw error;
+    }
   }
 }
 

@@ -9,6 +9,7 @@ import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
 import { TelemetryBatch } from '../../models/TelemetryBatch.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
+import uploadRoutes from './upload.routes';
 
 const router = Router();
 
@@ -96,6 +97,116 @@ router.get('/test', async (req: any, res: any) => {
 });
 
 /**
+ * GET /api/vehicles/stats
+ * Get vehicle statistics for dashboard
+ * Access: All authenticated users
+ */
+router.get('/stats', async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    // Get user's vehicles
+    const vehicles = await Vehicle.find({ ownerId: userId });
+    
+    // Calculate stats
+    const totalVehicles = vehicles.length;
+    const verifiedVehicles = vehicles.filter(v => v.verificationStatus === 'verified').length;
+    const activeListings = vehicles.filter(v => v.isForSale).length;
+    const totalMileage = vehicles.reduce((sum, v) => sum + (v.currentMileage || 0), 0);
+    const averageMileage = totalVehicles > 0 ? Math.round(totalMileage / totalVehicles) : 0;
+    
+    // Get recent activity (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentVehicles = vehicles.filter(v => v.createdAt > thirtyDaysAgo).length;
+    
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalVehicles,
+          verifiedVehicles,
+          activeListings,
+          averageMileage,
+          recentVehicles
+        },
+        vehicles: vehicles.map(v => ({
+          id: v._id,
+          vin: v.vin,
+          make: v.make,
+          model: v.model,
+          year: v.year,
+          currentMileage: v.currentMileage,
+          verificationStatus: v.verificationStatus,
+          isForSale: v.isForSale,
+          trustScore: v.trustScore
+        }))
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching vehicle stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch vehicle statistics'
+    });
+  }
+});
+
+/**
+ * GET /api/vehicles/marketplace-stats
+ * Get marketplace statistics for dashboard
+ * Access: All authenticated users
+ */
+router.get('/marketplace-stats', async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    // Get user's vehicles
+    const vehicles = await Vehicle.find({ ownerId: userId });
+    
+    // Calculate marketplace stats
+    const totalListings = vehicles.filter(v => v.isForSale).length;
+    const totalEarnings = vehicles.reduce((sum, v) => sum + ((v as any).salePrice || 0), 0);
+    const averagePrice = totalListings > 0 ? Math.round(totalEarnings / totalListings) : 0;
+    
+    // Get recent listings (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentListings = vehicles.filter(v => v.isForSale && (v as any).updatedAt > thirtyDaysAgo).length;
+    
+    res.json({
+      success: true,
+      data: {
+        statistics: {
+          totalListings,
+          totalEarnings,
+          averagePrice,
+          recentListings
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching marketplace stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch marketplace statistics'
+    });
+  }
+});
+
+/**
  * GET /api/vehicles
  * Get user's own vehicles
  * Access: All authenticated users
@@ -147,8 +258,8 @@ router.get('/',
             currentMileage: vehicle.currentMileage,
             lastMileageUpdate: vehicle.lastMileageUpdate?.toISOString(),
             verificationStatus: vehicle.verificationStatus,
-            rejectionReason: vehicle.rejectionReason,
-            rejectedAt: vehicle.rejectedAt?.toISOString?.() || undefined,
+            rejectionReason: (vehicle as any).rejectionReason,
+            rejectedAt: (vehicle as any).rejectedAt?.toISOString?.() || undefined,
             trustScore: vehicle.trustScore,
             isForSale: vehicle.isForSale,
             listingStatus: vehicle.listingStatus,
@@ -157,8 +268,8 @@ router.get('/',
             description: vehicle.description,
             blockchainHash: vehicle.blockchainHash,
             blockchainAddress: vehicle.blockchainAddress,
-            createdAt: vehicle.createdAt?.toISOString(),
-            updatedAt: vehicle.updatedAt?.toISOString()
+            createdAt: (vehicle as any).createdAt?.toISOString(),
+            updatedAt: (vehicle as any).updatedAt?.toISOString()
           })),
           total: vehicles.length,
           page: 1,
@@ -424,7 +535,7 @@ router.get('/:vehicleId',
           fraudAlerts: vehicle.fraudAlerts,
           accidentHistory: vehicle.accidentHistory,
           serviceHistory: vehicle.serviceHistory,
-          createdAt: vehicle.createdAt,
+          createdAt: (vehicle as any).createdAt,
           updatedAt: vehicle.updatedAt
         }
       });
@@ -516,6 +627,9 @@ router.get('/:vehicleId/blockchain-history',
 router.get('/:vehicleId/mileage', (req, res) => {
   return MileageController.getVehicleMileageHistory(req as any, res as any);
 });
+
+// Mount upload routes
+router.use('/', uploadRoutes);
 
 export default router;
 
@@ -681,8 +795,8 @@ router.get('/:vehicleId/mileage-history', async (req: any, res: any) => {
 
     // Get current mileage and other stats
     const currentMileage = vehicle.currentMileage || 0;
-    const registeredMileage = vehicle.registeredMileage || 0;
-    const serviceVerifiedMileage = vehicle.serviceVerifiedMileage || 0;
+    const registeredMileage = (vehicle as any).registeredMileage || 0;
+    const serviceVerifiedMileage = (vehicle as any).serviceVerifiedMileage || 0;
 
     // Get last OBD update
     const lastOBDUpdate = await MileageHistory.findOne({ 

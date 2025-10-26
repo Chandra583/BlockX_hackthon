@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { TelemetryConsolidationService } from '../services/telemetryConsolidation.service';
 import { TelemetryBatch } from '../models/TelemetryBatch.model';
 import { VehicleTelemetry } from '../models/core/VehicleTelemetry.model';
-import { Vehicle } from '../models/core/Vehicle.model';
+import Vehicle from '../models/core/Vehicle.model';
 import mongoose from 'mongoose';
 
 /**
@@ -185,7 +185,7 @@ export class DailyMerkleJob {
   } {
     return {
       running: this.job ? this.job.running : false,
-      nextRun: this.job ? this.job.nextDate() : undefined,
+      nextRun: this.job ? this.job.nextDate().toDate() : undefined,
       lastRun: this.job ? (this.job as any).lastDate() : undefined
     };
   }

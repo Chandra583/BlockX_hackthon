@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import { ApiError, ValidationError } from '../../utils/errors';
-import { Device, VehicleTelemetry, TestResult, Vehicle, IDevice, IVehicleTelemetry, ITestResult } from '../../models';
+import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITestResult } from '../../models';
+import Vehicle from '../../models/core/Vehicle.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import { TelemetryConsolidationService } from '../../services/telemetryConsolidation.service';
 import { TrustEvent } from '../../models/core/TrustEvent.model';
@@ -565,14 +566,18 @@ export class DeviceController {
               await vehicle.save();
 
               // Emit socket event
-              emitToUser(vehicle.ownerId.toString(), 'trustscore_changed', {
-                vehicleId: vehicle._id,
-                previousScore: vehicle.trustScore + 30,
-                newScore: vehicle.trustScore,
+              try {
+                emitToUser(vehicle.ownerId.toString(), 'trustscore_changed', {
+                  vehicleId: vehicle._id,
+                  previousScore: vehicle.trustScore + 30,
+                  newScore: vehicle.trustScore,
                 eventId: trustEvent._id,
                 reason: trustEvent.reason,
                 change: -30
               });
+              } catch (socketError) {
+                logger.warn('Failed to emit socket update:', socketError);
+              }
               
               logger.info(`📉 TRUST EVENT CREATED: Score decreased by 30 points for vehicle ${vehicle._id}`);
             } catch (trustError) {
@@ -1095,7 +1100,7 @@ export class DeviceController {
             description: device.description,
             lastSeen: device.lastSeen,
             lastDataReceived: device.lastDataReceived,
-            isOnline: device.isOnline,
+            isOnline: (device as any).isOnline,
             health: device.health,
             configuration: device.configuration
           },
@@ -1174,7 +1179,7 @@ export class DeviceController {
             description: device.description,
             lastSeen: device.lastSeen,
             lastDataReceived: device.lastDataReceived,
-            isOnline: device.isOnline,
+            isOnline: (device as any).isOnline,
             health: device.health,
             statistics: {
               totalReadings,
@@ -1201,7 +1206,7 @@ export class DeviceController {
             total,
             active: devices.filter(d => d.status === 'active').length,
             error: devices.filter(d => d.status === 'error').length,
-            online: devices.filter(d => d.isOnline).length
+            online: devices.filter(d => (d as any).isOnline).length
           }
         }
       });

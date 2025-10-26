@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { 
-  User, 
-  LogOut, 
-  Settings, 
   Bell, 
   Menu,
   X,
@@ -21,9 +19,12 @@ import { logout } from '../../store/slices/authSlice';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ROLE_LABELS } from '../../types/auth';
 import NotificationService from '../../services/notifications';
+import NotificationDropdown from './NotificationDropdown';
+import ProfileMenu from './ProfileMenu';
 
 export const Header: React.FC = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
@@ -63,35 +64,20 @@ export const Header: React.FC = () => {
       insurance: FileText,
       government: Building,
     };
-    return icons[role as keyof typeof icons] || User;
+    return icons[role as keyof typeof icons] || Car;
   };
 
   const getRoleColor = (role: string) => {
     const colors = {
-      admin: 'text-red-600 bg-red-50',
-      owner: 'text-blue-600 bg-blue-50',
-      buyer: 'text-green-600 bg-green-50',
-      service: 'text-yellow-600 bg-yellow-50',
-      insurance: 'text-purple-600 bg-purple-50',
-      government: 'text-gray-600 bg-gray-50',
+      admin: 'text-red-400 bg-red-500/20 border-red-500/30',
+      owner: 'text-blue-400 bg-blue-500/20 border-blue-500/30',
+      buyer: 'text-green-400 bg-green-500/20 border-green-500/30',
+      service: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30',
+      insurance: 'text-purple-400 bg-purple-500/20 border-purple-500/30',
+      government: 'text-gray-400 bg-gray-500/20 border-gray-500/30',
     };
-    return colors[role as keyof typeof colors] || 'text-gray-600 bg-gray-50';
+    return colors[role as keyof typeof colors] || 'text-blue-400 bg-blue-500/20 border-blue-500/30';
   };
-
-  const navigationItems = [
-    { name: 'Dashboard', href: '/dashboard', resource: 'dashboard', action: 'view' },
-    { name: 'Vehicles', href: '/vehicles', resource: 'vehicle', action: 'view' },
-    { name: 'Transactions', href: '/transactions', resource: 'transaction', action: 'view' },
-    { name: 'Reports', href: '/reports', resource: 'report', action: 'view' },
-    { name: 'Users', href: '/users', resource: 'user', action: 'view' },
-    { name: 'Settings', href: '/settings', resource: 'settings', action: 'view' },
-    // New feature links
-    { name: 'Marketplace', href: '/marketplace', resource: 'marketplace', action: 'view' },
-    { name: 'Service Providers', href: '/admin/service-providers', resource: 'admin', action: 'view' },
-    { name: 'Batch Processing', href: '/admin/batch-processing', resource: 'admin', action: 'view' },
-  ];
-
-  const visibleNavItems = navigationItems.filter(item => hasPermission(item.resource, item.action));
 
   if (!isAuthenticated || !user) {
     return null;
@@ -101,194 +87,150 @@ export const Header: React.FC = () => {
   const fullName = `${user.firstName} ${user.lastName}`;
 
   return (
-    <header className="bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm border-b border-gray-200 sticky top-0 z-40">
+    <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">V</span>
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mr-3 shadow-lg">
+                <span className="text-white font-bold text-lg">V</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">VERIDRIVE</span>
+              <span className="text-2xl font-black text-white gradient-text">VERIDRIVE</span>
             </div>
-            
-            {/* Desktop Navigation */}
-            <nav className="hidden md:ml-8 md:flex md:space-x-1">
-              {visibleNavItems.map((item) => (
-                <button
-                  key={item.name}
-                  onClick={() => navigate(item.href)}
-                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors rounded-md hover:bg-gray-50"
-                >
-                  {item.name}
-                </button>
-              ))}
-            </nav>
           </div>
 
           {/* Right side - Desktop */}
           <div className="hidden md:flex md:items-center md:space-x-4">
+            {/* Theme Toggle */}
             <ThemeToggle />
+            
             {/* Notifications */}
-            <button className="p-2 text-gray-500 hover:text-gray-700 relative" aria-label="Notifications" onClick={() => navigate('/notifications')}>
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[0.75rem] h-3 px-0.5 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center">
-                  {Math.min(unreadCount, 9)}
-                </span>
-              )}
-            </button>
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                className={`relative p-3 rounded-xl transition-all duration-300 border ${
+                  showNotificationDropdown 
+                    ? 'bg-blue-500/20 border-blue-500/50 shadow-lg shadow-blue-500/20' 
+                    : 'bg-slate-800/50 hover:bg-slate-700/50 border-slate-700/50'
+                }`}
+                aria-label="Notifications"
+              >
+                <Bell className={`w-6 h-6 transition-colors duration-200 ${
+                  showNotificationDropdown ? 'text-blue-400' : 'text-white'
+                }`} />
+                {unreadCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
+                  >
+                    <motion.span
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                      className="text-xs font-bold text-white"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </motion.span>
+                  </motion.span>
+                )}
+              </motion.button>
+
+              <NotificationDropdown
+                isOpen={showNotificationDropdown}
+                onClose={() => setShowNotificationDropdown(false)}
+                onMarkAsRead={() => {
+                  setUnreadCount(0);
+                  setShowNotificationDropdown(false);
+                }}
+                onViewAll={() => {
+                  navigate('/notifications');
+                  setShowNotificationDropdown(false);
+                }}
+              />
+            </div>
 
             {/* User Profile Dropdown */}
             <div className="relative">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="flex items-center space-x-3 px-4 py-2 rounded-xl hover:bg-slate-800/50 transition-all duration-200"
               >
-                <div className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getRoleColor(user.role)}`}>
-                    <RoleIcon className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-gray-900">{fullName}</p>
-                    <p className="text-xs text-gray-500">{ROLE_LABELS[user.role]}</p>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getRoleColor(user.role)}`}>
+                  <RoleIcon className="w-5 h-5" />
                 </div>
-              </button>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-white">{fullName}</p>
+                  <p className="text-xs text-gray-400">{ROLE_LABELS[user.role]}</p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </motion.button>
 
-              {/* Profile Dropdown Menu */}
-              {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{fullName}</p>
-                    <p className="text-sm text-gray-500">{user.email}</p>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${getRoleColor(user.role)}`}>
-                      <RoleIcon className="w-3 h-3 mr-1" />
-                      {ROLE_LABELS[user.role]}
-                    </span>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      navigate('/profile');
-                      setShowProfileMenu(false);
-                    }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <User className="w-4 h-4 mr-3" />
-                    Profile Settings
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      navigate('/account-settings');
-                      setShowProfileMenu(false);
-                    }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Settings className="w-4 h-4 mr-3" />
-                    Account Settings
-                  </button>
-                  
-                  <div className="border-t border-gray-100 mt-1">
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      <LogOut className="w-4 h-4 mr-3" />
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
+              <ProfileMenu
+                isOpen={showProfileMenu}
+                onClose={() => setShowProfileMenu(false)}
+              />
             </div>
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="p-2 text-gray-500 hover:text-gray-700"
+              className="p-2 text-gray-400 hover:text-white transition-colors"
             >
               {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Mobile Navigation */}
       {showMobileMenu && (
-        <div className="md:hidden bg-white/95 backdrop-blur border-t border-gray-200">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {visibleNavItems.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => {
-                  navigate(item.href);
-                  setShowMobileMenu(false);
-                }}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md"
-              >
-                {item.name}
-              </button>
-            ))}
-            <div className="px-3 pt-2">
-              <ThemeToggle />
-            </div>
-          </div>
-          
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="flex items-center px-5 mb-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getRoleColor(user.role)}`}>
-                <RoleIcon className="w-5 h-5" />
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="md:hidden bg-slate-900/95 backdrop-blur-xl border-t border-slate-700/50"
+        >
+          <div className="px-4 py-4 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getRoleColor(user.role)}`}>
+                <RoleIcon className="w-6 h-6" />
               </div>
-              <div className="ml-3">
-                <p className="text-base font-medium text-gray-800">{fullName}</p>
-                <p className="text-sm text-gray-500">{user.email}</p>
+              <div>
+                <p className="text-lg font-semibold text-white">{fullName}</p>
+                <p className="text-sm text-gray-400">{user.email}</p>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${getRoleColor(user.role)}`}>
+                  <RoleIcon className="w-3 h-3 mr-1" />
+                  {ROLE_LABELS[user.role]}
+                </span>
               </div>
             </div>
             
-            <div className="px-2 space-y-1">
-              <button
-                onClick={() => {
-                  navigate('/profile');
-                  setShowMobileMenu(false);
-                }}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md"
-              >
-                Profile Settings
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/account-settings');
-                  setShowMobileMenu(false);
-                }}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md"
-              >
-                Account Settings
-              </button>
-              <button
+            <div className="flex items-center justify-between pt-4 border-t border-slate-700/50">
+              <ThemeToggle />
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleLogout}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md"
+                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-xl text-red-400 font-medium transition-all duration-300"
               >
                 Sign Out
-              </button>
+              </motion.button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Overlay for profile menu */}
-      {showProfileMenu && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowProfileMenu(false)}
-        />
+        </motion.div>
       )}
     </header>
   );
 };
 
-export default Header; 
+export default Header;

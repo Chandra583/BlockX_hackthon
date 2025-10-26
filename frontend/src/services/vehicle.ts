@@ -455,6 +455,13 @@ export class VehicleService {
   static async getVehiclesForSale(params?: VehicleSearchParams): Promise<VehicleListResponse> {
     return await this.searchVehicles({ ...params, isForSale: true });
   }
+
+  /**
+   * Get vehicle statistics for dashboard
+   */
+  static async getVehicleStats(): Promise<any> {
+    return await apiService.get('/vehicles/stats');
+  }
   
   /**
    * List vehicle for sale
