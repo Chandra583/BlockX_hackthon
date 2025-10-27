@@ -62,7 +62,7 @@ export class SessionManager {
     }
   }
 
-  // Decode JWT token (without verification)~
+  // Decode JWT token (without verification)
   private decodeJWT(token: string): any {
     try {
       const base64Url = token.split('.')[1];
@@ -76,7 +76,7 @@ export class SessionManager {
       return JSON.parse(jsonPayload);
     } catch (error) {
       console.error('Error decoding JWT:', error);
-      return null;~
+      return null;
     }
   }
 
