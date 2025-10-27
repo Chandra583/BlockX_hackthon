@@ -1,9 +1,16 @@
 import { useEffect, useRef } from 'react';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import { useAppSelector } from './redux';
 
-const useSocket = () => {
-  const socketRef = useRef(null);
+interface UseSocketReturn {
+  socket: Socket | null;
+  joinVehicleRoom: (vehicleId: string) => void;
+  on: (event: string, callback: (...args: any[]) => void) => void;
+  off: (event: string, callback?: (...args: any[]) => void) => void;
+}
+
+const useSocket = (): UseSocketReturn => {
+  const socketRef = useRef<Socket | null>(null);
   const { user } = useAppSelector((state) => state.auth);
   
   useEffect(() => {
@@ -24,19 +31,19 @@ const useSocket = () => {
     };
   }, [user?.id]);
   
-  const joinVehicleRoom = (vehicleId) => {
+  const joinVehicleRoom = (vehicleId: string) => {
     if (socketRef.current && vehicleId) {
       socketRef.current.emit('join_vehicle', vehicleId);
     }
   };
   
-  const on = (event, callback) => {
+  const on = (event: string, callback: (...args: any[]) => void) => {
     if (socketRef.current) {
       socketRef.current.on(event, callback);
     }
   };
   
-  const off = (event, callback) => {
+  const off = (event: string, callback?: (...args: any[]) => void) => {
     if (socketRef.current) {
       socketRef.current.off(event, callback);
     }

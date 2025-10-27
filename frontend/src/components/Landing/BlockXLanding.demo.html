@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLOCKX Landing Page with Hyperspeed Background</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #00D1FF, #7C4DFF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gradient-text-purple {
+            background: linear-gradient(135deg, #7C4DFF, #FF6B9D);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+    <!-- Light overlay for better text readability -->
+    <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto">
+        <!-- BLOCKX Logo -->
+        <div class="mb-6">
+            <h1 class="text-8xl md:text-9xl font-black tracking-tight">
+                <span class="gradient-text">BLOCK</span>
+                <span class="gradient-text-purple relative">
+                    X
+                    <!-- Diamond cutout effect -->
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-slate-900 rotate-45"></div>
+                </span>
+            </h1>
+        </div>
+
+        <!-- Tagline -->
+        <div class="mb-8">
+            <p class="text-2xl md:text-3xl text-gray-300 font-light tracking-wide">
+                Digital Trust
+            </p>
+        </div>
+
+        <!-- Service Description -->
+        <div class="mb-12 space-y-4">
+            <p class="text-lg md:text-xl text-white font-medium leading-relaxed">
+                Crafting exceptional vehicle verification experiences through innovative IoT technology.
+            </p>
+            <p class="text-lg md:text-xl text-white font-medium leading-relaxed">
+                Real-time, tamper-proof mileage tracking powered by blockchain infrastructure.
+            </p>
+            <p class="text-lg md:text-xl text-white font-medium leading-relaxed">
+                Stop odometer fraud. Restore value and trust in every resale, fleet audit, and insurance claim.
+            </p>
+        </div>
+
+        <!-- Call-to-Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+            <!-- Primary CTA - Get Started -->
+            <button onclick="window.location.href='/login'" class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full text-white font-semibold text-lg min-w-[160px] shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-cyan-400/30">
+                Get Started
+            </button>
+
+            <!-- Secondary CTA - Learn More -->
+            <button onclick="alert('Learn More clicked!')" class="px-8 py-4 border-2 border-white rounded-full text-white font-semibold text-lg min-w-[160px] hover:bg-white hover:text-slate-900 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-white/30">
+                Learn More
+            </button>
+        </div>
+
+        <!-- Trust Badge -->
+        <div class="flex justify-center">
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-gray-800/50 backdrop-blur-sm rounded-full border border-gray-700/50">
+                <div class="w-3 h-3 bg-gradient-to-r from-cyan-400 to-emerald-400 rounded-full animate-pulse"></div>
+                <span class="text-white text-sm font-medium">TrustScore Verified</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

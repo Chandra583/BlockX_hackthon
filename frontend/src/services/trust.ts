@@ -35,11 +35,11 @@ export class TrustService {
 
   /**
    * Get vehicle trust score
-   * GET /api/trust/vehicle/:vehicleId
+   * GET /api/trust/:vehicleId/score
    */
   static async getVehicleTrustScore(vehicleId: string) {
     try {
-      const response = await apiService.get(`/trust/vehicle/${vehicleId}`);
+      const response = await apiService.get(`/trust/${vehicleId}/score`);
       return response;
     } catch (error) {
       console.error('Failed to fetch vehicle trust score:', error);

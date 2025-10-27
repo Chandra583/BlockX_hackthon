@@ -9,6 +9,7 @@ const WalletDetails = lazy(() => import('../pages/Wallet/WalletDetails'));
 const WalletPage = lazy(() => import('../pages/Wallet/WalletPage'));
 const VehicleList = lazy(() => import('../pages/Vehicles/VehicleList'));
 const VehicleDetails = lazy(() => import('../pages/Vehicles/VehicleDetails'));
+const VehicleReport = lazy(() => import('../pages/Vehicles/VehicleReport'));
 const RegisterVehicle = lazy(() => import('../pages/Vehicles/RegisterVehicle'));
 const MileageHistory = lazy(() => import('../pages/Vehicles/MileageHistory'));
 const DevicesList = lazy(() => import('../pages/Devices/DevicesList'));
@@ -129,6 +130,12 @@ export const ownerRoutes: Array<{ path: string; element: React.ReactElement }> =
     path: '/owner/vehicles/:id/mileage-history',
     element: React.createElement(Suspense, { fallback: React.createElement(PageLoader) },
       React.createElement(MileageHistory)
+    )
+  },
+  {
+    path: '/owner/vehicles/:id/report',
+    element: React.createElement(Suspense, { fallback: React.createElement(PageLoader) },
+      React.createElement(VehicleReport)
     )
   },
   {

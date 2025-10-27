@@ -13,6 +13,12 @@ router.get('/:vehicleId/history', authenticate, TrustController.getTrustHistory)
 // Get specific trust event details
 router.get('/:vehicleId/event/:eventId', authenticate, TrustController.getTrustEvent);
 
+// Get vehicle trust score
+router.get('/:vehicleId/score', authenticate, TrustController.getVehicleTrustScore);
+
+// Seed initial trust score (admin only)
+router.post('/:vehicleId/seed', authenticate, TrustController.seedTrustScore);
+
 // Manual trust score adjustment (admin only)
 router.post('/:vehicleId/manual-adjust', authenticate, TrustController.manualAdjust);
 

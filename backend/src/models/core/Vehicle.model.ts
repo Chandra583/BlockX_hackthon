@@ -15,6 +15,7 @@ export interface IVehicleDocument extends Document {
   engineSize?: string;
   currentMileage: number;
   lastMileageUpdate: Date;
+  lastTrustScoreUpdate?: Date;
   mileageHistory: any[];
   verificationStatus: string;
   trustScore: number;
@@ -362,6 +363,10 @@ const VehicleSchema = new Schema({
     type: Date,
     default: Date.now,
     required: true
+  },
+  lastTrustScoreUpdate: {
+    type: Date,
+    default: Date.now
   },
   mileageHistory: [MileageRecordSchema],
   verificationStatus: {

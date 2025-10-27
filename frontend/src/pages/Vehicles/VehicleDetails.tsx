@@ -21,9 +21,12 @@ import {
   Activity,
   Sparkles,
   Zap,
-  Star
+  Star,
+  FileText,
+  Eye
 } from 'lucide-react';
-import { VehicleService } from '../../services/vehicle';
+import { VehicleReportModal } from '../../components/Report/VehicleReportModal';
+import VehicleService from '../../services/vehicle';
 import { InstallationService } from '../../services/installation';
 import { VehicleBlockchainService } from '../../services/vehicleBlockchain';
 import { config } from '../../config/env';
@@ -35,8 +38,9 @@ import MileageHistoryCard from '../../components/MileageHistoryCard';
 import { FraudAlertCard } from '../../components/vehicle/FraudAlertCard';
 import { OBDDataValidationCard } from '../../components/vehicle/OBDDataValidationCard';
 import { TrustScoreCard } from '../../components/TrustScore/TrustScoreCard';
-import TelemetryService from '../../services/telemetry';
+import TrustService from '../../services/trust';
 import useSocket from '../../hooks/useSocket';
+import TelemetryService from '../../services/telemetry';
 
 interface Vehicle {
   id: string;
@@ -56,6 +60,11 @@ interface Vehicle {
   createdAt: string;
   blockchainAddress?: string;
   lastMileageUpdate?: string;
+  lastTrustScoreUpdate?: string;
+  updatedAt?: string;
+  currentMileage?: number;
+  fraudAlerts?: any[];
+  mileageHistory?: any[];
 }
 
 interface InstallationRequest {
@@ -64,7 +73,7 @@ interface InstallationRequest {
   ownerId: string;
   serviceProviderId?: string;
   deviceId?: string;
-  status: 'requested' | 'assigned' | 'completed' | 'cancelled';
+  status: 'requested' | 'assigned' | 'completed' | 'cancelled' | 'in_progress' | 'flagged';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -479,9 +488,25 @@ const VehicleDetails: React.FC = () => {
   const [obdValidationData, setObdValidationData] = useState<any>(null);
   const [fraudDataLoading, setFraudDataLoading] = useState(false);
   const [trustScore, setTrustScore] = useState(vehicle?.trustScore || 100);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Socket for real-time updates
   const { socket } = useSocket();
+
+  // Fetch real-time TrustScore data
+  const fetchTrustScoreData = async () => {
+    if (!vehicle?.id) return;
+    
+    try {
+      const response = await TrustService.getVehicleTrustScore(vehicle.id) as any;
+      if (response.success) {
+        setTrustScore(response.data.trustScore);
+        console.log('📊 TrustScore updated:', response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch TrustScore:', error);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -507,6 +532,8 @@ const VehicleDetails: React.FC = () => {
     if (id && vehicle) {
       console.log('🔍 Vehicle loaded, fetching fraud detection data');
       fetchFraudDetectionData(id);
+      // Also fetch real-time TrustScore data
+      fetchTrustScoreData();
     }
   }, [id, vehicle]);
 
@@ -859,23 +886,37 @@ const VehicleDetails: React.FC = () => {
               </span>
             </motion.div>
           </div>
-          <motion.button
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRequestInstall}
-            disabled={!!(hasActiveRequest || isDeviceInstalled)}
-            className={`inline-flex items-center px-6 py-3 rounded-2xl font-bold transition-all duration-200 shadow-lg ${
-              hasActiveRequest || isDeviceInstalled
-                ? 'bg-slate-700/50 text-gray-400 cursor-not-allowed border border-slate-600/50'
-                : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:shadow-blue-500/25'
-            }`}
-          >
-            <Smartphone className="w-5 h-5 mr-2" />
-            {hasActiveRequest ? 'Request Pending' : isDeviceInstalled ? 'Device Installed' : 'Request Device Install'}
-          </motion.button>
+          <div className="flex gap-4">
+            <motion.button
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowReportModal(true)}
+              className="inline-flex items-center px-6 py-3 rounded-2xl font-bold transition-all duration-200 shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:shadow-blue-500/25"
+            >
+              <Eye className="w-5 h-5 mr-2" />
+              View Report
+            </motion.button>
+            <motion.button
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRequestInstall}
+              disabled={!!(hasActiveRequest || isDeviceInstalled)}
+              className={`inline-flex items-center px-6 py-3 rounded-2xl font-bold transition-all duration-200 shadow-lg ${
+                hasActiveRequest || isDeviceInstalled
+                  ? 'bg-slate-700/50 text-gray-400 cursor-not-allowed border border-slate-600/50'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:shadow-blue-500/25'
+              }`}
+            >
+              <Smartphone className="w-5 h-5 mr-2" />
+              {hasActiveRequest ? 'Request Pending' : isDeviceInstalled ? 'Device Installed' : 'Request Device Install'}
+            </motion.button>
+          </div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1211,6 +1252,10 @@ const VehicleDetails: React.FC = () => {
               score={trustScore} 
               vehicleId={vehicle.id}
               onScoreChange={setTrustScore}
+              fraudAlerts={fraudAlerts}
+              lastUpdated={vehicle.lastTrustScoreUpdate || vehicle.updatedAt}
+              verificationStatus={vehicle.verificationStatus}
+              onRefresh={fetchTrustScoreData}
             />
 
             {/* Device Status */}
@@ -1393,6 +1438,20 @@ const VehicleDetails: React.FC = () => {
           <MileageHistoryCard vehicleId={vehicle.id} />
         </div>
       </div>
+
+      {/* Vehicle Report Modal */}
+      <VehicleReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        vehicleId={vehicle.id}
+        vehicleInfo={{
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          vin: vehicle.vin,
+          vehicleNumber: vehicle.vehicleNumber
+        }}
+      />
     </div>
   );
 };

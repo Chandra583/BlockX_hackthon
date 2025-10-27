@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, CheckCircle, Activity, TrendingUp, Shield, Clock } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import MileageHistoryTable from '../../components/MileageHistoryTable';
+import MileageChart from '../../components/Mileage/MileageChart';
+import HistoryTable from '../../components/Mileage/HistoryTable';
+import TrustScoreMini from '../../components/Mileage/TrustScoreMini';
 import VehicleService from '../../services/vehicle';
 
 interface MileageHistoryData {
@@ -157,23 +159,30 @@ const MileageHistory: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
             <div className="flex items-center">
               <button
                 onClick={() => navigate(-1)}
                 className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Go back"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Mileage History</h1>
-                <p className="text-gray-600 mt-1">
-                  VIN: {data.vin} • Device: {data.lastOBDUpdate.deviceId}
-                </p>
+                <h1 className="text-3xl font-bold text-gray-900">Mileage History - Enhanced</h1>
+                <div className="flex items-center mt-2 space-x-4">
+                  <p className="text-gray-600">
+                    VIN: <span className="font-mono text-sm">{data.vin}</span>
+                  </p>
+                  <p className="text-gray-600">
+                    Device: <span className="font-mono text-sm">{data.lastOBDUpdate.deviceId}</span>
+                  </p>
+                  <TrustScoreMini trustScore={85} />
+                </div>
               </div>
             </div>
             <button
@@ -196,11 +205,11 @@ const MileageHistory: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-lg p-6"
+            className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow"
           >
             <div className="flex items-center">
               <div className="p-3 bg-blue-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-blue-600" />
+                <Activity className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Current Mileage</p>
@@ -213,7 +222,7 @@ const MileageHistory: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl shadow-lg p-6"
+            className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow"
           >
             <div className="flex items-center">
               <div className="p-3 bg-green-100 rounded-lg">
@@ -230,11 +239,11 @@ const MileageHistory: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl shadow-lg p-6"
+            className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow"
           >
             <div className="flex items-center">
               <div className="p-3 bg-purple-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-purple-600" />
+                <Shield className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Registered</p>
@@ -247,11 +256,11 @@ const MileageHistory: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white rounded-xl shadow-lg p-6"
+            className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow"
           >
             <div className="flex items-center">
               <div className="p-3 bg-orange-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-orange-600" />
+                <TrendingUp className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Records</p>
@@ -261,14 +270,56 @@ const MileageHistory: React.FC = () => {
           </motion.div>
         </div>
 
+        {/* Chart and Table Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Chart */}
+          <div className="xl:col-span-2">
+            <MileageChart 
+              history={data.history} 
+              currentMileage={data.currentMileage}
+            />
+          </div>
+
+          {/* Last OBD Update Card */}
+          <div className="xl:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 h-full"
+            >
+              <div className="flex items-center mb-4">
+                <Clock className="w-6 h-6 text-blue-600 mr-3" />
+                <h3 className="text-lg font-semibold text-gray-900">Last OBD Update</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600">Mileage</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {data.lastOBDUpdate.mileage.toLocaleString()} km
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Device ID</p>
+                  <p className="text-sm font-mono text-gray-700">
+                    {data.lastOBDUpdate.deviceId}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Recorded At</p>
+                  <p className="text-sm text-gray-700">
+                    {new Date(data.lastOBDUpdate.recordedAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
         {/* Mileage History Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <MileageHistoryTable data={data} onRefresh={handleRefresh} />
-        </motion.div>
+        <div className="mt-8">
+          <HistoryTable data={data} onRefresh={handleRefresh} />
+        </div>
       </div>
     </div>
   );

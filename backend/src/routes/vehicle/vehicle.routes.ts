@@ -10,6 +10,7 @@ import { logger } from '../../utils/logger';
 import { TelemetryBatch } from '../../models/TelemetryBatch.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import uploadRoutes from './upload.routes';
+import reportRoutes from './report.routes';
 
 const router = Router();
 
@@ -630,6 +631,9 @@ router.get('/:vehicleId/mileage', (req, res) => {
 
 // Mount upload routes
 router.use('/', uploadRoutes);
+
+// Mount report routes
+router.use('/', reportRoutes);
 
 export default router;
 

@@ -11,8 +11,8 @@ import SessionWarning from './components/common/SessionWarning';
 import { config } from './config/env';
 import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
-import HeroWithBackground from './components/Hero/HeroWithBackground';
-import { motion } from 'framer-motion';
+import Hyperspeed, { hyperspeedPresets } from './components/Hyperspeed';
+import BlockXLanding from './components/Landing';
 
 // Import common components
 import VehicleList from './pages/Vehicles/VehicleList';
@@ -26,9 +26,10 @@ import { adminRoutes, ownerRoutes, spRoutes } from './routes/roleRoutes';
 
 const HomePage = () => {
   const { isAuthenticated, user, isLoading } = useAppSelector((state) => state.auth);
+  const location = window.location.pathname;
 
   // Debug logging
-  console.log('HomePage render:', { isAuthenticated, user: user?.role, isLoading });
+  console.log('HomePage render:', { isAuthenticated, user: user?.role, isLoading, location });
 
   // Show loading if auth is still loading
   if (isLoading) {
@@ -42,8 +43,8 @@ const HomePage = () => {
     );
   }
 
-  // If user is authenticated, redirect to role-specific dashboard
-  if (isAuthenticated && user) {
+  // If user is authenticated and on root path, redirect to role-specific dashboard
+  if (isAuthenticated && user && location === '/') {
     const getRoleDashboardRoute = (role: string): string => {
       const normalizedRole = role.toLowerCase();
       
@@ -71,53 +72,10 @@ const HomePage = () => {
   }
 
   return (
-    <HeroWithBackground>
-      <motion.h1 
-        className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.8 }}
-      >
-        Trust every kilometre.
-      </motion.h1>
-      
-      <motion.p 
-        className="text-xl sm:text-2xl lg:text-3xl text-gray-200 mb-8 max-w-3xl mx-auto"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.8 }}
-      >
-        BlockX — real-time, tamper-proof vehicle mileage verification using IoT + blockchain.
-      </motion.p>
-      
-      <motion.p 
-        className="text-lg sm:text-xl text-gray-300 mb-12 max-w-2xl mx-auto"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.8 }}
-      >
-        Stop odometer fraud. Restore value and trust in every resale, fleet audit, and insurance claim.
-      </motion.p>
-      
-      <motion.div 
-        className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.8 }}
-      >
-        <button 
-          className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/50"
-          onClick={() => window.location.href = '/login'}
-        >
-          Get Started
-        </button>
-        <button 
-          className="px-8 py-4 border-2 border-white text-white font-semibold rounded-lg hover:bg-white/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/50"
-        >
-          Learn More
-        </button>
-      </motion.div>
-    </HeroWithBackground>
+    <div className="relative min-h-screen">
+      {/* Landing Content with integrated Hyperspeed background */}
+      <BlockXLanding />
+    </div>
   );
 };
 

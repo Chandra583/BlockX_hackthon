@@ -4,7 +4,9 @@ import { History, Gauge, ExternalLink, Copy, CheckCircle, TrendingUp, Car, Calen
 import VehicleService from '../services/vehicle';
 import TelemetryService from '../services/telemetry';
 import { useNavigate } from 'react-router-dom';
-import { FixedMileageHistoryTable } from './vehicle/FixedMileageHistoryTable';
+import MileageChart from './Mileage/MileageChart';
+import HistoryTable from './Mileage/HistoryTable';
+import TrustScoreMini from './Mileage/TrustScoreMini';
 
 interface MileageHistoryCardProps {
   vehicleId: string;
@@ -293,19 +295,83 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
             </div>
           )}
 
-          {/* FIXED: Modern Mileage History Table with Validation */}
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-gray-500 uppercase mb-3">Recent Updates</div>
+          {/* Enhanced Mileage History with Chart and Table */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-gray-500 uppercase">Recent Updates</div>
+              <TrustScoreMini trustScore={85} />
+            </div>
             
-            {/* FIXED: Use FixedMileageHistoryTable component */}
-            <FixedMileageHistoryTable 
-              records={records.slice(0, 5)}
-              onCopyHash={(hash) => {
-                navigator.clipboard.writeText(hash);
-                setCopiedHash(hash);
-                setTimeout(() => setCopiedHash(null), 2000);
+            {/* Mileage Chart */}
+            {console.log('MileageHistoryCard records:', records)}
+            <MileageChart 
+              history={records.map(record => ({
+                _id: record.id || '',
+                vehicleId: vehicleId,
+                vin: '',
+                mileage: record.mileage,
+                recordedBy: {
+                  _id: '',
+                  firstName: '',
+                  lastName: '',
+                  role: '',
+                  fullName: '',
+                  isLocked: false,
+                  id: ''
+                },
+                recordedAt: record.recordedAt,
+                source: record.source || 'unknown',
+                notes: '',
+                verified: record.verified || false,
+                deviceId: record.deviceId || '',
+                createdAt: record.recordedAt,
+                updatedAt: record.recordedAt,
+                blockchainHash: record.blockchainHash
+              }))}
+              currentMileage={summary?.totalMileage || 0}
+            />
+            
+            {/* Enhanced History Table */}
+            <HistoryTable 
+              data={{
+                vehicleId: vehicleId,
+                vin: '',
+                currentMileage: summary?.totalMileage || 0,
+                totalMileage: summary?.totalMileage || 0,
+                registeredMileage: summary?.registeredMileage || 0,
+                serviceVerifiedMileage: summary?.serviceVerifiedMileage || 0,
+                lastOBDUpdate: summary?.lastOBDUpdate || { mileage: 0, deviceId: '', recordedAt: '' },
+                history: records.map(record => ({
+                  _id: record.id || '',
+                  vehicleId: vehicleId,
+                  vin: '',
+                  mileage: record.mileage,
+                  recordedBy: {
+                    _id: '',
+                    firstName: '',
+                    lastName: '',
+                    role: '',
+                    fullName: '',
+                    isLocked: false,
+                    id: ''
+                  },
+                  recordedAt: record.recordedAt,
+                  source: record.source || 'unknown',
+                  notes: '',
+                  verified: record.verified || false,
+                  deviceId: record.deviceId || '',
+                  createdAt: record.recordedAt,
+                  updatedAt: record.recordedAt,
+                  blockchainHash: record.blockchainHash
+                })),
+                pagination: {
+                  page: 1,
+                  limit: 50,
+                  total: records.length,
+                  pages: 1
+                }
               }}
-              copiedHash={copiedHash}
+              onRefresh={() => load()}
             />
           </div>
 

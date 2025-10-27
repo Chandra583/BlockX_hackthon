@@ -243,7 +243,7 @@ export const OBDDataValidationCard: React.FC<OBDDataValidationCardProps> = ({ va
                   >
                     <Gauge className="w-5 h-5 text-white" />
                   </motion.div>
-                  <span className="text-sm font-bold text-gray-700">Mileage</span>
+                  <span className="text-sm font-bold text-gray-700">Total km</span>
                 </div>
                 <p className="text-2xl font-black text-gray-900">{validationData.lastReading.mileage.toLocaleString()} km</p>
               </motion.div>

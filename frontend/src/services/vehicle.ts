@@ -22,6 +22,7 @@ export interface Vehicle {
   // Blockchain-related fields
   blockchainAddress?: string;
   lastMileageUpdate?: string;
+  lastTrustScoreUpdate?: string;
   
   // Optional marketplace fields
   isForSale?: boolean;

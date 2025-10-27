@@ -235,7 +235,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="p-4 border-t border-slate-700/50"
           >
             <div className="text-center">
-              <p className="text-xs text-gray-500">Powered by Blockchain</p>
+              <p className="text-xs text-gray-500">Powered by Solana Blockchain</p>
               <p className="text-xs text-gray-600">v2.0.0</p>
             </div>
           </motion.div>

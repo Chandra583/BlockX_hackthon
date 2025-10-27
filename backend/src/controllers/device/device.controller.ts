@@ -5,7 +5,7 @@ import { Device, VehicleTelemetry, TestResult, IDevice, IVehicleTelemetry, ITest
 import Vehicle from '../../models/core/Vehicle.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import { TelemetryConsolidationService } from '../../services/telemetryConsolidation.service';
-import { TrustEvent } from '../../models/core/TrustEvent.model';
+import { TrustScoreService } from '../../services/core/trustScore.service';
 import { emitToUser } from '../../utils/socketEmitter';
 // import BatchProcessingService from '../../services/core/batchProcessing.service';
 import mongoose from 'mongoose';
@@ -539,14 +539,13 @@ export class DeviceController {
             
             logger.error(`🚨 FRAUD ALERT CREATED for vehicle ${vehicle._id}: ${fraudAlert.description}`);
             
-            // Create trust event for fraud detection
+            // Create trust event for fraud detection using atomic service
             try {
-              const trustEvent = new TrustEvent({
-                vehicleId: vehicle._id,
+              const trustResult = await TrustScoreService.updateTrustScore({
+                vehicleId: vehicle._id.toString(),
                 change: -30, // Configurable impact
-                previousScore: vehicle.trustScore,
-                newScore: Math.max(0, vehicle.trustScore - 30),
                 reason: `Mileage rollback detected: ${reportedMileage} km vs ${previousMileage} km`,
+                source: 'fraudEngine',
                 details: {
                   telemetryId: telemetryRecord._id,
                   reportedMileage,
@@ -554,32 +553,25 @@ export class DeviceController {
                   deviceId: data.deviceID,
                   fraudAlertId: vehicle.fraudAlerts[vehicle.fraudAlerts.length - 1]?._id
                 },
-                source: 'fraudEngine',
-                createdBy: vehicle.ownerId
+                createdBy: vehicle.ownerId.toString(),
+                eventTimestamp: new Date()
               });
 
-              await trustEvent.save();
-              
-              // Update vehicle trust score
-              vehicle.trustScore = Math.max(0, vehicle.trustScore - 30);
-              vehicle.trustHistoryCount = (vehicle.trustHistoryCount || 0) + 1;
-              await vehicle.save();
-
-              // Emit socket event
-              try {
-                emitToUser(vehicle.ownerId.toString(), 'trustscore_changed', {
-                  vehicleId: vehicle._id,
-                  previousScore: vehicle.trustScore + 30,
-                  newScore: vehicle.trustScore,
-                eventId: trustEvent._id,
-                reason: trustEvent.reason,
-                change: -30
-              });
-              } catch (socketError) {
-                logger.warn('Failed to emit socket update:', socketError);
+              if (trustResult.success) {
+                // Emit socket event
+                await TrustScoreService.emitTrustScoreChange(
+                  vehicle._id.toString(),
+                  trustResult.previousScore,
+                  trustResult.newScore,
+                  trustResult.eventId!,
+                  `Mileage rollback detected: ${reportedMileage} km vs ${previousMileage} km`,
+                  -30
+                );
+                
+                logger.info(`📉 TRUST EVENT CREATED: Score decreased by 30 points for vehicle ${vehicle._id} (${trustResult.previousScore} → ${trustResult.newScore})`);
+              } else {
+                logger.error('Failed to update TrustScore:', trustResult.error);
               }
-              
-              logger.info(`📉 TRUST EVENT CREATED: Score decreased by 30 points for vehicle ${vehicle._id}`);
             } catch (trustError) {
               logger.error('Failed to create trust event:', trustError);
             }

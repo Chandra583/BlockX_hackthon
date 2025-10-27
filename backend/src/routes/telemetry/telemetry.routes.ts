@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { TelemetryController } from '../../controllers/telemetry/telemetry.controller';
+import { TelemetryEventController } from '../../controllers/telemetry/telemetryEvent.controller';
 import { authenticate } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -12,5 +13,8 @@ router.get('/latest-obd/:vehicleId', TelemetryController.getLatestOBDData);
 
 // Get telemetry history for a vehicle (temporarily without auth for testing)
 router.get('/history/:vehicleId', TelemetryController.getTelemetryHistory);
+
+// Process telemetry events that affect TrustScore
+router.post('/event', authenticate, TelemetryEventController.processEvent);
 
 export default router;

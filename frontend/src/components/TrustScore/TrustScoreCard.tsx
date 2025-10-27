@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, TrendingUp, TrendingDown, Info, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Shield, TrendingUp, TrendingDown, Info, AlertTriangle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { TrustHistoryModal } from './TrustHistoryModal';
 
 interface TrustScoreCardProps {
   score: number;
   vehicleId: string;
   onScoreChange?: (newScore: number) => void;
+  fraudAlerts?: any[];
+  lastUpdated?: string;
+  verificationStatus?: string;
+  onRefresh?: () => void;
 }
 
 export const TrustScoreCard: React.FC<TrustScoreCardProps> = ({
   score,
   vehicleId,
-  onScoreChange
+  onScoreChange,
+  fraudAlerts = [],
+  lastUpdated,
+  verificationStatus = 'verified',
+  onRefresh
 }) => {
   const [showHistory, setShowHistory] = useState(false);
 
@@ -96,7 +104,20 @@ export const TrustScoreCard: React.FC<TrustScoreCardProps> = ({
                 <p className="text-sm text-gray-600 font-medium">Vehicle integrity score</p>
               </div>
             </div>
-            {getScoreIcon(score)}
+            <div className="flex items-center space-x-2">
+              {getScoreIcon(score)}
+              {onRefresh && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={onRefresh}
+                  className="p-2 bg-white/90 rounded-xl shadow-lg backdrop-blur-sm hover:bg-white transition-colors"
+                  title="Refresh TrustScore data"
+                >
+                  <RefreshCw className="w-4 h-4 text-gray-600" />
+                </motion.button>
+              )}
+            </div>
           </motion.div>
 
           {/* Circular Score Display */}
@@ -164,7 +185,7 @@ export const TrustScoreCard: React.FC<TrustScoreCardProps> = ({
                 <AlertTriangle className="w-5 h-5 text-red-500" />
                 <span className="text-sm font-medium text-gray-700">Fraud Alerts</span>
               </div>
-              <span className="text-lg font-bold text-gray-900">0</span>
+              <span className="text-lg font-bold text-gray-900">{fraudAlerts.length}</span>
             </div>
             
             <div className="flex justify-between items-center p-4 bg-white/60 rounded-2xl backdrop-blur-sm">
@@ -172,7 +193,13 @@ export const TrustScoreCard: React.FC<TrustScoreCardProps> = ({
                 <CheckCircle className="w-5 h-5 text-emerald-500" />
                 <span className="text-sm font-medium text-gray-700">Verification</span>
               </div>
-              <span className="text-lg font-bold text-emerald-600">Verified</span>
+              <span className={`text-lg font-bold ${
+                verificationStatus === 'verified' ? 'text-emerald-600' : 
+                verificationStatus === 'pending' ? 'text-amber-600' : 'text-red-600'
+              }`}>
+                {verificationStatus === 'verified' ? 'Verified' : 
+                 verificationStatus === 'pending' ? 'Pending' : 'Failed'}
+              </span>
             </div>
             
             <div className="flex justify-between items-center p-4 bg-white/60 rounded-2xl backdrop-blur-sm">
@@ -180,7 +207,9 @@ export const TrustScoreCard: React.FC<TrustScoreCardProps> = ({
                 <Clock className="w-5 h-5 text-blue-500" />
                 <span className="text-sm font-medium text-gray-700">Last Updated</span>
               </div>
-              <span className="text-lg font-bold text-gray-900">Today</span>
+              <span className="text-lg font-bold text-gray-900">
+                {lastUpdated ? new Date(lastUpdated).toLocaleDateString() : 'Today'}
+              </span>
             </div>
           </motion.div>
 

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { TrustEvent } from '../../models/core/TrustEvent.model';
 import Vehicle from '../../models/core/Vehicle.model';
+import { TrustScoreService } from '../../services/core/trustScore.service';
 import { emitToUser } from '../../utils/socketEmitter';
 import { logger } from '../../utils/logger';
 
@@ -208,6 +209,113 @@ export class TrustController {
   }
 
   /**
+   * Get vehicle trust score
+   * GET /api/trust/:vehicleId/score
+   */
+  static async getVehicleTrustScore(req: Request, res: Response): Promise<void> {
+    try {
+      const { vehicleId } = req.params;
+      const currentUserId = (req as any).user?.id;
+
+      // Get vehicle to check ownership
+      const vehicle = await Vehicle.findById(vehicleId);
+      if (!vehicle) {
+        res.status(404).json({
+          success: false,
+          message: 'Vehicle not found'
+        });
+        return;
+      }
+
+      // Check if user owns vehicle or is admin
+      if (vehicle.ownerId.toString() !== currentUserId && (req as any).user?.role !== 'admin') {
+        res.status(403).json({
+          success: false,
+          message: 'Access denied'
+        });
+        return;
+      }
+
+      const trustScore = await TrustScoreService.getCurrentTrustScore(vehicleId);
+
+      res.json({
+        success: true,
+        data: {
+          vehicleId,
+          trustScore: trustScore.currentScore,
+          lastUpdated: trustScore.lastUpdated,
+          previousScore: trustScore.previousScore
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error fetching vehicle trust score:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch trust score'
+      });
+    }
+  }
+
+  /**
+   * Seed initial trust score (for testing)
+   * POST /api/trust/:vehicleId/seed
+   */
+  static async seedTrustScore(req: Request, res: Response): Promise<void> {
+    try {
+      const { vehicleId } = req.params;
+      const { score } = req.body;
+      const userId = (req as any).user?.id;
+
+      // Check if user is admin
+      if ((req as any).user?.role !== 'admin') {
+        res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+        return;
+      }
+
+      if (!score || score < 0 || score > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'Valid score (0-100) is required'
+        });
+        return;
+      }
+
+      const trustResult = await TrustScoreService.seedTrustScore(vehicleId, score);
+
+      if (!trustResult.success) {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to seed trust score',
+          error: trustResult.error
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'Trust score seeded successfully',
+        data: {
+          vehicleId,
+          previousScore: trustResult.previousScore,
+          newScore: trustResult.newScore,
+          eventId: trustResult.eventId
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error seeding trust score:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to seed trust score'
+      });
+    }
+  }
+
+  /**
    * Manual trust score adjustment (admin only)
    * POST /api/trust/:vehicleId/manual-adjust
    */
@@ -235,57 +343,44 @@ export class TrustController {
         return;
       }
 
-      // Get vehicle and update trust score
-      const vehicle = await Vehicle.findById(vehicleId);
-      if (!vehicle) {
-        res.status(404).json({
+      // Use atomic TrustScore service
+      const trustResult = await TrustScoreService.updateTrustScore({
+        vehicleId,
+        change,
+        reason,
+        source: 'manual',
+        details: details || {},
+        createdBy: userId
+      });
+
+      if (!trustResult.success) {
+        res.status(500).json({
           success: false,
-          message: 'Vehicle not found'
+          message: 'Failed to update trust score',
+          error: trustResult.error
         });
         return;
       }
 
-      const previousScore = vehicle.trustScore;
-      const newScore = Math.max(0, Math.min(100, previousScore + change));
-
-      // Create trust event
-      const trustEvent = new TrustEvent({
-        vehicleId,
-        change,
-        previousScore,
-        newScore,
-        reason,
-        details: details || {},
-        source: 'manual',
-        createdBy: userId
-      });
-
-      // Update vehicle trust score atomically
-      await Promise.all([
-        trustEvent.save(),
-        Vehicle.findByIdAndUpdate(vehicleId, {
-          $set: { trustScore: newScore },
-          $inc: { trustHistoryCount: 1 }
-        })
-      ]);
-
       // Emit socket event
-      emitToUser(vehicle.ownerId.toString(), 'trustscore_changed', {
+      await TrustScoreService.emitTrustScoreChange(
         vehicleId,
-        previousScore,
-        newScore,
-        eventId: trustEvent._id,
+        trustResult.previousScore,
+        trustResult.newScore,
+        trustResult.eventId!,
         reason,
         change
-      });
+      );
 
       res.json({
         success: true,
+        message: 'Trust score updated successfully',
         data: {
-          eventId: trustEvent._id,
-          previousScore,
-          newScore,
-          change
+          vehicleId,
+          previousScore: trustResult.previousScore,
+          newScore: trustResult.newScore,
+          change,
+          eventId: trustResult.eventId
         }
       });
 
