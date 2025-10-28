@@ -53,7 +53,7 @@ const ResetPasswordPage: React.FC = () => {
             <span className="text-white font-bold text-2xl">V</span>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">VERIDRIVE</h1>
-          <p className="text-lg text-gray-600">Anti-Fraud Vehicle Marketplace</p>
+          <p className="text-lg text-gray-600">Reinventing Vehicle Trust with Blockchain</p>
         </div>
 
         {/* Reset Password Form */}

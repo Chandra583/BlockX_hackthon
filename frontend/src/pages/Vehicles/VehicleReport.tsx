@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatPrice } from '../../utils/formatCurrency';
 import {
   Car,
   User,
@@ -414,7 +415,7 @@ const VehicleReportPage: React.FC = () => {
                       <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
                       <span className="text-green-400 font-semibold">Listed for Sale</span>
                     </div>
-                    <p className="text-2xl font-bold text-white">₹{report.listing.price?.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-white">{formatPrice(report.listing.price)}</p>
                     <p className="text-gray-300 text-sm">
                       Listed on {new Date(report.listing.listedAt!).toLocaleDateString()}
                     </p>

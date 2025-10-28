@@ -40,7 +40,7 @@ app.get('/api/info', (req, res) => {
   res.json({
     name: 'VERIDRIVE Backend API',
     version: '1.0.0',
-    description: 'Anti-Fraud Vehicle Marketplace Backend',
+    description: 'Reinventing Vehicle Trust with Blockchain Backend',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString()
   });

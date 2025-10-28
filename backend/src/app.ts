@@ -107,7 +107,7 @@ app.use('/api', routes);
 // Root endpoint
 app.get('/', (req, res) => {
   res.status(200).json({
-    message: 'Welcome to BlockX Anti-Fraud Vehicle Marketplace API',
+    message: 'Welcome to BlockX Reinventing Vehicle Trust with Blockchain API',
     version: config.APP_VERSION,
     environment: config.NODE_ENV,
     documentation: '/api/docs',

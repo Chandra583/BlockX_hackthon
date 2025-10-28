@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { formatPrice } from '../../utils/formatCurrency';
 import {
   Car,
   User,
@@ -330,7 +331,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-300">Price</span>
                   <span className="text-lg font-bold text-white">
-                    ₹{report.listing.price?.toLocaleString()}
+                    {formatPrice(report.listing.price)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

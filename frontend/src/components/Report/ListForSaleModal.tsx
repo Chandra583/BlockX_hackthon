@@ -24,13 +24,15 @@ interface ListForSaleModalProps {
     vin: string;
     vehicleNumber: string;
   };
+  onListingSuccess?: (listingData: any) => void;
 }
 
 export const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
   isOpen,
   onClose,
   vehicleId,
-  vehicleInfo
+  vehicleInfo,
+  onListingSuccess
 }) => {
   const [formData, setFormData] = useState({
     price: '',
@@ -63,9 +65,15 @@ export const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
         description: formData.description || undefined
       };
 
-      await ReportService.listVehicleForSale(vehicleId, listingData);
+      const response = await ReportService.listVehicleForSale(vehicleId, listingData);
       
       toast.success('Vehicle listed for sale successfully!');
+      
+      // Notify parent component of successful listing
+      if (onListingSuccess) {
+        onListingSuccess(response);
+      }
+      
       onClose();
       
       // Reset form

@@ -109,7 +109,7 @@ router.get('/test-cors', (req, res) => {
 router.get('/info', (req, res) => {
   res.status(200).json({
     status: 'success',
-    message: 'BlockX Anti-Fraud Vehicle Marketplace API',
+    message: 'BlockX Reinventing Vehicle Trust with Blockchain API',
     data: {
       name: 'BlockX API',
       version: '1.0.0',

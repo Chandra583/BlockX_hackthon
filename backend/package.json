@@ -1,7 +1,7 @@
 {
   "name": "veridrive-backend",
   "version": "1.0.0",
-  "description": "VERIDRIVE - Anti-Fraud Vehicle Marketplace Backend API",
+  "description": "VERIDRIVE - Reinventing Vehicle Trust with Blockchain Backend API",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

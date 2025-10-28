@@ -1,4 +1,4 @@
-# 🏆 BlockX - Anti-Fraud Vehicle Marketplace
+# 🏆 BlockX - Reinventing Vehicle Trust with Blockchain
 ## Colosseum Cyberpunk Hackathon Submission
 
 [![Deploy Backend](https://img.shields.io/badge/Deploy-Backend-blue)](https://block-x-two.vercel.app)

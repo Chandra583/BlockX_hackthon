@@ -64,7 +64,7 @@ router.get('/:vehicleId/report', authenticate, async (req: any, res: any) => {
 
     // Get marketplace listing status
     const marketplaceStatus = {
-      isListed: vehicle.isForSale || false,
+      isListed: vehicle.isForSale && vehicle.listingStatus === 'active',
       price: vehicle.price || null,
       listedAt: vehicle.updatedAt || null,
       listingId: vehicle._id
@@ -184,6 +184,20 @@ router.post('/:vehicleId/list', authenticate, async (req: any, res: any) => {
       return res.status(404).json({
         success: false,
         message: 'Vehicle not found or access denied'
+      });
+    }
+
+    // Check if vehicle is already listed
+    if (vehicle.isForSale && vehicle.listingStatus === 'active') {
+      return res.status(409).json({
+        success: false,
+        message: 'Vehicle is already listed for sale',
+        data: {
+          vehicleId: vehicle._id,
+          currentPrice: vehicle.price,
+          listedAt: vehicle.updatedAt,
+          marketplaceLink: `/marketplace/vehicle/${vehicle._id}`
+        }
       });
     }
 

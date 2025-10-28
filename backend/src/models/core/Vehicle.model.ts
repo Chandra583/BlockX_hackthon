@@ -22,6 +22,7 @@ export interface IVehicleDocument extends Document {
   fraudAlerts: any[];
   isForSale: boolean;
   listingStatus: string;
+  price?: number;
   description?: string;
   features: string[];
   condition: string;
@@ -406,6 +407,11 @@ const VehicleSchema = new Schema({
     type: String,
     enum: ['active', 'sold', 'pending', 'inactive', 'draft', 'expired', 'not_listed'],
     default: 'not_listed'
+  },
+  price: {
+    type: Number,
+    min: [0, 'Price cannot be negative'],
+    max: [999999999, 'Price seems unrealistic']
   },
   description: {
     type: String,

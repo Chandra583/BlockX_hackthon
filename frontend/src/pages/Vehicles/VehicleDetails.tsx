@@ -26,6 +26,7 @@ import {
   Eye
 } from 'lucide-react';
 import { VehicleReportModal } from '../../components/Report/VehicleReportModal';
+import { ListForSaleModal } from '../../components/Report/ListForSaleModal';
 import VehicleService from '../../services/vehicle';
 import { InstallationService } from '../../services/installation';
 import { VehicleBlockchainService } from '../../services/vehicleBlockchain';
@@ -38,6 +39,7 @@ import MileageHistoryCard from '../../components/MileageHistoryCard';
 import { FraudAlertCard } from '../../components/vehicle/FraudAlertCard';
 import { OBDDataValidationCard } from '../../components/vehicle/OBDDataValidationCard';
 import { TrustScoreCard } from '../../components/TrustScore/TrustScoreCard';
+import { MarketplaceStatusCard } from '../../components/vehicle/MarketplaceStatusCard';
 import TrustService from '../../services/trust';
 import useSocket from '../../hooks/useSocket';
 import TelemetryService from '../../services/telemetry';
@@ -57,6 +59,9 @@ interface Vehicle {
   trustScore?: number;
   verificationStatus?: string;
   isForSale?: boolean;
+  listingStatus?: string;
+  price?: number;
+  description?: string;
   createdAt: string;
   blockchainAddress?: string;
   lastMileageUpdate?: string;
@@ -489,6 +494,7 @@ const VehicleDetails: React.FC = () => {
   const [fraudDataLoading, setFraudDataLoading] = useState(false);
   const [trustScore, setTrustScore] = useState(vehicle?.trustScore || 100);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showListModal, setShowListModal] = useState(false);
 
   // Socket for real-time updates
   const { socket } = useSocket();
@@ -505,6 +511,20 @@ const VehicleDetails: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch TrustScore:', error);
+    }
+  };
+
+  // Handle successful listing
+  const handleListingSuccess = (listingData: any) => {
+    if (vehicle) {
+      setVehicle(prev => ({
+        ...prev!,
+        isForSale: true,
+        listingStatus: 'active',
+        price: listingData.price,
+        description: listingData.description,
+        updatedAt: listingData.listedAt
+      }));
     }
   };
 
@@ -1266,6 +1286,12 @@ const VehicleDetails: React.FC = () => {
               vehicleId={vehicle.id}
             />
 
+            {/* Marketplace Status */}
+            <MarketplaceStatusCard 
+              vehicle={vehicle}
+              onListForSale={() => setShowListModal(true)}
+            />
+
             {/* Blockchain History */}
             <BlockchainHistoryCard vehicleId={vehicle.id} />
 
@@ -1451,6 +1477,21 @@ const VehicleDetails: React.FC = () => {
           vin: vehicle.vin,
           vehicleNumber: vehicle.vehicleNumber
         }}
+      />
+
+      {/* List for Sale Modal */}
+      <ListForSaleModal
+        isOpen={showListModal}
+        onClose={() => setShowListModal(false)}
+        vehicleId={vehicle.id}
+        vehicleInfo={{
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          vin: vehicle.vin,
+          vehicleNumber: vehicle.vehicleNumber
+        }}
+        onListingSuccess={handleListingSuccess}
       />
     </div>
   );

@@ -26,6 +26,7 @@ export interface Vehicle {
   
   // Optional marketplace fields
   isForSale?: boolean;
+  listingStatus?: string;
   price?: number;
   description?: string;
   images?: string[];

@@ -102,7 +102,7 @@ const LoginPage: React.FC = () => {
             transition={{ delay: 0.5, duration: 0.8 }}
             className="text-xl text-gray-300 font-medium"
           >
-            Anti-Fraud Vehicle Marketplace
+            Reinventing Vehicle Trust with Blockchain
           </motion.p>
           
           <motion.div
