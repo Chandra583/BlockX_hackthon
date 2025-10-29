@@ -1,5 +1,5 @@
-import { apiService } from './api';
-import type { VehicleReportData, ListingRequest, ListingResponse, PDFResponse } from './report';
+import { apiService } from '../services/api';
+import type { VehicleReportData, ListingRequest, ListingResponse, PDFResponse } from '../services/report';
 
 /**
  * Reports API Service
@@ -13,7 +13,7 @@ export class ReportsAPI {
    */
   static async getVehicleReport(vehicleId: string): Promise<VehicleReportData> {
     try {
-      const response = await apiService.get(`/vehicles/${vehicleId}/report`);
+      const response = await apiService.get<{ success: boolean; message?: string; data: VehicleReportData }>(`/vehicles/${vehicleId}/report`);
       return response.data;
     } catch (error) {
       console.error('Failed to fetch vehicle report:', error);
@@ -27,7 +27,7 @@ export class ReportsAPI {
    */
   static async generateVehicleReportPdf(vehicleId: string): Promise<PDFResponse> {
     try {
-      const response = await apiService.post(`/vehicles/${vehicleId}/report/pdf`);
+      const response = await apiService.post<{ success: boolean; data: PDFResponse }>(`/vehicles/${vehicleId}/report/pdf`);
       return response.data;
     } catch (error) {
       console.error('Failed to generate PDF report:', error);
@@ -41,10 +41,10 @@ export class ReportsAPI {
    */
   static async downloadVehicleReportPdf(vehicleId: string): Promise<Blob> {
     try {
-      const response = await apiService.get(`/vehicles/${vehicleId}/report/pdf/download`, {
+      const response = await apiService.get<Blob>(`/vehicles/${vehicleId}/report/pdf/download`, {
         responseType: 'blob'
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Failed to download PDF report:', error);
       throw error;
@@ -57,7 +57,7 @@ export class ReportsAPI {
    */
   static async listVehicleForSale(vehicleId: string, listingData: ListingRequest): Promise<ListingResponse> {
     try {
-      const response = await apiService.post(`/vehicles/${vehicleId}/list`, listingData);
+      const response = await apiService.post<{ success: boolean; data: ListingResponse }>(`/vehicles/${vehicleId}/list`, listingData);
       return response.data;
     } catch (error) {
       console.error('Failed to list vehicle for sale:', error);
@@ -71,7 +71,7 @@ export class ReportsAPI {
    */
   static async unlistVehicle(vehicleId: string): Promise<{ vehicleId: string; unlistedAt: string }> {
     try {
-      const response = await apiService.post(`/vehicles/${vehicleId}/unlist`);
+      const response = await apiService.post<{ success: boolean; data: { vehicleId: string; unlistedAt: string } }>(`/vehicles/${vehicleId}/unlist`);
       return response.data;
     } catch (error) {
       console.error('Failed to unlist vehicle:', error);
@@ -85,7 +85,7 @@ export class ReportsAPI {
    */
   static async getListingStatus(vehicleId: string): Promise<{ isListed: boolean; listingId?: string; price?: number }> {
     try {
-      const response = await apiService.get(`/vehicles/${vehicleId}/listing`);
+      const response = await apiService.get<{ success: boolean; data: { isListed: boolean; listingId?: string; price?: number } }>(`/vehicles/${vehicleId}/listing`);
       return response.data;
     } catch (error) {
       console.error('Failed to get listing status:', error);

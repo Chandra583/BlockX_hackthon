@@ -111,12 +111,12 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
         }
         
         return {
-          id: r._id || r.id,
-          mileage: r.mileage,
-          recordedAt: r.recordedAt || r.createdAt,
-          source: r.source,
-          verified: r.verified,
-          deviceId: r.deviceId,
+        id: r._id || r.id,
+        mileage: r.mileage,
+        recordedAt: r.recordedAt || r.createdAt,
+        source: r.source,
+        verified: r.verified,
+        deviceId: r.deviceId,
           blockchainHash: r.blockchainHash,
           // FIXED: Add validation fields with calculated values
           previousMileage,
@@ -211,12 +211,12 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
         }
         
         return {
-          id: r._id || r.id,
-          mileage: r.mileage,
-          recordedAt: r.recordedAt || r.createdAt,
-          source: r.source,
-          verified: r.verified,
-          deviceId: r.deviceId,
+        id: r._id || r.id,
+        mileage: r.mileage,
+        recordedAt: r.recordedAt || r.createdAt,
+        source: r.source,
+        verified: r.verified,
+        deviceId: r.deviceId,
           blockchainHash: r.blockchainHash,
           // FIXED: Add validation fields with calculated values
           previousMileage,
@@ -301,7 +301,7 @@ const MileageHistoryCard: React.FC<MileageHistoryCardProps> = ({ vehicleId }) =>
               <div className="text-xs font-medium text-gray-500 uppercase">Recent Updates</div>
               <TrustScoreMini trustScore={85} />
             </div>
-            
+
             {/* Mileage Chart */}
             {console.log('MileageHistoryCard records:', records)}
             <MileageChart 

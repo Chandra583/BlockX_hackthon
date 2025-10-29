@@ -226,7 +226,7 @@ export class MarketplaceService {
       const accidentAnalysis = this.analyzeAccidentHistory(vehicle.accidentHistory);
       
       // Get market analysis
-      const marketAnalysis = await this.getMarketAnalysis(vehicle);
+      const marketAnalysis = await this.getMarketAnalysisInternal(vehicle);
       
       // Generate recommendations
       const recommendations = this.generateRecommendations(
@@ -487,7 +487,7 @@ export class MarketplaceService {
   /**
    * Get market analysis for the vehicle
    */
-  private static async getMarketAnalysis(vehicle: any): Promise<any> {
+  private static async getMarketAnalysisInternal(vehicle: any): Promise<any> {
     try {
       // Find similar vehicles in the marketplace
       const similarVehicles = await Vehicle.find({
@@ -721,11 +721,27 @@ export class MarketplaceService {
       
       // Transform to marketplace listings format
       const listings = vehicles.map(vehicle => ({
-        vehicle,
-        askingPrice: 25000, // This would come from a separate Listing model in production
+        id: vehicle._id.toString(),
+        vehicle: {
+          id: vehicle._id.toString(),
+          vin: vehicle.vin,
+          make: vehicle.make,
+          model: vehicle.vehicleModel,
+          year: vehicle.year,
+          color: vehicle.color,
+          currentMileage: vehicle.currentMileage,
+          condition: vehicle.condition,
+          trustScore: vehicle.trustScore,
+          features: vehicle.features || [],
+          owner: vehicle.ownerId,
+          createdAt: vehicle.createdAt
+        },
+        price: vehicle.price || 25000, // Use vehicle price field or default
         negotiable: true,
+        description: vehicle.description,
         listedAt: vehicle.createdAt,
-        // historyReport would be generated on demand
+        views: 0,
+        inquiries: 0
       }));
       
       return {
@@ -843,7 +859,7 @@ export class MarketplaceService {
         throw new NotFoundError('Vehicle not found');
       }
       
-      return await this.getMarketAnalysis(vehicle);
+      return await this.getMarketAnalysisInternal(vehicle);
     } catch (error) {
       logger.error(`❌ Failed to get market analysis:`, error);
       throw error;

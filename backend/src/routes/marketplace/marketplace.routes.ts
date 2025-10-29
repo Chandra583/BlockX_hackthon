@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import MarketplaceController from '../../controllers/vehicle/marketplace.controller';
+import { PurchaseController } from '../../controllers/purchase/purchase.controller';
 import { authenticate, optionalAuth } from '../../middleware/auth.middleware';
+import { logger } from '../../utils/logger';
 
 const router = Router();
 
@@ -66,5 +68,12 @@ router.get('/search', MarketplaceController.searchMarketplace);
  * @access Public
  */
 router.get('/statistics', MarketplaceController.getMarketplaceStatistics);
+
+/**
+ * @route POST /api/marketplace/:listingId/request
+ * @desc Create a purchase request for a vehicle listing
+ * @access Buyer (authenticated)
+ */
+router.post('/:listingId/request', authenticate, PurchaseController.createPurchaseRequest);
 
 export default router;

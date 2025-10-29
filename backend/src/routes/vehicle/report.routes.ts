@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/auth.middleware';
+import { authenticate, optionalAuth } from '../../middleware/auth.middleware';
 import Vehicle from '../../models/core/Vehicle.model';
 import { User } from '../../models/core/User.model';
 import { TelemetryBatch } from '../../models/TelemetryBatch.model';
+import { InstallationRequest } from '../../models/InstallationRequest.model';
+import { Device } from '../../models/core/Device.model';
 import { TrustEvent } from '../../models/core/TrustEvent.model';
 import { logger } from '../../utils/logger';
 
@@ -13,33 +15,45 @@ const router = Router();
  * Get comprehensive vehicle report with all aggregated data
  * Access: Vehicle owner, Admin
  */
-router.get('/:vehicleId/report', authenticate, async (req: any, res: any) => {
+router.get('/:vehicleId/report', optionalAuth, async (req: any, res: any) => {
   try {
     const userId = req.user?.id;
+    const userRole = req.user?.role;
     const { vehicleId } = req.params;
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'User authentication required'
-      });
-    }
-
-    // Get vehicle and verify ownership
-    const vehicle = await Vehicle.findOne({ 
-      _id: vehicleId, 
-      ownerId: userId 
-    }).lean();
+    // Get vehicle (public lookup)
+    const vehicle: any = await Vehicle.findById(vehicleId).lean();
 
     if (!vehicle) {
       return res.status(404).json({
         success: false,
-        message: 'Vehicle not found or access denied'
+        message: 'Vehicle not found'
+      });
+    }
+
+    // Authorization: owners and admins always allowed; buyers/public only if listed
+    const isOwner = userId && String(vehicle.ownerId) === String(userId);
+    const isAdmin = (userRole || '').toLowerCase() === 'admin';
+    const isPubliclyViewable = !!(vehicle.isForSale && vehicle.listingStatus === 'active');
+
+    if (!(isOwner || isAdmin || isPubliclyViewable)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Report available only to owner/admin or when listed for sale.'
       });
     }
 
     // Get owner information
     const owner = await User.findById(vehicle.ownerId).select('firstName lastName email').lean();
+
+    // Mask email for non-owner/non-admin viewers
+    const maskEmail = (email?: string) => {
+      if (!email) return 'Not available';
+      const [name, domain] = email.split('@');
+      if (!name || !domain) return 'Not available';
+      const masked = name.length <= 2 ? `${name[0]}*` : `${name[0]}${'*'.repeat(Math.max(1, name.length - 2))}${name[name.length - 1]}`;
+      return `${masked}@${domain}`;
+    };
 
     // Get last 10 OBD telemetry batches
     const lastBatches = await TelemetryBatch.find({ vehicleId })
@@ -70,6 +84,47 @@ router.get('/:vehicleId/report', authenticate, async (req: any, res: any) => {
       listingId: vehicle._id
     };
 
+    // Compute helper values
+    const totalDrivenKm = (lastBatches || []).reduce((sum: number, b: any) => sum + (b.distanceDelta || b.distance || 0), 0);
+
+    // Resolve OBD/device installation information
+    let resolvedDeviceId: string | null = vehicle.deviceId || null;
+    if (!resolvedDeviceId && lastBatches && lastBatches.length > 0) {
+      resolvedDeviceId = lastBatches[0].deviceId || null;
+    }
+
+    const latestInstall = await InstallationRequest.findOne({ vehicleId })
+      .sort({ installedAt: -1, completedAt: -1, updatedAt: -1 })
+      .lean();
+
+    let serviceProvider: any = null;
+    if (latestInstall?.serviceProviderId) {
+      const sp = await User.findById(latestInstall.serviceProviderId).select('firstName lastName email').lean();
+      if (sp) {
+        serviceProvider = {
+          id: sp._id,
+          name: `${sp.firstName} ${sp.lastName}`.trim(),
+          email: sp.email
+        };
+      }
+    }
+
+    // Optionally enrich with Device metadata
+    if (!latestInstall && resolvedDeviceId) {
+      const device = await Device.findOne({ deviceID: resolvedDeviceId }).lean();
+      if (device) {
+        serviceProvider = serviceProvider || (device.assignedServiceProvider ? { id: device.assignedServiceProvider } : null);
+      }
+    }
+
+    // Explorer links
+    const solanaExplorer = vehicle.blockchainHash ? `https://explorer.solana.com/tx/${vehicle.blockchainHash}?cluster=devnet` : null;
+    const arweaveExplorer = vehicle.blockchainAddress ? `https://arweave.net/${vehicle.blockchainAddress}` : null;
+
+    // Installation transaction hashes (if available)
+    const installSolTx = latestInstall?.solanaTx || null;
+    const installArTx = latestInstall?.arweaveTx || null;
+
     // Build comprehensive report
     const report = {
       vehicle: {
@@ -88,13 +143,17 @@ router.get('/:vehicleId/report', authenticate, async (req: any, res: any) => {
       owner: {
         id: owner?._id,
         fullName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown',
-        email: owner?.email || 'Not available',
+        email: (isOwner || isAdmin) ? (owner?.email || 'Not available') : maskEmail(owner?.email || undefined),
         registrationDate: vehicle.createdAt
       },
       registeredOnChain: {
         solanaTxHash: vehicle.blockchainHash || null,
         arweaveTx: vehicle.blockchainAddress || null,
-        timestamp: vehicle.createdAt
+        timestamp: vehicle.createdAt,
+        explorer: {
+          solana: solanaExplorer,
+          arweave: arweaveExplorer
+        }
       },
       lastBatches: lastBatches.map(batch => ({
         id: batch._id,
@@ -117,6 +176,22 @@ router.get('/:vehicleId/report', authenticate, async (req: any, res: any) => {
         resolutionStatus: 'unresolved', // Default status
         resolvedBy: null
       })),
+      obdInfo: {
+        deviceId: resolvedDeviceId,
+        installedAt: latestInstall?.installedAt || latestInstall?.completedAt || null,
+        serviceProvider: serviceProvider,
+        totalDrivenKm,
+        batchesCount: (lastBatches || []).length,
+        initialMileage: latestInstall?.initialMileage ?? null,
+        installation: {
+          solanaTx: installSolTx,
+          arweaveTx: installArTx,
+          explorer: {
+            solana: installSolTx ? `https://explorer.solana.com/tx/${installSolTx}?cluster=devnet` : null,
+            arweave: installArTx ? `https://arweave.net/${installArTx}` : null
+          }
+        }
+      },
       trustScore: {
         score: vehicle.trustScore || 100,
         lastUpdated: vehicle.lastTrustScoreUpdate || vehicle.updatedAt,

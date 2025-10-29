@@ -14,6 +14,8 @@ import RecentNotifications from './components/RecentNotifications';
 import RecentActivity from './components/RecentActivity';
 import TrustScoreCard from './components/TrustScoreCard';
 import NotificationBell from './components/NotificationBell';
+import { SellerRequestsList } from '../../components/marketplace/SellerRequestsList';
+import { SellerTransferManager } from '../../components/marketplace/SellerTransferManager';
 
 interface DashboardData {
   user: any;
@@ -34,6 +36,8 @@ const Dashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPurchaseRequests, setShowPurchaseRequests] = useState(false);
+  const [showTransferManager, setShowTransferManager] = useState(false);
   const { socket } = useSocket();
 
   // Fetch dashboard data
@@ -185,6 +189,53 @@ const Dashboard: React.FC = () => {
           {/* Stats Cards */}
           <StatsCards stats={dashboardData.stats} />
 
+          {/* Purchase Management */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-white mb-2">Purchase Management</h2>
+                <p className="text-slate-300">Manage vehicle sales and ownership transfers</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => setShowPurchaseRequests(true)}
+                className="flex items-center justify-center space-x-3 p-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl text-blue-400 hover:text-blue-300 transition-all duration-200"
+              >
+                <div className="p-2 bg-blue-600/20 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Purchase Requests</div>
+                  <div className="text-sm text-slate-400">View and respond to buyer requests</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setShowTransferManager(true)}
+                className="flex items-center justify-center space-x-3 p-4 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-xl text-purple-400 hover:text-purple-300 transition-all duration-200"
+              >
+                <div className="p-2 bg-purple-600/20 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Transfer Manager</div>
+                  <div className="text-sm text-slate-400">Complete ownership transfers</div>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+
           {/* Main Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Notifications */}
@@ -203,6 +254,23 @@ const Dashboard: React.FC = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Purchase Management Modals */}
+      <SellerRequestsList
+        isOpen={showPurchaseRequests}
+        onClose={() => setShowPurchaseRequests(false)}
+        onRequestUpdate={() => {
+          // Refresh dashboard data if needed
+        }}
+      />
+
+      <SellerTransferManager
+        isOpen={showTransferManager}
+        onClose={() => setShowTransferManager(false)}
+        onTransferComplete={() => {
+          // Refresh dashboard data if needed
+        }}
+      />
     </div>
   );
 };

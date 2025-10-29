@@ -575,6 +575,92 @@ export class SolanaService {
       };
     }
   }
+
+  /**
+   * Record ownership transfer on blockchain (memo transaction)
+   */
+  async recordOwnershipTransfer(
+    vehicleId: string,
+    vin: string,
+    fromOwnerId: string,
+    toOwnerId: string,
+    fromWallet: string,
+    toWallet: string,
+    salePrice: number,
+    purchaseRequestId: string,
+    signerWallet: SolanaWallet
+  ): Promise<{ transactionHash: string; blockchainAddress: string; network: string; simulated: boolean }> {
+    try {
+      const signerKeypair = Keypair.fromSecretKey(signerWallet.secretKey);
+      
+      const transferData = {
+        type: 'OWNERSHIP_TRANSFER',
+        network: this.isDevnet ? 'devnet' : 'mainnet',
+        vehicleId: vehicleId.slice(-12),
+        vin: vin.slice(-12),
+        fromOwnerId: fromOwnerId.slice(-8),
+        toOwnerId: toOwnerId.slice(-8),
+        fromWallet: fromWallet.slice(0, 8) + '...' + fromWallet.slice(-8),
+        toWallet: toWallet.slice(0, 8) + '...' + toWallet.slice(-8),
+        salePrice,
+        purchaseRequestId: purchaseRequestId.slice(-12),
+        timestamp: new Date().toISOString()
+      };
+
+      logger.info(`📝 Ownership transfer memo payload:`, JSON.stringify(transferData, null, 2));
+
+      const transaction = new Transaction();
+      
+      const memoInstruction = new TransactionInstruction({
+        keys: [],
+        programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+        data: Buffer.from(JSON.stringify(transferData))
+      });
+      
+      transaction.add(memoInstruction);
+
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [signerKeypair],
+        { commitment: 'confirmed' }
+      );
+
+      logger.info(`✅ Ownership transfer recorded on Solana: ${signature}`);
+      return {
+        transactionHash: signature,
+        blockchainAddress: signerKeypair.publicKey.toString(),
+        network: this.isDevnet ? 'devnet' : 'mainnet',
+        simulated: false
+      };
+    } catch (error) {
+      logger.error(`❌ Failed to record ownership transfer on Solana:`, error);
+      throw new Error(`Ownership transfer recording failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Confirm transaction status on Solana
+   */
+  async confirmTransaction(signature: string, maxRetries: number = 3): Promise<boolean> {
+    try {
+      for (let i = 0; i < maxRetries; i++) {
+        const status = await this.connection.getSignatureStatus(signature);
+        if (status && status.value && status.value.confirmationStatus) {
+          if (status.value.confirmationStatus === 'confirmed' || status.value.confirmationStatus === 'finalized') {
+            logger.info(`✅ Transaction ${signature} confirmed`);
+            return true;
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between retries
+      }
+      logger.warn(`⚠️ Transaction ${signature} not confirmed after ${maxRetries} retries`);
+      return false;
+    } catch (error) {
+      logger.error(`❌ Failed to confirm transaction ${signature}:`, error);
+      return false;
+    }
+  }
 }
 
 // Export singleton instance

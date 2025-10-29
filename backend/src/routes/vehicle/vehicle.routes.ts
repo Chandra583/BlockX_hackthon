@@ -208,6 +208,74 @@ router.get('/marketplace-stats', async (req: any, res: any) => {
 });
 
 /**
+ * GET /api/vehicles/my-vehicles
+ * Get user's vehicles with ownership history
+ * Access: All authenticated users
+ */
+router.get('/my-vehicles', 
+  rateLimit(100, 15 * 60 * 1000), // 100 requests per 15 minutes
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User authentication required'
+        });
+      }
+
+      // Get user's vehicles with ownership history
+      const vehicles = await Vehicle.find({ 
+        $or: [
+          { ownerId: userId }, // Currently owned
+          { 'ownershipHistory.ownerUserId': userId } // Previously owned
+        ]
+      })
+        .populate({
+          path: 'ownershipHistory.ownerUserId',
+          select: 'firstName lastName fullName email walletAddress',
+          model: 'User'
+        })
+        .sort({ createdAt: -1 })
+        .select('-__v');
+
+      // Transform vehicles to include ownership status
+      const transformedVehicles = vehicles.map(vehicle => ({
+        _id: vehicle._id,
+        vin: vehicle.vin,
+        vehicleNumber: vehicle.vehicleNumber,
+        make: vehicle.make,
+        vehicleModel: vehicle.vehicleModel,
+        year: vehicle.year,
+        color: vehicle.color,
+        currentMileage: vehicle.currentMileage,
+        trustScore: vehicle.trustScore,
+        ownerUserId: vehicle.ownerId === userId ? vehicle.ownerId : null,
+        ownerWalletAddress: vehicle.blockchainAddress,
+        ownershipHistory: vehicle.ownershipHistory || [],
+        createdAt: vehicle.createdAt,
+        updatedAt: vehicle.updatedAt
+      }));
+
+      logger.info(`✅ Retrieved ${transformedVehicles.length} vehicles with ownership history for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        data: transformedVehicles
+      });
+    } catch (error) {
+      logger.error('❌ Failed to get user vehicles with ownership history:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve vehicles with ownership history',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+);
+
+/**
  * GET /api/vehicles
  * Get user's own vehicles
  * Access: All authenticated users

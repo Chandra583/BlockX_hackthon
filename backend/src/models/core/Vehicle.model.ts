@@ -42,6 +42,17 @@ export interface IVehicleDocument extends Document {
   validateVIN(): boolean;
   blockchainHash?: string;
   blockchainAddress?: string;
+  ownerUserId?: mongoose.Types.ObjectId;
+  ownerWalletAddress?: string;
+  ownershipHistory?: Array<{
+    ownerUserId: mongoose.Types.ObjectId;
+    ownerWallet?: string;
+    fromDate: Date;
+    toDate?: Date;
+    txHash?: string;
+    saleRecordId?: mongoose.Types.ObjectId;
+    note?: string;
+  }>;
 }
 
 // Mileage Record Schema
@@ -453,7 +464,32 @@ const VehicleSchema = new Schema({
   blockchainAddress: {
     type: String,
     index: true
-  }
+  },
+  ownerUserId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
+  ownerWalletAddress: {
+    type: String,
+    index: true
+  },
+  ownershipHistory: [{
+    ownerUserId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    ownerWallet: String,
+    fromDate: {
+      type: Date,
+      required: true
+    },
+    toDate: Date,
+    txHash: String,
+    saleRecordId: Schema.Types.ObjectId,
+    note: String
+  }]
 }, {
   timestamps: true,
   collection: 'vehicles'

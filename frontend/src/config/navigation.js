@@ -54,9 +54,32 @@ export const roleNavigation = {
     { 
       key: 'marketplace', 
       label: 'Marketplace', 
-      path: '/owner/marketplace', 
+      path: '/owner/marketplace/browse', 
       icon: Store,
       visibleForRoles: ['owner']
+    }
+  ],
+  buyer: [
+    { 
+      key: 'dashboard', 
+      label: 'Dashboard', 
+      path: '/buyer/dashboard', 
+      icon: LayoutDashboard,
+      visibleForRoles: ['buyer']
+    },
+    { 
+      key: 'marketplace', 
+      label: 'Marketplace', 
+      path: '/buyer/marketplace', 
+      icon: Store,
+      visibleForRoles: ['buyer']
+    },
+    { 
+      key: 'my-vehicles', 
+      label: 'My Vehicles', 
+      path: '/buyer/my-vehicles', 
+      icon: Car,
+      visibleForRoles: ['buyer']
     }
   ],
   admin: [
@@ -70,7 +93,7 @@ export const roleNavigation = {
     { 
       key: 'marketplace', 
       label: 'Marketplace', 
-      path: '/admin/marketplace', 
+      path: '/marketplace/browse', 
       icon: Store,
       visibleForRoles: ['admin']
     },
@@ -117,29 +140,6 @@ export const roleNavigation = {
       path: '/sp/devices', 
       icon: Smartphone,
       visibleForRoles: ['service']
-    }
-  ],
-  buyer: [
-    { 
-      key: 'dashboard', 
-      label: 'Dashboard', 
-      path: '/buyer/dashboard', 
-      icon: LayoutDashboard,
-      visibleForRoles: ['buyer']
-    },
-    { 
-      key: 'marketplace', 
-      label: 'Marketplace', 
-      path: '/buyer/marketplace', 
-      icon: Store,
-      visibleForRoles: ['buyer']
-    },
-    { 
-      key: 'history', 
-      label: 'Purchase History', 
-      path: '/buyer/history', 
-      icon: History,
-      visibleForRoles: ['buyer']
     }
   ],
   insurance: [

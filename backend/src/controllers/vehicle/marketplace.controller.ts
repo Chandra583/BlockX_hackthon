@@ -107,7 +107,13 @@ export class MarketplaceController {
       
       res.status(200).json({
         success: true,
-        data: result
+        data: {
+          listings: result.listings,
+          total: result.pagination.total,
+          page: result.pagination.page,
+          limit: result.pagination.limit,
+          totalPages: result.pagination.pages
+        }
       });
       
     } catch (error) {

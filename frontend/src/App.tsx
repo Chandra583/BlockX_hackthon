@@ -22,7 +22,8 @@ import DevicesList from './pages/Devices/DevicesList';
 import { DashboardRedirect } from './components/auth/DashboardRedirect';
 
 // Import role-based routes
-import { adminRoutes, ownerRoutes, spRoutes } from './routes/roleRoutes';
+import { adminRoutes, ownerRoutes, spRoutes, buyerRoutes } from './routes/roleRoutes';
+import MarketplaceBrowse from './pages/marketplace/MarketplaceBrowse';
 
 const HomePage = () => {
   const { isAuthenticated, user, isLoading } = useAppSelector((state) => state.auth);
@@ -151,6 +152,23 @@ function App() {
           />
         ))}
         
+        {/* Buyer Routes */}
+        {buyerRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['buyer']}>
+                  <Layout>
+                    {route.element}
+                  </Layout>
+                </RoleGuard>
+              </ProtectedRoute>
+            }
+          />
+        ))}
+        
         {/* Common routes that work for all roles */}
         <Route 
           path="/vehicles" 
@@ -210,9 +228,17 @@ function App() {
         />
         <Route 
           path="/marketplace" 
+          element={<Navigate to="/marketplace/browse" replace />} 
+        />
+        <Route 
+          path="/marketplace/browse" 
           element={
             <ProtectedRoute>
-              <RoleRedirect fallbackRoute="/login" />
+              <RoleGuard allowedRoles={['owner','buyer','admin']}>
+                <Layout>
+                  <MarketplaceBrowse />
+                </Layout>
+              </RoleGuard>
             </ProtectedRoute>
           } 
         />

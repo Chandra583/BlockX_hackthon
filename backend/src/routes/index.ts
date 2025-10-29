@@ -13,10 +13,11 @@ import installationRequestRoutes from './installationRequest.routes';
 import serviceInstallsRoutes from './serviceInstalls.routes';
 import telemetryRoutes from './telemetry/telemetry.routes';
 import trustRoutes from './trust/trust.routes';
-// New routes - Service Providers, Batch Processing, Marketplace (temporarily disabled)
+// New routes - Service Providers, Batch Processing, Marketplace, Purchase
+import marketplaceRoutes from './marketplace/marketplace.routes';
+import purchaseRoutes from './purchase/purchase.routes';
 // import serviceProviderRoutes from './admin/serviceProvider.routes';
 // import batchProcessingRoutes from './admin/batchProcessing.routes';
-// import marketplaceRoutes from './marketplace/marketplace.routes';
 // import mileageRoutes from './_mileage_disabled/mileage.routes';
 // import documentRoutes from './_document_disabled/document.routes';
 
@@ -50,12 +51,9 @@ router.use('/telemetry', telemetryRoutes);
 // Mount trust routes
 router.use('/trust', trustRoutes);
 
-// Mount new feature routes (temporarily disabled for debugging)
-// router.use('/admin/service-providers', serviceProviderRoutes);
-// router.use('/admin/batch-processing', batchProcessingRoutes);
-// router.use('/marketplace', marketplaceRoutes);
-// router.use('/mileage', mileageRoutes);
-// router.use('/', documentRoutes); // Document routes use mixed paths
+// Mount new feature routes
+router.use('/marketplace', marketplaceRoutes);
+router.use('/purchase', purchaseRoutes);
 
 // Health check for the entire API
 router.get('/health', (req, res) => {

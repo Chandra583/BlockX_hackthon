@@ -17,6 +17,7 @@ const AdminInstalls = lazy(() => import('../pages/Admin/AdminInstalls'));
 const SPInstalls = lazy(() => import('../pages/SP/SPInstalls'));
 const History = lazy(() => import('../pages/History/History'));
 const VehicleMarketplace = lazy(() => import('../components/marketplace/VehicleMarketplace'));
+const MarketplaceBrowse = lazy(() => import('../pages/marketplace/MarketplaceBrowse'));
 
 // Loading component for lazy routes
 const PageLoader = () => (
@@ -130,12 +131,22 @@ export const AppRouter: React.FC = () => {
             } 
           />
           
-          {/* Marketplace Route */}
+          {/* Marketplace Routes */}
           <Route 
             path="/marketplace" 
             element={
               <ProtectedRoute allowedRoles={['owner', 'buyer', 'admin']}>
                 <VehicleMarketplace />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/marketplace/browse" 
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'buyer', 'admin']}>
+                <Layout>
+                  <MarketplaceBrowse />
+                </Layout>
               </ProtectedRoute>
             } 
           />
