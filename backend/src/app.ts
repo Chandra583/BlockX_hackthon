@@ -195,4 +195,14 @@ app.all('*', (req, res) => {
   });
 });
 
+// Global error handler (must be after all routes/middleware)
+app.use((err: any, _req: any, res: any, next: any) => {
+  try {
+    // eslint-disable-next-line no-console
+    console.error('Unhandled error:', err && err.stack ? err.stack : err);
+  } catch (_) {}
+  if (res.headersSent) return next(err);
+  res.status(err?.status || 500).json({ success: false, error: err?.message || 'internal server error' });
+});
+
 export { app }; 
