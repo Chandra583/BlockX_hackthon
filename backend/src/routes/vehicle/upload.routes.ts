@@ -262,7 +262,7 @@ router.get('/vin-decode',
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data: any = await response.json();
           res.status(200).json({
             success: true,
             found: true,

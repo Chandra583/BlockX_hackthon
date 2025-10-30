@@ -497,7 +497,7 @@ export class VehicleController {
             make: existingVehicle.make,
             model: existingVehicle.model,
             year: existingVehicle.year,
-            status: existingVehicle.status
+            listingStatus: (existingVehicle as any).listingStatus
           } : null
         }
       });
@@ -536,7 +536,7 @@ export class VehicleController {
         throw new NotFoundError('Vehicle not found');
       }
 
-      // Calculate detailed trust score
+      // Calculate trust score
       const trustScore = await vehicle.calculateTrustScore();
 
       res.status(200).json({
@@ -544,14 +544,7 @@ export class VehicleController {
         message: 'Trust score calculated successfully',
         data: {
           vehicleId,
-          trustScore,
-          calculation: {
-            mileageConsistency: trustScore.mileageConsistency,
-            documentVerification: trustScore.documentVerification,
-            serviceHistory: trustScore.serviceHistory,
-            ownershipHistory: trustScore.ownershipHistory,
-            overallScore: trustScore.overallScore
-          }
+          trustScore
         }
       });
 

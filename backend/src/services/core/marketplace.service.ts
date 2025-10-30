@@ -271,7 +271,7 @@ export class MarketplaceService {
       
     } catch (error) {
       logger.error(`❌ Failed to generate vehicle history report:`, error);
-      throw new ApiError('Failed to generate vehicle history report', 500);
+      throw new ApiError(500, 'Failed to generate vehicle history report');
     }
   }
   
@@ -522,7 +522,7 @@ export class MarketplaceService {
       
       // Calculate market comparison
       const averageMarketPrice = similarVehicles.length > 0 ?
-        similarVehicles.reduce((sum, v) => sum + (v.askingPrice || baseValue), 0) / similarVehicles.length :
+        similarVehicles.reduce((sum, v: any) => sum + ((v.price ?? v.askingPrice ?? baseValue)), 0) / similarVehicles.length :
         baseValue;
       
       let marketComparison = 'at_market';
@@ -734,12 +734,12 @@ export class MarketplaceService {
           trustScore: vehicle.trustScore,
           features: vehicle.features || [],
           owner: vehicle.ownerId,
-          createdAt: vehicle.createdAt
+          createdAt: (vehicle as any).createdAt
         },
         price: vehicle.price || 25000, // Use vehicle price field or default
         negotiable: true,
         description: vehicle.description,
-        listedAt: vehicle.createdAt,
+        listedAt: (vehicle as any).createdAt,
         views: 0,
         inquiries: 0
       }));
@@ -755,7 +755,7 @@ export class MarketplaceService {
       };
     } catch (error) {
       logger.error(`❌ Failed to get marketplace listings:`, error);
-      throw new ApiError('Failed to get marketplace listings', 500);
+      throw new ApiError(500, 'Failed to get marketplace listings');
     }
   }
   
@@ -912,7 +912,7 @@ export class MarketplaceService {
       };
     } catch (error) {
       logger.error(`❌ Failed to search marketplace:`, error);
-      throw new ApiError('Failed to search marketplace', 500);
+      throw new ApiError(500, 'Failed to search marketplace');
     }
   }
   
@@ -960,7 +960,7 @@ export class MarketplaceService {
       };
     } catch (error) {
       logger.error(`❌ Failed to get marketplace statistics:`, error);
-      throw new ApiError('Failed to get marketplace statistics', 500);
+      throw new ApiError(500, 'Failed to get marketplace statistics');
     }
   }
 }

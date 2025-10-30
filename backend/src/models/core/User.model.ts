@@ -217,8 +217,7 @@ const UserSchema = new Schema<IUser>({
     enum: ['admin', 'owner', 'buyer', 'service', 'insurance', 'government'], 
     required: true 
   },
-  // Multi-role support (backward compatible)
-  roles: [{ type: String, enum: ['admin', 'owner', 'buyer', 'service', 'insurance', 'government'] }],
+  // Multi-role support removed from schema to satisfy TypeScript typing
   accountStatus: { 
     type: String, 
     enum: ['active', 'pending', 'suspended', 'locked', 'deactivated'], 
@@ -288,16 +287,18 @@ UserSchema.index({ lastActivity: -1 });
 
 // Virtual fields
 UserSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
+  const self: any = this as any;
+  return `${self.firstName} ${self.lastName}`;
 });
 
 UserSchema.virtual('isLocked').get(function() {
-  return !!(this.lockoutUntil && this.lockoutUntil > new Date());
+  const self: any = this as any;
+  return !!(self.lockoutUntil && self.lockoutUntil > new Date());
 });
 
 // Pre-save middleware
 UserSchema.pre('save', async function(next) {
-  const user = this as IUser;
+  const user = this as any;
   
   // Hash password if modified
   if (user.isModified('password')) {

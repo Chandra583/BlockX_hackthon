@@ -46,7 +46,7 @@ export class BatchProcessingService {
       logger.info(`📊 Processing data point from device: ${dataPoint.deviceID}`);
       
       // Find or create active batch for this device
-      let activeBatch = await BatchData.findActiveBatch(dataPoint.deviceID);
+      let activeBatch = await (BatchData as any).findActiveBatch(dataPoint.deviceID);
       
       if (!activeBatch) {
         // Create new batch (trip started)
@@ -56,7 +56,7 @@ export class BatchProcessingService {
         const device = await Device.findOne({ deviceID: dataPoint.deviceID });
         const vehicle = device?.vehicle ? await Vehicle.findById(device.vehicle) : null;
         
-        activeBatch = BatchData.createBatch(
+        activeBatch = (BatchData as any).createBatch(
           dataPoint.deviceID,
           device?.vehicle?.toString(),
           vehicle?.vin || dataPoint.vin
@@ -90,7 +90,7 @@ export class BatchProcessingService {
       
     } catch (error) {
       logger.error(`❌ Failed to process data point:`, error);
-      throw new ApiError('Failed to process telemetry data', 500);
+      throw new ApiError(500, 'Failed to process telemetry data');
     }
   }
   
@@ -362,7 +362,7 @@ export class BatchProcessingService {
     try {
       logger.info(`🔄 Processing pending batch submissions...`);
       
-      const pendingBatches = await BatchData.findPendingSubmission(5); // Process 5 at a time
+      const pendingBatches = await (BatchData as any).findPendingSubmission(5); // Process 5 at a time
       
       for (const batch of pendingBatches) {
         try {
@@ -429,7 +429,7 @@ export class BatchProcessingService {
       
     } catch (error) {
       logger.error(`❌ Failed to get batch statistics:`, error);
-      throw new ApiError('Failed to retrieve batch statistics', 500);
+      throw new ApiError(500, 'Failed to retrieve batch statistics');
     }
   }
 }

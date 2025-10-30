@@ -49,7 +49,7 @@ export class VehicleBlockchainService {
         .sort({ timestamp: -1 })
         .lean();
       
-      return history;
+      return history as unknown as IVehicleBlockchainHistory[];
     } catch (error) {
       logger.error(`❌ Failed to get blockchain history for vehicle ${vehicleId}:`, error);
       throw error;
@@ -68,7 +68,7 @@ export class VehicleBlockchainService {
         .sort({ timestamp: -1 })
         .lean();
       
-      return history;
+      return history as unknown as IVehicleBlockchainHistory[];
     } catch (error) {
       logger.error(`❌ Failed to get ${transactionType} transactions for vehicle ${vehicleId}:`, error);
       throw error;
@@ -87,7 +87,7 @@ export class VehicleBlockchainService {
         .sort({ timestamp: -1 })
         .lean();
       
-      return transaction;
+      return transaction as unknown as IVehicleBlockchainHistory | null;
     } catch (error) {
       logger.error(`❌ Failed to get latest ${transactionType} transaction for vehicle ${vehicleId}:`, error);
       throw error;
@@ -126,7 +126,7 @@ export class VehicleBlockchainService {
    */
   static async getTransactionByHash(transactionHash: string): Promise<IVehicleBlockchainHistory | null> {
     try {
-      return await VehicleBlockchainHistory.findOne({ transactionHash }).lean();
+      return await VehicleBlockchainHistory.findOne({ transactionHash }).lean() as unknown as IVehicleBlockchainHistory | null;
     } catch (error) {
       logger.error(`❌ Failed to get transaction by hash:`, error);
       return null;
