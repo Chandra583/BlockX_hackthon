@@ -320,40 +320,48 @@ export class TelemetryConsolidationService {
         throw new Error(`Failed to save batch: ${saveError.message}`);
       }
       
-      // Upload to Arweave (optional - continue if fails)
-      try {
-        const arweaveResult = await this.uploadToArweave(batch, segments);
-        if (arweaveResult.success) {
-          batch.arweaveTx = arweaveResult.transactionId!;
-          await batch.save();
-          logger.info(`✅ Uploaded to Arweave: ${arweaveResult.transactionId}`);
-        } else {
-          logger.warn(`⚠️ Arweave upload failed: ${arweaveResult.error}`);
-        }
-      } catch (arweaveError) {
-        logger.warn(`⚠️ Arweave upload error:`, arweaveError);
+      // Upload to Arweave and anchor to Solana in parallel (both optional)
+      // This saves time and prevents sequential timeouts
+      const [arweaveResult, solanaResult] = await Promise.allSettled([
+        this.uploadToArweave(batch, segments),
+        this.anchorToSolana(batch, vehicle)
+      ]);
+      
+      // Process Arweave result
+      if (arweaveResult.status === 'fulfilled' && arweaveResult.value.success) {
+        batch.arweaveTx = arweaveResult.value.transactionId!;
+        logger.info(`✅ Uploaded to Arweave: ${arweaveResult.value.transactionId}`);
+      } else {
+        const error = arweaveResult.status === 'rejected' 
+          ? arweaveResult.reason 
+          : arweaveResult.value.error;
+        logger.warn(`⚠️ Arweave upload failed:`, error);
       }
       
-      // Anchor to Solana (optional - continue if fails)
-      try {
-        const solanaResult = await this.anchorToSolana(batch, vehicle);
-        if (solanaResult.success) {
-          batch.solanaTx = solanaResult.transactionHash!;
-          batch.status = 'anchored';
-          await batch.save();
-          logger.info(`✅ Anchored to Solana: ${solanaResult.transactionHash}`);
-        } else {
-          logger.warn(`⚠️ Solana anchoring failed: ${solanaResult.error}`);
+      // Process Solana result
+      if (solanaResult.status === 'fulfilled' && solanaResult.value.success) {
+        batch.solanaTx = solanaResult.value.transactionHash!;
+        batch.status = 'anchored';
+        logger.info(`✅ Anchored to Solana: ${solanaResult.value.transactionHash}`);
+      } else {
+        const error = solanaResult.status === 'rejected'
+          ? (solanaResult.reason instanceof Error ? solanaResult.reason.message : String(solanaResult.reason))
+          : solanaResult.value.error;
+        logger.warn(`⚠️ Solana anchoring failed:`, error);
+        
+        // Only set error status if neither operation succeeded
+        if (!batch.arweaveTx) {
           batch.status = 'error';
-          batch.lastError = solanaResult.error;
-          await batch.save();
+          batch.lastError = error;
+        } else {
+          // Partial success - Arweave worked but Solana failed
+          batch.status = 'partial';
+          batch.lastError = `Solana failed: ${error}`;
         }
-      } catch (solanaError) {
-        logger.warn(`⚠️ Solana anchoring error:`, solanaError);
-        batch.status = 'error';
-        batch.lastError = solanaError instanceof Error ? solanaError.message : 'Unknown error';
-        await batch.save();
       }
+      
+      // Save batch with results (single write instead of multiple)
+      await batch.save();
       
       logger.info(`✅ Daily batch consolidated for ${vehicleId} on ${date}`);
       

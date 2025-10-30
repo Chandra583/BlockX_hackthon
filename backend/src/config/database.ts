@@ -5,14 +5,15 @@ import mongoose from 'mongoose';
  */
 const mongooseOptions = {
   maxPoolSize: 1, // Single connection for serverless
-  serverSelectionTimeoutMS: 30000, // Increased for cold starts - 30 seconds
-  socketTimeoutMS: 60000, // Increased for longer operations - 60 seconds
-  connectTimeoutMS: 30000, // Increased connection timeout - 30 seconds
+  serverSelectionTimeoutMS: 10000, // Reduced to fail fast - 10 seconds
+  socketTimeoutMS: 45000, // Socket timeout - 45 seconds
+  connectTimeoutMS: 10000, // Reduced connection timeout - 10 seconds
   bufferCommands: false, // Disable mongoose buffering
   retryWrites: true, // Enable retryable writes
   w: 'majority' as const, // Write concern
-  heartbeatFrequencyMS: 10000, // Check connection every 10 seconds
+  heartbeatFrequencyMS: 30000, // Reduced frequency - 30 seconds
   family: 4, // Use IPv4, skip trying IPv6
+  minPoolSize: 0, // Allow complete connection drain
 };
 
 /**
