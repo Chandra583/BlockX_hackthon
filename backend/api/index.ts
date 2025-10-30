@@ -1,89 +1,78 @@
 import serverless from 'serverless-http';
+import express from 'express';
 import mongoose from 'mongoose';
 
-// Import app WITHOUT models to avoid blocking initialization
-import { app } from '../src/app';
+// Create a minimal express app that loads the real app lazily
+const app = express();
 
-// Lazy model loading function
-let modelsLoaded = false;
-const loadModels = async () => {
-  if (modelsLoaded) return;
-  modelsLoaded = true;
-  // Dynamic imports to avoid blocking
-  await Promise.all([
-    import('../src/models/core/User.model'),
-    import('../src/models/core/Vehicle.model'),
-    import('../src/models/core/Transaction.model'),
-    import('../src/models/core/MileageHistory.model'),
-    import('../src/models/core/VehicleDocument.model'),
-    import('../src/models/core/Device.model')
-  ]);
-};
+// Lazy-load the real app
+let realApp: any = null;
+let appLoading = false;
 
-// ---- Lazy DB initialization (only when needed) ----
-let connecting = false;
-const connectIfNeeded = async (): Promise<void> => {
-  if (connecting || mongoose.connection.readyState === 1) return;
-  connecting = true;
-  try {
-    // Load models first
-    await loadModels();
-    
-    // Then connect to DB with short timeout
-    const mongoUri = process.env.MONGODB_URI;
-    if (!mongoUri) {
-      console.error('❌ MONGODB_URI not set');
-      return;
+const loadApp = async () => {
+  if (realApp) return realApp;
+  if (appLoading) {
+    // Wait for app to finish loading
+    while (!realApp) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
-    await mongoose.connect(mongoUri, {
-      maxPoolSize: 1,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
-      bufferCommands: false
-    });
-    console.log('✅ MongoDB connected');
+    return realApp;
+  }
+  
+  appLoading = true;
+  try {
+    console.log('⏳ Loading app...');
+    const { app: loadedApp } = await import('../src/app');
+    realApp = loadedApp;
+    console.log('✅ App loaded');
+    return realApp;
   } catch (err) {
-    console.error('❌ DB connect failed:', (err as any)?.message || err);
-  } finally {
-    connecting = false;
+    console.error('❌ App load failed:', err);
+    appLoading = false;
+    throw err;
   }
 };
 
-// Lightweight health routes (instant - no DB required)
-app.get('/health', (_req: any, res: any) => {
-  res.status(200).json({ status: 'ok', ts: new Date().toISOString() });
+// Instant health endpoints (no app loading required)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    app: realApp ? 'loaded' : 'loading',
+    ts: new Date().toISOString() 
+  });
 });
 
-app.get('/api/health', (_req: any, res: any) => {
-  res.status(200).json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', ts: new Date().toISOString() });
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    app: realApp ? 'loaded' : 'loading',
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    ts: new Date().toISOString() 
+  });
 });
 
-// Middleware to handle DB connection per request
-app.use(async (req: any, res: any, next: any) => {
-  const bypass = ['/', '/health', '/api/health', '/api/info', '/favicon.ico'];
-  
-  // Skip DB for health/info endpoints
-  if (bypass.includes(req.path)) {
-    return next();
-  }
-  
-  // For other routes, try to connect
-  if (mongoose.connection.readyState !== 1) {
-    // Trigger connection in background and return 503
-    connectIfNeeded().catch(() => {});
-    return res.status(503).json({
+app.get('/favicon.ico', (_req, res) => {
+  res.status(204).end();
+});
+
+// All other requests - load app if needed
+app.use(async (req, res, next) => {
+  try {
+    // Load the real app
+    const actualApp = await loadApp();
+    // Forward the request to the real app
+    actualApp(req, res, next);
+  } catch (err) {
+    console.error('❌ Request handling error:', err);
+    res.status(500).json({
       status: 'error',
-      message: 'Database connecting. Please retry in a few seconds.',
+      message: 'Application initialization failed',
       timestamp: new Date().toISOString()
     });
   }
-  
-  next();
 });
 
-// Export serverless handler with timeout configuration
+// Export serverless handler
 export default serverless(app, {
   request: (_request: any, _event: any, context: any) => {
     context.callbackWaitsForEmptyEventLoop = false;
