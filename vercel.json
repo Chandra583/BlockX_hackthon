@@ -1,19 +1,15 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "backend/api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["backend/src/**", "backend/node_modules/**"]
+    "version": 2,
+    "builds": [
+      {
+        "src": "api/index.ts",
+        "use": "@vercel/node"
       }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "backend/api/index.ts"
-    }
-  ]
-}
-
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/api/index.ts"
+      }
+    ]
+  }
