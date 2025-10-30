@@ -1,20 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["src/**"],
-        "excludeFiles": ["src/**/*.backup.ts", "src/**/*.fixed.ts", "src/**/*.new.ts"]
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.ts"
-    }
+  
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index.ts" }
   ],
   "functions": {
     "api/**/*.ts": {
