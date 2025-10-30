@@ -13,106 +13,55 @@ import '../src/models/core/Device.model';
 import { app } from '../src/app';
 import { connectDatabase } from '../src/config/database';
 
-// Initialize database connection for serverless
-let isConnected = false;
-let connectionPromise: Promise<void> | null = null;
-
-const initializeDatabase = async () => {
-  // If already connected, skip
-  if (isConnected && mongoose.connection.readyState === 1) {
-    console.log('♻️ Database connection reused');
-    return;
+// ---- Fault-tolerant DB initialization (non-blocking) ----
+let connecting = false;
+const startConnectNonBlocking = async (): Promise<void> => {
+  if (connecting || mongoose.connection.readyState === 1) return;
+  connecting = true;
+  try {
+    // Fast-fail connection; wrap with 5s timeout
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database connection timeout (5s)')), 5000));
+    await Promise.race([connectDatabase(), timeoutPromise]);
+    console.log('✅ MongoDB connected');
+  } catch (err) {
+    console.error('❌ MongoDB connect attempt failed:', (err as any)?.message || err);
+  } finally {
+    connecting = false;
   }
-
-  // If connection is in progress, wait for it
-  if (connectionPromise) {
-    console.log('⏳ Waiting for existing connection...');
-    return connectionPromise;
-  }
-
-  // Start new connection with timeout
-  connectionPromise = (async () => {
-    try {
-      // Double-check connection state
-      if (mongoose.connection.readyState === 1) {
-        isConnected = true;
-        console.log('✅ Database already connected (reusing connection)');
-        return;
-      }
-
-      console.log('🔗 Establishing new database connection...');
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout (10s)')), 10000)
-      );
-      
-      await Promise.race([connectDatabase(), timeoutPromise]);
-      isConnected = true;
-      console.log('✅ Database connected for serverless function');
-    } catch (error) {
-      console.error('❌ Database connection failed:', error);
-      isConnected = false;
-      connectionPromise = null;
-      throw error;
-    }
-  })();
-
-  return connectionPromise;
 };
 
-// Add lightweight health check routes BEFORE other middleware
-// These should respond instantly without DB connection
-app.get('/health', (req: any, res: any) => {
-  console.log('⚡ Health check (no DB)');
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'veridrive-backend'
-  });
+// Kick off a background connection attempt on cold start, but DO NOT await
+startConnectNonBlocking().catch((e) => console.error('connect bootstrap error', e));
+
+// Lightweight health routes (instant)
+app.get('/health', (_req: any, res: any) => {
+  res.status(200).json({ status: 'ok', ts: new Date().toISOString() });
 });
 
-app.get('/api/health', (req: any, res: any) => {
-  console.log('⚡ API Health check (no DB)');
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'veridrive-backend',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
+app.get('/api/health', (_req: any, res: any) => {
+  res.status(200).json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', ts: new Date().toISOString() });
 });
 
-// Middleware to ensure database is connected before each request
-app.use(async (req: any, res: any, next: any) => {
-  try {
-    // Skip database connection for lightweight endpoints
-    const pathsToBypass = ['/health', '/info', '/test-cors', '/', '/api/health', '/api/info', '/api/test-cors'];
-    const isOptions = req.method === 'OPTIONS';
-    const isBypass = pathsToBypass.includes(req.path) || req.path === '/' || req.url === '/';
-    
-    if (isOptions || isBypass) {
-      console.log(`⏭️  Bypassing DB init for: ${req.method} ${req.path}`);
-      return next();
-    }
-
-    // For non-bypass routes, ensure DB is connected
-    await initializeDatabase();
-    next();
-  } catch (error) {
-    console.error('❌ Database initialization error:', error);
-    return res.status(500).json({
+// Attach dbConnected flag and fail fast with 503 for DB-dependent routes
+app.use((req: any, res: any, next: any) => {
+  req.dbConnected = mongoose.connection.readyState === 1;
+  const bypass = ['/', '/health', '/api/health', '/favicon.ico'];
+  if (bypass.includes(req.path)) return next();
+  if (!req.dbConnected) {
+    // Trigger a background reconnect attempt and return quickly
+    startConnectNonBlocking().catch(() => {});
+    return res.status(503).json({
       status: 'error',
-      message: 'Database connection failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      message: 'Database unavailable. Try again later.',
       timestamp: new Date().toISOString()
     });
   }
+  next();
 });
 
 // Export serverless handler with timeout configuration
 export default serverless(app, {
-  request: (request: any, event: any, context: any) => {
-    // Set context to not wait for empty event loop
+  request: (_request: any, _event: any, context: any) => {
     context.callbackWaitsForEmptyEventLoop = false;
   }
 });
