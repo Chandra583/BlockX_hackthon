@@ -60,40 +60,12 @@ const initializeDatabase = async (): Promise<void> => {
 };
 
 /**
- * For Vercel serverless functions - ensure DB is connected before each request
- * This middleware is only used in production/serverless environments
+ * NOTE: For Vercel serverless deployment, database initialization is handled
+ * in api/index.ts. This middleware is not needed in production serverless.
+ * 
+ * For traditional server deployments, database connection is established
+ * once during startup in the startServer() function below.
  */
-if (process.env.NODE_ENV === 'production') {
-  app.use(async (req, res, next) => {
-    try {
-      // Bypass DB for lightweight endpoints and preflight
-      const pathToBypass = ['/api/health', '/api/info', '/', '/favicon.ico'];
-      if (req.method === 'OPTIONS' || pathToBypass.includes(req.path)) {
-        return next();
-      }
-
-      // Quick environment validation
-      if (!process.env.MONGODB_URI || !process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-        throw new Error('Required environment variables missing');
-      }
-      
-      // Initialize database if needed
-      await initializeDatabase();
-      next();
-    } catch (error) {
-      console.error('❌ Server error:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      res.status(500).json({
-        status: 'error',
-        message: 'Server initialization failed',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-}
 
 /**
  * Start the VERIDRIVE backend server (for local development)

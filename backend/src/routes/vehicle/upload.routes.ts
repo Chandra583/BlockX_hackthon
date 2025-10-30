@@ -8,19 +8,23 @@ import { logger } from '../../utils/logger';
 const router = Router();
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/vehicles';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
+// Use memoryStorage for serverless environments (Vercel has read-only filesystem)
+const storage = multer.memoryStorage();
+
+// Original diskStorage config (only works in non-serverless environments)
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     const uploadDir = 'uploads/vehicles';
+//     if (!fs.existsSync(uploadDir)) {
+//       fs.mkdirSync(uploadDir, { recursive: true });
+//     }
+//     cb(null, uploadDir);
+//   },
+//   filename: (req, file, cb) => {
+//     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+//     cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
+//   }
+// });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedTypes = {
