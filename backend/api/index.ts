@@ -57,25 +57,26 @@ const initializeDatabase = async () => {
   return connectionPromise;
 };
 
-// Middleware to initialize database before each request
+// Initialize database connection once at startup (non-blocking)
+initializeDatabase().catch(error => {
+  console.error('❌ Initial database connection failed:', error);
+  console.log('⚠️  Will retry on first request that needs database');
+});
+
+// Middleware to ensure database is connected before each request
 app.use(async (req: any, res: any, next: any) => {
   try {
     // Skip database connection for lightweight endpoints
-    const pathsToBypass = ['/api/health', '/api/info', '/api/test-cors', '/'];
-    if (req.method === 'OPTIONS' || pathsToBypass.includes(req.path) || req.path === '/') {
+    const pathsToBypass = ['/health', '/info', '/test-cors', '/', '/api/health', '/api/info', '/api/test-cors'];
+    const isOptions = req.method === 'OPTIONS';
+    const isBypass = pathsToBypass.includes(req.path) || req.path === '/' || req.url === '/';
+    
+    if (isOptions || isBypass) {
+      console.log(`⏭️  Bypassing DB init for: ${req.method} ${req.path}`);
       return next();
     }
 
-    // Validate environment variables
-    if (!process.env.MONGODB_URI || !process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-      console.error('❌ Missing required environment variables');
-      return res.status(500).json({
-        status: 'error',
-        message: 'Server configuration error',
-        timestamp: new Date().toISOString()
-      });
-    }
-
+    // For non-bypass routes, ensure DB is connected
     await initializeDatabase();
     next();
   } catch (error) {
