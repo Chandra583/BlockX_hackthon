@@ -98,21 +98,48 @@ export class WalletService {
     } catch (err) {
       // Legacy fallback: stored without IV using createCipher/createDecipher
       try {
+        // Detect encoding: try to parse as Buffer to see if it's base64 or hex
+        let encryptedBuffer: Buffer;
+        let inputEncoding: BufferEncoding = 'hex';
+        
+        // If length is not valid for hex (must be even), try base64
+        if (encryptedText.length % 2 !== 0) {
+          inputEncoding = 'base64';
+          encryptedBuffer = Buffer.from(encryptedText, 'base64');
+        } else {
+          // Try hex first
+          try {
+            encryptedBuffer = Buffer.from(encryptedText, 'hex');
+            // Validate it's actually hex by checking if conversion worked properly
+            if (encryptedBuffer.length * 2 !== encryptedText.length) {
+              // Not valid hex, try base64
+              inputEncoding = 'base64';
+              encryptedBuffer = Buffer.from(encryptedText, 'base64');
+            }
+          } catch {
+            inputEncoding = 'base64';
+            encryptedBuffer = Buffer.from(encryptedText, 'base64');
+          }
+        }
+
+        logger.info(`🔍 Attempting legacy decryption with encoding: ${inputEncoding}`);
+
         // First try native createDecipher if available (deprecated in OpenSSL 3)
         if (typeof (crypto as any).createDecipher === 'function') {
           const decipherLegacy = (crypto as any).createDecipher(algorithm, this.encryptionKey);
-          let decrypted = decipherLegacy.update(encryptedText, 'hex', 'utf8');
-          decrypted += decipherLegacy.final('utf8');
-          return decrypted;
+          let decrypted = decipherLegacy.update(encryptedBuffer);
+          decrypted = Buffer.concat([decrypted, decipherLegacy.final()]);
+          return decrypted.toString('utf8');
         }
         
         // If not available, manually derive key/IV using EVP_BytesToKey (MD5)
         const derived = this.evpBytesToKey(this.encryptionKey, 32, 16);
         const decipher = crypto.createDecipheriv(algorithm, derived.key, derived.iv);
-        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
+        let decrypted = decipher.update(encryptedBuffer);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString('utf8');
       } catch (legacyErr: any) {
+        logger.error(`❌ Legacy decryption failed:`, legacyErr);
         throw new Error(`Decryption failed: ${legacyErr.message}`);
       }
     }
