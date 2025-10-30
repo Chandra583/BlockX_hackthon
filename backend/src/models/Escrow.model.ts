@@ -31,8 +31,7 @@ const EscrowSchema = new Schema<IEscrow>({
   status: {
     type: String,
     enum: ['pending', 'funded', 'released', 'refunded'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   paymentReference: {
     type: String,
@@ -54,7 +53,6 @@ const EscrowSchema = new Schema<IEscrow>({
 
 // Indexes
 EscrowSchema.index({ purchaseRequestId: 1, status: 1 });
-EscrowSchema.index({ paymentReference: 1 });
 
 export const Escrow = mongoose.model<IEscrow>('Escrow', EscrowSchema);
 
