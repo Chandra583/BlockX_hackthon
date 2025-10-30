@@ -307,6 +307,82 @@ export class WalletService {
   }
 
   /**
+   * Migrate wallet from legacy encryption to new IV-based encryption
+   */
+  async migrateWalletEncryption(userId: string): Promise<{
+    success: boolean;
+    message: string;
+    migrated: boolean;
+    walletAddress?: string;
+  }> {
+    try {
+      logger.info(`🔄 Starting wallet encryption migration for user ${userId}`);
+
+      // Get user with encrypted wallet data
+      const user = await User.findById(userId).select('+blockchainWallet.encryptedPrivateKey');
+
+      if (!user || !user.blockchainWallet || !user.blockchainWallet.encryptedPrivateKey) {
+        return {
+          success: false,
+          message: 'No wallet found to migrate',
+          migrated: false,
+        };
+      }
+
+      const oldEncrypted = user.blockchainWallet.encryptedPrivateKey;
+
+      // Check if already in new format (has IV separator)
+      if (oldEncrypted.includes(':')) {
+        return {
+          success: true,
+          message: 'Wallet is already using the new encryption format',
+          migrated: false,
+          walletAddress: user.blockchainWallet.walletAddress,
+        };
+      }
+
+      // Decrypt with legacy method (will use EVP_BytesToKey fallback)
+      const wallet = await this.getUserWallet(userId);
+
+      if (!wallet) {
+        return {
+          success: false,
+          message: 'Failed to decrypt wallet with legacy method',
+          migrated: false,
+        };
+      }
+
+      logger.info(`✅ Successfully decrypted legacy wallet for user ${userId}`);
+
+      // Re-encrypt with new format
+      const privateKeyBase64 = Buffer.from(wallet.secretKey).toString('base64');
+      const newEncrypted = this.encrypt(privateKeyBase64);
+
+      // Update the user's wallet with new encrypted format
+      user.blockchainWallet.encryptedPrivateKey = newEncrypted;
+      user.blockchainWallet.lastUsed = new Date();
+      await user.save();
+
+      logger.info(`✅ Wallet encryption migration completed for user ${userId}`);
+
+      return {
+        success: true,
+        message: 'Wallet successfully migrated to new encryption format',
+        migrated: true,
+        walletAddress: wallet.publicKey,
+      };
+
+    } catch (error: any) {
+      logger.error(`❌ Wallet migration failed for user ${userId}:`, error);
+      return {
+        success: false,
+        message: `Wallet migration failed: ${error.message}`,
+        migrated: false,
+      };
+    }
+  }
+
+  /**
    * Get wallet statistics
    */
   async getWalletStats(): Promise<{

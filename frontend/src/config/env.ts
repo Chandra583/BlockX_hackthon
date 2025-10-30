@@ -11,6 +11,13 @@ export const ENV = {
   BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'https://veridrive-x-hackthon.vercel.app',
 };
 
+// Some parts of the app expect a named export `config`.
+// Provide it as an alias to ENV to maintain backwards compatibility.
+export const config = ENV;
+
+// Also provide a default export for convenience
+export default ENV;
+
 // API Endpoints
 export const API_ENDPOINTS = {
   AUTH: {

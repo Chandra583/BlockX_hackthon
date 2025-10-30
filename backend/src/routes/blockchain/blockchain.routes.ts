@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../../middleware/auth.middleware';
 import { AuthenticatedRequest } from '../../types/auth.types';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
+import migrateWalletRoutes from './migrate-wallet.routes';
 
 const router = Router();
 
@@ -85,6 +86,13 @@ router.get('/wallet',
   authenticate, 
   BlockchainController.getWallet
 );
+
+/**
+ * @route   POST /api/blockchain/wallet/migrate
+ * @desc    Migrate wallet from legacy to new encryption format
+ * @access  Private (any authenticated user)
+ */
+router.use('/wallet', authenticate, migrateWalletRoutes);
 
 /**
  * @route   POST /api/blockchain/vehicle/register
