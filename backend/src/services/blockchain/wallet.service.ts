@@ -51,6 +51,30 @@ export class WalletService {
   }
 
   /**
+   * Legacy EVP_BytesToKey implementation (MD5-based key derivation)
+   * Replicates what createCipher/createDecipher did internally
+   */
+  private evpBytesToKey(password: string, keyLen: number, ivLen: number): { key: Buffer; iv: Buffer } {
+    const md5Hashes: Buffer[] = [];
+    let digest = Buffer.alloc(0);
+    let data = Buffer.from(password, 'utf8');
+
+    while (Buffer.concat(md5Hashes).length < keyLen + ivLen) {
+      const hash = crypto.createHash('md5');
+      hash.update(digest);
+      hash.update(data);
+      digest = hash.digest();
+      md5Hashes.push(digest);
+    }
+
+    const keyIv = Buffer.concat(md5Hashes);
+    return {
+      key: keyIv.slice(0, keyLen),
+      iv: keyIv.slice(keyLen, keyLen + ivLen)
+    };
+  }
+
+  /**
    * Decrypt sensitive data (with IV)
    */
   private decrypt(encryptedText: string): string {
@@ -73,9 +97,8 @@ export class WalletService {
       throw new Error('New format decrypt failed, trying legacy');
     } catch (err) {
       // Legacy fallback: stored without IV using createCipher/createDecipher
-      // Use password string directly (not scrypt key) as createCipher did
       try {
-        // Check if createDecipher is available (deprecated in OpenSSL 3)
+        // First try native createDecipher if available (deprecated in OpenSSL 3)
         if (typeof (crypto as any).createDecipher === 'function') {
           const decipherLegacy = (crypto as any).createDecipher(algorithm, this.encryptionKey);
           let decrypted = decipherLegacy.update(encryptedText, 'hex', 'utf8');
@@ -83,12 +106,12 @@ export class WalletService {
           return decrypted;
         }
         
-        // If createDecipher not available, throw clear error
-        throw new Error(
-          'Cannot decrypt legacy wallet data. ' +
-          'The encryption format is incompatible with current Node.js runtime. ' +
-          'Please contact support to migrate your wallet.'
-        );
+        // If not available, manually derive key/IV using EVP_BytesToKey (MD5)
+        const derived = this.evpBytesToKey(this.encryptionKey, 32, 16);
+        const decipher = crypto.createDecipheriv(algorithm, derived.key, derived.iv);
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
       } catch (legacyErr: any) {
         throw new Error(`Decryption failed: ${legacyErr.message}`);
       }
