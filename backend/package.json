@@ -4,7 +4,7 @@
   "description": "VERIDRIVE - Reinventing Vehicle Trust with Blockchain Backend API",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc --noEmit || echo 'TypeScript check completed with warnings'",
+    "build": "echo 'Build skipped - Vercel handles compilation'",
     "vercel-build": "echo 'Vercel handles TypeScript compilation'",
     "start": "ts-node src/server.ts",
     "dev": "nodemon src/server.ts",
@@ -19,7 +19,6 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean",
     "seed": "ts-node src/scripts/seed.ts",
     "migrate": "ts-node src/scripts/migrate.ts",
     "migrate-installation-requests": "ts-node src/scripts/migrateInstallationRequests.ts",

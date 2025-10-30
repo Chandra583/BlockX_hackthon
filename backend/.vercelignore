@@ -1,20 +1,47 @@
+
+# Node modules
 node_modules
-.git
-.env.local
-.env.*.local
+
+# Build outputs
 dist
 build
-coverage
-logs
-*.log
-*.backup.ts
-*.fixed.ts
-*.new.ts
-src/__tests__
-src/tests
+.next
+
+# Tests
 **/*.test.ts
 **/*.spec.ts
-build-log.txt
-build-output.txt
-vercel-build.txt
+**/__tests__
+coverage
 
+# Backup and temporary files
+**/*.backup.ts
+**/*.fixed.ts
+**/*.new.ts
+**/*.bak
+**/*.tmp
+
+# Development files
+.env.local
+.env.development
+*.log
+logs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Scripts
+scripts/**/*.js
+scripts/**/*.sh
+scripts/**/*.ps1
+
+# Build logs
+build-log.txt
+build-log-relaxed.txt
+build-output.txt
