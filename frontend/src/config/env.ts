@@ -1,43 +1,15 @@
 // Environment Configuration
-export const config = {
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
-  API_VERSION: import.meta.env.VITE_API_VERSION || 'v1',
-  API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-  APP_NAME: import.meta.env.VITE_APP_NAME || 'VERIDRIVE',
-  APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
-  NODE_ENV: import.meta.env.VITE_NODE_ENV || 'development',
-  JWT_EXPIRY: import.meta.env.VITE_JWT_EXPIRY || '15m',
-  JWT_REFRESH_EXPIRY: import.meta.env.VITE_JWT_REFRESH_EXPIRY || '7d',
-  
-  // Development settings
-  DEBUG: import.meta.env.VITE_DEBUG === 'true',
-  ENABLE_LOGGING: import.meta.env.VITE_ENABLE_LOGGING === 'true',
-  
-  // Backend URLs
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000',
-  FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173',
-  
-  // Security
-  ENABLE_HTTPS: import.meta.env.VITE_ENABLE_HTTPS === 'true',
-  
-  // Feature flags
-  ENABLE_REGISTRATION: import.meta.env.VITE_ENABLE_REGISTRATION !== 'false',
-  ENABLE_FORGOT_PASSWORD: import.meta.env.VITE_ENABLE_FORGOT_PASSWORD !== 'false',
-  ENABLE_EMAIL_VERIFICATION: import.meta.env.VITE_ENABLE_EMAIL_VERIFICATION !== 'false',
-  ENABLE_2FA: import.meta.env.VITE_ENABLE_2FA !== 'false',
-  
-  // Analytics & Monitoring
-  ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
-  ANALYTICS_ID: import.meta.env.VITE_ANALYTICS_ID || '',
-  
-  // Error Reporting
-  ENABLE_ERROR_REPORTING: import.meta.env.VITE_ENABLE_ERROR_REPORTING === 'true',
-  ERROR_REPORTING_DSN: import.meta.env.VITE_ERROR_REPORTING_DSN || '',
-  
-  // Computed values
-  IS_DEVELOPMENT: import.meta.env.DEV,
-  IS_PRODUCTION: import.meta.env.PROD,
-} as const;
+export const ENV = {
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://veridrive-x-hackthon.vercel.app/api',
+  API_URL: import.meta.env.VITE_API_URL || 'https://veridrive-x-hackthon.vercel.app/api',
+  VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV || 'production',
+  VITE_APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
+  // Additional environment variables
+  VITE_ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS || 'false',
+  VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN || '',
+  // Backend URL for websockets or direct links
+  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'https://veridrive-x-hackthon.vercel.app',
+};
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -148,20 +120,16 @@ export const APP_CONSTANTS = {
 export const validateConfig = () => {
   const errors: string[] = [];
   
-  if (!config.API_BASE_URL) {
+  if (!ENV.API_BASE_URL) {
     errors.push('VITE_API_BASE_URL is required');
   }
   
-  if (!config.APP_NAME) {
-    errors.push('VITE_APP_NAME is required');
+  if (!ENV.VITE_APP_VERSION) {
+    errors.push('VITE_APP_VERSION is required');
   }
   
-  if (config.ENABLE_ANALYTICS && !config.ANALYTICS_ID) {
-    errors.push('VITE_ANALYTICS_ID is required when analytics is enabled');
-  }
-  
-  if (config.ENABLE_ERROR_REPORTING && !config.ERROR_REPORTING_DSN) {
-    errors.push('VITE_ERROR_REPORTING_DSN is required when error reporting is enabled');
+  if (ENV.VITE_ENABLE_ANALYTICS === 'true' && !ENV.VITE_SENTRY_DSN) {
+    errors.push('VITE_SENTRY_DSN is required when analytics is enabled');
   }
   
   if (errors.length > 0) {
@@ -171,7 +139,7 @@ export const validateConfig = () => {
 };
 
 // Initialize config validation in development
-if (config.IS_DEVELOPMENT) {
+if (ENV.VITE_NODE_ENV === 'development') {
   try {
     validateConfig();
     console.log('✅ Environment configuration validated successfully');
