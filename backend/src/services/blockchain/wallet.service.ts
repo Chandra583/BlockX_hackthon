@@ -70,17 +70,27 @@ export class WalletService {
       }
 
       // Fall through to legacy if format is different
-      throw new Error('Unsupported format');
+      throw new Error('New format decrypt failed, trying legacy');
     } catch (err) {
       // Legacy fallback: stored without IV using createCipher/createDecipher
+      // Use password string directly (not scrypt key) as createCipher did
       try {
-        const decipherLegacy = (crypto as any).createDecipher?.(algorithm, key);
-        if (!decipherLegacy) throw err;
-        let decrypted = decipherLegacy.update(encryptedText, 'hex', 'utf8');
-        decrypted += decipherLegacy.final('utf8');
-        return decrypted;
-      } catch (legacyErr) {
-        throw legacyErr;
+        // Check if createDecipher is available (deprecated in OpenSSL 3)
+        if (typeof (crypto as any).createDecipher === 'function') {
+          const decipherLegacy = (crypto as any).createDecipher(algorithm, this.encryptionKey);
+          let decrypted = decipherLegacy.update(encryptedText, 'hex', 'utf8');
+          decrypted += decipherLegacy.final('utf8');
+          return decrypted;
+        }
+        
+        // If createDecipher not available, throw clear error
+        throw new Error(
+          'Cannot decrypt legacy wallet data. ' +
+          'The encryption format is incompatible with current Node.js runtime. ' +
+          'Please contact support to migrate your wallet.'
+        );
+      } catch (legacyErr: any) {
+        throw new Error(`Decryption failed: ${legacyErr.message}`);
       }
     }
   }
