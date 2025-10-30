@@ -34,7 +34,7 @@ const startConnectNonBlocking = async (): Promise<void> => {
 // Kick off a background connection attempt on cold start, but DO NOT await
 startConnectNonBlocking().catch((e) => console.error('connect bootstrap error', e));
 
-// Lightweight health routes (instant)
+// Lightweight health routes (instant - no DB required)
 app.get('/health', (_req: any, res: any) => {
   res.status(200).json({ status: 'ok', ts: new Date().toISOString() });
 });
@@ -46,7 +46,7 @@ app.get('/api/health', (_req: any, res: any) => {
 // Attach dbConnected flag and fail fast with 503 for DB-dependent routes
 app.use((req: any, res: any, next: any) => {
   req.dbConnected = mongoose.connection.readyState === 1;
-  const bypass = ['/', '/health', '/api/health', '/favicon.ico'];
+  const bypass = ['/', '/health', '/api/health', '/api/info', '/favicon.ico'];
   if (bypass.includes(req.path)) return next();
   if (!req.dbConnected) {
     // Trigger a background reconnect attempt and return quickly
