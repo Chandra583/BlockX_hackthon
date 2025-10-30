@@ -490,7 +490,7 @@ const VehicleSchema = new Schema({
 });
 
 // Indexes for performance
-VehicleSchema.index({ vin: 1 }, { unique: true });
+// 'vin' already has unique: true at field level; avoid duplicate index
 VehicleSchema.index({ ownerId: 1 });
 VehicleSchema.index({ make: 1, vehicleModel: 1 });
 VehicleSchema.index({ year: 1 });
