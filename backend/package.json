@@ -2,7 +2,7 @@
   "name": "veridrive-backend",
   "version": "1.0.0",
   "description": "VERIDRIVE - Reinventing Vehicle Trust with Blockchain Backend API",
-  "main": "dist/server.js",
+  "main": "api/index.ts",
   "scripts": {
     "build": "echo 'Build skipped - Vercel handles compilation'",
     "vercel-build": "echo 'Vercel handles TypeScript compilation'",
