@@ -81,6 +81,9 @@ export class WalletService {
     const algorithm = 'aes-256-cbc';
     const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
 
+    // Log encrypted text info for debugging
+    logger.info(`🔍 Decryption attempt - Length: ${encryptedText.length}, Has colon: ${encryptedText.includes(':')}`);
+
     try {
       // New format: ivHex:cipherHex
       const parts = encryptedText.split(':');
@@ -90,58 +93,67 @@ export class WalletService {
         const decipher = crypto.createDecipheriv(algorithm, key, iv);
         let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
+        logger.info(`✅ New format decryption successful`);
         return decrypted;
       }
 
       // Fall through to legacy if format is different
       throw new Error('New format decrypt failed, trying legacy');
-    } catch (err) {
-      // Legacy fallback: stored without IV using createCipher/createDecipher
-      try {
-        // Detect encoding: try to parse as Buffer to see if it's base64 or hex
-        let encryptedBuffer: Buffer;
-        let inputEncoding: BufferEncoding = 'hex';
-        
-        // If length is not valid for hex (must be even), try base64
-        if (encryptedText.length % 2 !== 0) {
-          inputEncoding = 'base64';
-          encryptedBuffer = Buffer.from(encryptedText, 'base64');
-        } else {
-          // Try hex first
+    } catch (err: any) {
+      logger.info(`⚠️ New format failed: ${err.message}, trying legacy methods`);
+      
+      // Legacy fallback: try multiple strategies
+      const strategies = [
+        { name: 'hex + EVP_BytesToKey', encoding: 'hex' as BufferEncoding },
+        { name: 'base64 + EVP_BytesToKey', encoding: 'base64' as BufferEncoding },
+        { name: 'hex + createDecipher', encoding: 'hex' as BufferEncoding, useNative: true },
+        { name: 'base64 + createDecipher', encoding: 'base64' as BufferEncoding, useNative: true },
+      ];
+
+      for (const strategy of strategies) {
+        try {
+          logger.info(`🔄 Trying strategy: ${strategy.name}`);
+          
+          let encryptedBuffer: Buffer;
           try {
-            encryptedBuffer = Buffer.from(encryptedText, 'hex');
-            // Validate it's actually hex by checking if conversion worked properly
-            if (encryptedBuffer.length * 2 !== encryptedText.length) {
-              // Not valid hex, try base64
-              inputEncoding = 'base64';
-              encryptedBuffer = Buffer.from(encryptedText, 'base64');
-            }
-          } catch {
-            inputEncoding = 'base64';
-            encryptedBuffer = Buffer.from(encryptedText, 'base64');
+            encryptedBuffer = Buffer.from(encryptedText, strategy.encoding);
+          } catch (bufferErr) {
+            logger.info(`⚠️ Buffer conversion failed for ${strategy.encoding}`);
+            continue;
           }
-        }
 
-        logger.info(`🔍 Attempting legacy decryption with encoding: ${inputEncoding}`);
-
-        // First try native createDecipher if available (deprecated in OpenSSL 3)
-        if (typeof (crypto as any).createDecipher === 'function') {
-          const decipherLegacy = (crypto as any).createDecipher(algorithm, this.encryptionKey);
-          let decrypted = decipherLegacy.update(encryptedBuffer);
-          decrypted = Buffer.concat([decrypted, decipherLegacy.final()]);
-          return decrypted.toString('utf8');
+          // Try native createDecipher if requested and available
+          if (strategy.useNative && typeof (crypto as any).createDecipher === 'function') {
+            const decipherLegacy = (crypto as any).createDecipher(algorithm, this.encryptionKey);
+            decipherLegacy.setAutoPadding(true);
+            let decrypted = decipherLegacy.update(encryptedBuffer);
+            decrypted = Buffer.concat([decrypted, decipherLegacy.final()]);
+            logger.info(`✅ Decryption successful with ${strategy.name}`);
+            return decrypted.toString('utf8');
+          }
+          
+          // Try EVP_BytesToKey method
+          if (!strategy.useNative) {
+            const derived = this.evpBytesToKey(this.encryptionKey, 32, 16);
+            const decipher = crypto.createDecipheriv(algorithm, derived.key, derived.iv);
+            decipher.setAutoPadding(true);
+            let decrypted = decipher.update(encryptedBuffer);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+            logger.info(`✅ Decryption successful with ${strategy.name}`);
+            return decrypted.toString('utf8');
+          }
+        } catch (strategyErr: any) {
+          logger.info(`⚠️ Strategy ${strategy.name} failed: ${strategyErr.message}`);
+          continue;
         }
-        
-        // If not available, manually derive key/IV using EVP_BytesToKey (MD5)
-        const derived = this.evpBytesToKey(this.encryptionKey, 32, 16);
-        const decipher = crypto.createDecipheriv(algorithm, derived.key, derived.iv);
-        let decrypted = decipher.update(encryptedBuffer);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString('utf8');
-      } catch (legacyErr: any) {
-        logger.error(`❌ Legacy decryption failed:`, legacyErr);
-        throw new Error(`Decryption failed: ${legacyErr.message}`);
       }
+
+      // All strategies failed
+      logger.error(`❌ All decryption strategies failed for encrypted text length ${encryptedText.length}`);
+      throw new Error(
+        `Unable to decrypt wallet data. The encryption format may be incompatible. ` +
+        `Please contact support to recover your wallet.`
+      );
     }
   }
 
