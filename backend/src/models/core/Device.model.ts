@@ -79,8 +79,7 @@ const DeviceSchema = new Schema<IDevice>({
     type: String,
     required: true,
     unique: true,
-    trim: true,
-    index: true
+    trim: true
   },
   
   deviceType: {
@@ -251,7 +250,6 @@ const DeviceSchema = new Schema<IDevice>({
 });
 
 // Indexes
-DeviceSchema.index({ deviceID: 1 });
 DeviceSchema.index({ status: 1 });
 DeviceSchema.index({ lastSeen: -1 });
 DeviceSchema.index({ owner: 1 });

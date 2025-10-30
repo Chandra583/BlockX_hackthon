@@ -103,8 +103,7 @@ const MileageHistorySchema = new Schema({
   },
   blockchainHash: {
     type: String,
-    sparse: true,
-    index: true
+    sparse: true
   },
   deviceId: {
     type: String,

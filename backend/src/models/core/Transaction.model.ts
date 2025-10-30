@@ -129,7 +129,6 @@ const TransactionSchema = new Schema({
 });
 
 // Indexes for performance
-TransactionSchema.index({ transactionHash: 1 }, { unique: true });
 TransactionSchema.index({ userId: 1, createdAt: -1 });
 TransactionSchema.index({ vehicleId: 1, createdAt: -1 });
 TransactionSchema.index({ type: 1, status: 1 });

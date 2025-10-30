@@ -75,7 +75,6 @@ const VehicleBlockchainHistorySchema = new Schema({
 // Compound Indexes for efficient queries
 VehicleBlockchainHistorySchema.index({ vehicleId: 1, timestamp: -1 });
 VehicleBlockchainHistorySchema.index({ vehicleId: 1, transactionType: 1 });
-VehicleBlockchainHistorySchema.index({ transactionHash: 1 }, { unique: true });
 
 // Static Methods
 VehicleBlockchainHistorySchema.statics.findByVehicle = function(vehicleId: string) {
