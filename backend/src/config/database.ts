@@ -5,9 +5,9 @@ import mongoose from 'mongoose';
  */
 const mongooseOptions = {
   maxPoolSize: 1, // Single connection for serverless
-  serverSelectionTimeoutMS: 10000, // Reduced to fail fast - 10 seconds
-  socketTimeoutMS: 45000, // Socket timeout - 45 seconds
-  connectTimeoutMS: 10000, // Reduced connection timeout - 10 seconds
+  serverSelectionTimeoutMS: 30000, // 30 seconds
+  socketTimeoutMS: 60000, // 60 seconds
+  connectTimeoutMS: 30000, // 30 seconds
   bufferCommands: false, // Disable mongoose buffering
   retryWrites: true, // Enable retryable writes
   w: 'majority' as const, // Write concern

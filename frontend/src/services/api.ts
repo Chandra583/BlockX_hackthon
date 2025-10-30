@@ -4,7 +4,7 @@ import { config } from '../config/env';
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: config.API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
