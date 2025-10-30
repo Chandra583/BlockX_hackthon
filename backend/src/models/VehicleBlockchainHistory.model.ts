@@ -43,8 +43,7 @@ const VehicleBlockchainHistorySchema = new Schema({
   transactionHash: {
     type: String,
     required: [true, 'Transaction hash is required'],
-    unique: true,
-    index: true
+    unique: true
   },
   blockchainAddress: {
     type: String,

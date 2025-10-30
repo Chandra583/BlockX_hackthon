@@ -79,30 +79,29 @@ const InstallSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Vehicle',
     required: [true, 'Vehicle ID is required'],
-    index: true
+    // Indexed via schema.index below
   },
   ownerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'Owner ID is required'],
-    index: true
+    // Indexed via schema.index below
   },
   serviceProviderId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    index: true
+    // Indexed via schema.index below
   },
   deviceId: {
     type: String,
     maxlength: [100, 'Device ID cannot exceed 100 characters'],
-    index: true
+    // Indexed via schema.index below
   },
   status: {
     type: String,
     enum: ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'failed'],
     default: 'pending',
-    required: true,
-    index: true
+    required: true
   },
   requestedAt: {
     type: Date,

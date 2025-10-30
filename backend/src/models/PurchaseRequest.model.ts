@@ -31,25 +31,25 @@ const PurchaseRequestSchema = new Schema<IPurchaseRequest>({
   listingId: {
     type: Schema.Types.ObjectId,
     required: true,
-    index: true
+    // Indexed via schema.index below
   },
   vehicleId: {
     type: Schema.Types.ObjectId,
     ref: 'Vehicle',
     required: true,
-    index: true
+    // Indexed via schema.index below
   },
   buyerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true
+    // Indexed via schema.index below
   },
   sellerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true
+    // Indexed via schema.index below
   },
   offeredPrice: {
     type: Number,
@@ -59,8 +59,7 @@ const PurchaseRequestSchema = new Schema<IPurchaseRequest>({
   status: {
     type: String,
     enum: ['pending_seller', 'accepted', 'rejected', 'counter_offer', 'escrow_pending', 'escrow_funded', 'verifying', 'verification_passed', 'verification_failed', 'transfer_pending', 'sold', 'cancelled'],
-    default: 'pending_seller',
-    index: true
+    default: 'pending_seller'
   },
   counterPrice: {
     type: Number,

@@ -65,14 +65,14 @@ const VehicleDocumentSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Vehicle',
     required: [true, 'Vehicle ID is required'],
-    index: true
+    // Indexed via schema.index below
   },
   vin: {
     type: String,
     required: [true, 'VIN is required'],
     uppercase: true,
     trim: true,
-    index: true,
+    // Indexed via schema.index below
     validate: {
       validator: function(v: string) {
         return /^[A-HJ-NPR-Z0-9]{17}$/.test(v);
@@ -160,29 +160,25 @@ const VehicleDocumentSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'Uploaded by user is required'],
-    index: true
+    // Indexed via schema.index below
   },
   uploadedAt: {
     type: Date,
     default: Date.now,
-    required: true,
-    index: true
+    required: true
   },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'expired', 'archived'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   verificationStatus: {
     type: String,
     enum: ['pending', 'verified', 'failed', 'not_required'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   expirationDate: {
-    type: Date,
-    index: true
+    type: Date
   },
   issueDate: {
     type: Date,

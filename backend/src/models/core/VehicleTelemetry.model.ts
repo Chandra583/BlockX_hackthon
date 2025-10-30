@@ -99,7 +99,7 @@ const VehicleTelemetrySchema = new Schema<IVehicleTelemetry>({
     type: String,
     required: true,
     trim: true,
-    index: true
+    // Index defined via compound schema index below
   },
   
   device: {
@@ -205,13 +205,13 @@ const VehicleTelemetrySchema = new Schema<IVehicleTelemetry>({
     flagged: {
       type: Boolean,
       default: false,
-      index: true
+      // Indexed via schema.index below
     },
     validationStatus: {
       type: String,
       enum: ['VALID', 'INVALID', 'ROLLBACK_DETECTED', 'SUSPICIOUS', 'PENDING'],
       default: 'PENDING',
-      index: true
+      // Indexed via schema.index below
     },
     reason: String
   },
