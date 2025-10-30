@@ -83,8 +83,7 @@ const TelemetryBatchSchema = new Schema<ITelemetryBatch>({
   status: {
     type: String,
     enum: ['pending', 'consolidating', 'anchored', 'error'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   lastError: {
     type: String

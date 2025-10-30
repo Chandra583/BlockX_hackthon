@@ -26,7 +26,7 @@ export interface ArweaveUploadOptions {
 export interface ArweaveUploadResult {
   transactionId: string;
   url: string;
-  size: number;
+  size: number; // In bytes
   cost: number; // In AR tokens
   permanent: boolean;
   explorerUrl: string;
@@ -72,53 +72,53 @@ export class ArweaveService {
       logging: process.env.NODE_ENV === 'development'
     });
 
-    this.initializeWallet();
+    // Keep initialization lightweight: don't perform network calls here
+    // such as balance checks. Wallet is prepared lazily for operations.
+    this.prepareWallet().catch((e) => {
+      logger.warn('⚠️ Arweave wallet preparation deferred:', e?.message || e);
+    });
     logger.info(`🌐 Arweave Service initialized - ${this.isTestnet ? 'TESTNET' : 'MAINNET'}`);
   }
 
   /**
-   * Initialize Arweave wallet
+   * Prepare an in-memory wallet if available. Avoids any network calls.
    */
-  private async initializeWallet(): Promise<void> {
+  private async prepareWallet(): Promise<void> {
     try {
       if (process.env.ARWEAVE_WALLET_KEY) {
-        // Use provided wallet key
         this.wallet = JSON.parse(process.env.ARWEAVE_WALLET_KEY);
       } else if (this.isTestnet) {
-        // Generate a new wallet for testnet
+        // Generating a wallet is purely local and does not hit network
         this.wallet = await this.arweave.wallets.generate();
         logger.info('🔑 Generated new Arweave testnet wallet');
       } else {
         logger.warn('⚠️ No Arweave wallet configured for production');
         this.wallet = null;
       }
-
-      if (this.wallet) {
-        const address = await this.arweave.wallets.jwkToAddress(this.wallet);
-        try {
-          const balance = await this.getBalance(address);
-          logger.info(`💰 Arweave wallet: ${address} (Balance: ${balance} AR)`);
-        } catch (e) {
-          // Do not treat balance fetch issues as fatal, gateways may throttle
-          logger.warn(`⚠️ Arweave balance check skipped (gateway busy). Address: ${address}`);
-        }
-      }
+      // IMPORTANT: Do NOT fetch balances here to keep startup non-blocking
     } catch (error) {
-      logger.error('❌ Failed to initialize Arweave wallet:', error);
+      logger.error('❌ Failed to prepare Arweave wallet:', error);
       this.wallet = null;
     }
   }
 
   /**
-   * Get wallet balance
+   * Get wallet balance (on-demand). Times out fast and returns null on failure.
    */
   async getBalance(address?: string): Promise<number> {
     try {
-      const walletAddress = address || await this.arweave.wallets.jwkToAddress(this.wallet);
-      const winstonBalance = await this.arweave.wallets.getBalance(walletAddress);
-      return parseFloat(this.arweave.ar.winstonToAr(winstonBalance));
+      const walletAddress = address || (this.wallet ? await this.arweave.wallets.jwkToAddress(this.wallet) : undefined);
+      if (!walletAddress) return 0;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const winstonBalance = await this.arweave.wallets.getBalance(walletAddress);
+        return parseFloat(this.arweave.ar.winstonToAr(winstonBalance));
+      } finally {
+        clearTimeout(timeout);
+      }
     } catch (error) {
-      logger.error('❌ Failed to get Arweave balance:', error);
+      logger.warn('⚠️ Arweave balance fetch failed:', error);
       return 0;
     }
   }

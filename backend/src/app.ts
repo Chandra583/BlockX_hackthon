@@ -13,6 +13,10 @@ import { config } from './config/environment';
 // Create Express app
 const app = express();
 
+// Quick no-op routes for health and favicon (instant responses)
+app.get('/', (_req, res) => res.status(200).json({ ok: true }));
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
