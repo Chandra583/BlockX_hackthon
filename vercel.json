@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "echo 'No build required - serverless functions'",
-  "outputDirectory": "backend",
   "builds": [
     {
       "src": "backend/api/index.ts",
