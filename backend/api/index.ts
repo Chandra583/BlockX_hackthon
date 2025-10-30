@@ -19,12 +19,13 @@ const startConnectNonBlocking = async (): Promise<void> => {
   if (connecting || mongoose.connection.readyState === 1) return;
   connecting = true;
   try {
-    // Fast-fail connection; wrap with 5s timeout
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database connection timeout (5s)')), 5000));
+    // Longer timeout for cold starts (20s) to handle Vercel's serverless initialization
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database connection timeout (20s)')), 20000));
     await Promise.race([connectDatabase(), timeoutPromise]);
     console.log('✅ MongoDB connected');
   } catch (err) {
     console.error('❌ MongoDB connect attempt failed:', (err as any)?.message || err);
+    // Don't throw - allow function to continue without DB for health checks
   } finally {
     connecting = false;
   }

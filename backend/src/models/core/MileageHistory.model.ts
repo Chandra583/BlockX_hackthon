@@ -136,7 +136,7 @@ MileageHistorySchema.index({ vehicleId: 1, recordedAt: -1 });
 MileageHistorySchema.index({ vin: 1, recordedAt: -1 });
 MileageHistorySchema.index({ source: 1, verified: 1 });
 MileageHistorySchema.index({ recordedBy: 1, recordedAt: -1 });
-MileageHistorySchema.index({ blockchainHash: 1 }, { sparse: true });
+// blockchainHash index removed - field already has sparse: true which creates index
 
 // Instance Methods
 MileageHistorySchema.methods.validateMileageIncrease = function(): boolean {
