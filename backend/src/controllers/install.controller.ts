@@ -9,7 +9,8 @@ import { logger } from '../utils/logger';
 import { emitEvent, emitToUser } from '../utils/socketEmitter';
 import mongoose from 'mongoose';
 
-const anchorService = getAnchorService();
+// Obtain AnchorService lazily inside handlers to avoid cold-start network calls
+// const anchorService = getAnchorService();
 
 /**
  * Start installation
@@ -212,6 +213,7 @@ export const startInstallation = async (req: Request, res: Response) => {
     install.deviceId = deviceId?.toString();
     install.initialMileage = initialMileage;
     
+    const anchorService = getAnchorService();
     const anchorResult = await anchorService.anchorInstallEvent(install as any, vehicle as any, ownerData, serviceProviderData, ownerWallet);
     
     if (!anchorResult.success) {
