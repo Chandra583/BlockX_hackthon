@@ -185,7 +185,7 @@ export class DailyMerkleJob {
   } {
     return {
       running: this.job ? this.job.running : false,
-      nextRun: this.job ? this.job.nextDate().toDate() : undefined,
+      nextRun: this.job ? (this.job.nextDate() as any).toJSDate() : undefined,
       lastRun: this.job ? (this.job as any).lastDate() : undefined
     };
   }

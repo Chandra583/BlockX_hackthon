@@ -342,7 +342,7 @@ export class DeviceController {
           },
           tags: ['device_status', 'telemetry', deviceData.dataSource || 'device_status'],
           category: 'integration' as const,
-          priority: (deviceData.status === 'obd_connected' ? 'medium' : 'high') as const,
+          priority: (deviceData.status === 'obd_connected' ? 'medium' : 'high') as 'medium' | 'high',
           metadata: {
             environmentType: 'production' as const,
             automated: true,
@@ -1021,7 +1021,7 @@ export class DeviceController {
 
       // Emit socket event for real-time updates (if socket.io is available)
       try {
-        const { io } = await import('../../server');
+        const { io } = (await import('../../server')) as any;
         if (io) {
           io.emit('vehicle_mileage_updated', {
             vehicleId: vehicle._id,

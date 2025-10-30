@@ -145,7 +145,7 @@ router.get('/:installId',
  * Access: Admin
  */
 router.put('/:installId/assign',
-  authorize(['admin']),
+  authorize('admin'),
   rateLimit(10, 15 * 60 * 1000), // 10 requests per 15 minutes
   async (req: any, res: any) => {
     try {
@@ -182,7 +182,7 @@ router.put('/:installId/assign',
  * Access: Assigned service provider
  */
 router.put('/:installId/start',
-  authorize(['service']),
+  authorize('service'),
   rateLimit(10, 15 * 60 * 1000), // 10 requests per 15 minutes
   async (req: any, res: any) => {
     try {
@@ -219,7 +219,7 @@ router.put('/:installId/start',
  * Access: Assigned service provider
  */
 router.put('/:installId/complete',
-  authorize(['service']),
+  authorize('service'),
   rateLimit(10, 15 * 60 * 1000), // 10 requests per 15 minutes
   async (req: any, res: any) => {
     try {
@@ -291,7 +291,7 @@ router.put('/:installId/cancel',
  * Access: Admin
  */
 router.get('/admin/pending',
-  authorize(['admin']),
+  authorize('admin'),
   rateLimit(50, 15 * 60 * 1000), // 50 requests per 15 minutes
   async (req: any, res: any) => {
     try {
@@ -326,7 +326,7 @@ router.get('/admin/pending',
  * Access: Service Provider
  */
 router.get('/service-provider/assigned',
-  authorize(['service']),
+  authorize('service'),
   rateLimit(50, 15 * 60 * 1000), // 50 requests per 15 minutes
   async (req: any, res: any) => {
     try {

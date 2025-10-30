@@ -80,7 +80,7 @@ export class S3Service {
     this.documentExpiryDays = parseInt(process.env.DOCUMENT_EXPIRY_DAYS || '2555'); // 7 years
 
     if (!this.bucket) {
-      throw new AppError('AWS S3 bucket not configured', 500);
+      throw new AppError(500, 'AWS S3 bucket not configured');
     }
 
     this.validateConfiguration();
@@ -95,7 +95,7 @@ export class S3Service {
       logger.info('✅ S3 bucket connection validated');
     } catch (error) {
       logger.error('❌ S3 bucket validation failed:', error);
-      throw new AppError('S3 bucket validation failed', 500);
+      throw new AppError(500, 'S3 bucket validation failed');
     }
   }
 
@@ -118,18 +118,18 @@ export class S3Service {
   private validateUpload(options: UploadOptions): void {
     // Check file size
     if (options.buffer.length > this.maxFileSize) {
-      throw new AppError(`File size exceeds maximum allowed size of ${this.maxFileSize} bytes`, 400);
+      throw new AppError(400, `File size exceeds maximum allowed size of ${this.maxFileSize} bytes`);
     }
 
     // Check MIME type
     const fileExtension = path.extname(options.originalName).toLowerCase().substring(1);
     if (!this.allowedMimeTypes.includes(fileExtension)) {
-      throw new AppError(`File type ${fileExtension} not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`, 400);
+      throw new AppError(400, `File type ${fileExtension} not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`);
     }
 
     // Validate required fields
     if (!options.folder || !options.vehicleId || !options.originalName) {
-      throw new AppError('Missing required upload parameters', 400);
+      throw new AppError(400, 'Missing required upload parameters');
     }
   }
 
@@ -197,7 +197,7 @@ export class S3Service {
         size: options.buffer.length,
         mimeType: options.mimeType,
         etag: uploadResult.ETag || '',
-        versionId: uploadResult.VersionId
+        versionId: (uploadResult as any).VersionId
       };
 
       // Generate public URL if public
@@ -230,7 +230,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ File upload failed:', error);
-      throw new AppError('File upload failed', 500);
+      throw new AppError(500, 'File upload failed');
     }
   }
 
@@ -256,7 +256,7 @@ export class S3Service {
       const result = await s3.getObject(params).promise();
       
       if (!result.Body) {
-        throw new AppError('File not found', 404);
+        throw new AppError(404, 'File not found');
       }
 
       logger.info(`✅ File downloaded successfully: ${options.key}`);
@@ -264,10 +264,10 @@ export class S3Service {
 
     } catch (error: any) {
       if (error.code === 'NoSuchKey') {
-        throw new AppError('File not found', 404);
+        throw new AppError(404, 'File not found');
       }
       logger.error('❌ File download failed:', error);
-      throw new AppError('File download failed', 500);
+      throw new AppError(500, 'File download failed');
     }
   }
 
@@ -300,7 +300,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ Signed URL generation failed:', error);
-      throw new AppError('Signed URL generation failed', 500);
+      throw new AppError(500, 'Signed URL generation failed');
     }
   }
 
@@ -332,7 +332,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ File deletion failed:', error);
-      throw new AppError('File deletion failed', 500);
+      throw new AppError(500, 'File deletion failed');
     }
   }
 
@@ -360,10 +360,10 @@ export class S3Service {
 
     } catch (error: any) {
       if (error.code === 'NotFound') {
-        throw new AppError('File not found', 404);
+        throw new AppError(404, 'File not found');
       }
       logger.error('❌ File info retrieval failed:', error);
-      throw new AppError('File info retrieval failed', 500);
+      throw new AppError(500, 'File info retrieval failed');
     }
   }
 
@@ -390,7 +390,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ File listing failed:', error);
-      throw new AppError('File listing failed', 500);
+      throw new AppError(500, 'File listing failed');
     }
   }
 
@@ -413,7 +413,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ File copy failed:', error);
-      throw new AppError('File copy failed', 500);
+      throw new AppError(500, 'File copy failed');
     }
   }
 
@@ -429,7 +429,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ File move failed:', error);
-      throw new AppError('File move failed', 500);
+      throw new AppError(500, 'File move failed');
     }
   }
 
@@ -480,7 +480,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ Storage stats retrieval failed:', error);
-      throw new AppError('Storage stats retrieval failed', 500);
+      throw new AppError(500, 'Storage stats retrieval failed');
     }
   }
 
@@ -513,7 +513,7 @@ export class S3Service {
 
     } catch (error) {
       logger.error('❌ Cleanup failed:', error);
-      throw new AppError('Cleanup failed', 500);
+      throw new AppError(500, 'Cleanup failed');
     }
   }
 }

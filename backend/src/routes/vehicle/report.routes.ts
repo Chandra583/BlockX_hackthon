@@ -80,7 +80,7 @@ router.get('/:vehicleId/report', optionalAuth, async (req: any, res: any) => {
     const marketplaceStatus = {
       isListed: vehicle.isForSale && vehicle.listingStatus === 'active',
       price: vehicle.price || null,
-      listedAt: vehicle.updatedAt || null,
+      listedAt: (vehicle as any).updatedAt || null,
       listingId: vehicle._id
     };
 
@@ -270,7 +270,7 @@ router.post('/:vehicleId/list', authenticate, async (req: any, res: any) => {
         data: {
           vehicleId: vehicle._id,
           currentPrice: vehicle.price,
-          listedAt: vehicle.updatedAt,
+          listedAt: (vehicle as any).updatedAt,
           marketplaceLink: `/marketplace/vehicle/${vehicle._id}`
         }
       });
@@ -281,7 +281,7 @@ router.post('/:vehicleId/list', authenticate, async (req: any, res: any) => {
     vehicle.price = price;
     vehicle.description = description;
     vehicle.listingStatus = 'active';
-    vehicle.updatedAt = new Date();
+    (vehicle as any).updatedAt = new Date();
 
     await vehicle.save();
 
@@ -295,7 +295,7 @@ router.post('/:vehicleId/list', authenticate, async (req: any, res: any) => {
         price,
         negotiable,
         description,
-        listedAt: vehicle.updatedAt,
+        listedAt: (vehicle as any).updatedAt,
         marketplaceLink: `/marketplace/vehicle/${vehicle._id}`
       }
     });
@@ -343,7 +343,7 @@ router.post('/:vehicleId/unlist', authenticate, async (req: any, res: any) => {
     // Remove from marketplace
     vehicle.isForSale = false;
     vehicle.listingStatus = 'not_listed';
-    vehicle.updatedAt = new Date();
+    (vehicle as any).updatedAt = new Date();
 
     await vehicle.save();
 
@@ -354,7 +354,7 @@ router.post('/:vehicleId/unlist', authenticate, async (req: any, res: any) => {
       message: 'Vehicle removed from marketplace successfully',
       data: {
         vehicleId: vehicle._id,
-        unlistedAt: vehicle.updatedAt
+        unlistedAt: (vehicle as any).updatedAt
       }
     });
 

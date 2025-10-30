@@ -3,12 +3,31 @@ import { Types } from 'mongoose';
 import Vehicle from '../../models/core/Vehicle.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import { AuthenticatedRequest } from '../../types/auth.types';
-import { 
-  MileageUpdateData, 
-  MileageSource, 
-  MileageAnalytics,
-  MileageVerificationData 
-} from '../../types/vehicle.types';
+// Local controller types (keep loose to satisfy runtime)
+type MileageUpdateData = {
+  mileage: number;
+  source?: 'owner' | 'service' | 'inspection' | 'government' | 'automated';
+  location?: any;
+  notes?: string;
+  metadata?: Record<string, any>;
+};
+
+type MileageVerificationData = {
+  verificationNotes?: string;
+  verificationSource?: string;
+};
+
+interface MileageAnalytics {
+  totalRecords: number;
+  averageMileageIncrease: number;
+  maxMileageIncrease: number;
+  minMileageIncrease: number;
+  totalMileageIncrease: number;
+  verificationRate: number;
+  sourceDistribution: Record<string, number>;
+  suspiciousRecords: number;
+  timePattern: Array<{ period: string; count: number; avgMileage: number }>;
+}
 import { 
   BadRequestError, 
   NotFoundError, 
@@ -50,7 +69,7 @@ export class MileageController {
 
       // Check if user can update mileage (owner or authorized service)
       const userRole = req.user?.role;
-      if (vehicle.owner.toString() !== userId && userRole !== 'service' && userRole !== 'admin') {
+      if (vehicle.ownerId.toString() !== userId && userRole !== 'service' && userRole !== 'admin') {
         throw new UnauthorizedError('You are not authorized to update mileage for this vehicle');
       }
 
@@ -84,7 +103,12 @@ export class MileageController {
       await mileageRecord.save();
 
       // Update vehicle mileage
-      await vehicle.updateMileage(mileageData.mileage, new Types.ObjectId(userId), mileageData.source || 'owner');
+      await vehicle.updateMileage(
+        mileageData.mileage,
+        mileageData.source || 'owner',
+        userId,
+        mileageData.location
+      );
 
       // Calculate trust score after mileage update
       await vehicle.calculateTrustScore();
@@ -298,7 +322,7 @@ export class MileageController {
       const limit = parseInt(req.query.limit as string) || 20;
       const skip = (page - 1) * limit;
 
-      const suspiciousRecords = await MileageHistory.findSuspiciousRecords(
+      const suspiciousRecords = await (MileageHistory as any).findSuspiciousRecords(
         parseInt(req.query.limit as string) || 100
       );
 
@@ -365,11 +389,7 @@ export class MileageController {
       }
 
       // Mark as verified
-      await mileageRecord.markAsVerified(
-        new Types.ObjectId(userId),
-        verificationData.verificationNotes,
-        verificationData.verificationSource
-      );
+      await mileageRecord.markAsVerified();
 
       // Update vehicle trust score
       const vehicle = await Vehicle.findById(mileageRecord.vehicleId);
@@ -384,7 +404,7 @@ export class MileageController {
         message: 'Mileage record verified successfully',
         data: {
           recordId,
-          verifiedAt: mileageRecord.verifiedAt,
+          verifiedAt: new Date(),
           verifiedBy: userId,
           verificationNotes: verificationData.verificationNotes
         }
@@ -474,7 +494,25 @@ export class MileageController {
         throw new UnauthorizedError('Access denied: Admin privileges required');
       }
 
-      const stats = await MileageHistory.getAggregatedStats();
+      // Compute global statistics (all vehicles)
+      const all = await MileageHistory.find({}).lean();
+      const total = all.length;
+      const verified = all.filter(r => r.verified).length;
+      const bySource = all.reduce((acc: Record<string, number>, r: any) => {
+        acc[r.source] = (acc[r.source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      const increases = all
+        .map((r: any) => r.mileageIncrease || 0)
+        .filter((x: number) => x > 0);
+      const stats = {
+        totalRecords: total,
+        verifiedRecords: verified,
+        verificationRate: total > 0 ? (verified / total) * 100 : 0,
+        avgMileageIncrease: increases.length > 0 ? (increases.reduce((s, x) => s + x, 0) / increases.length) : 0,
+        maxMileageIncrease: increases.length > 0 ? Math.max(...increases) : 0,
+        bySource
+      } as any;
 
       const recentActivity = await MileageHistory.find({})
         .sort({ recordedAt: -1 })
@@ -545,8 +583,8 @@ export class MileageController {
       return acc;
     }, {} as Record<string, number>);
 
-    const verifiedRecords = records.filter(record => record.isVerified).length;
-    const suspiciousRecords = records.filter(record => record.isSuspicious).length;
+    const verifiedRecords = records.filter(record => (record as any).verified === true).length;
+    const suspiciousRecords = records.filter(record => (record as any).mileageIncrease && (record as any).mileageIncrease > 500).length;
 
     return {
       totalRecords: records.length,
@@ -577,7 +615,7 @@ export class MileageController {
       return acc;
     }, {} as Record<string, { count: number; totalMileage: number }>);
 
-    return Object.entries(monthlyData).map(([month, data]) => ({
+    return (Object.entries(monthlyData) as Array<[string, { count: number; totalMileage: number }]>).map(([month, data]) => ({
       period: month,
       count: data.count,
       avgMileage: data.totalMileage / data.count

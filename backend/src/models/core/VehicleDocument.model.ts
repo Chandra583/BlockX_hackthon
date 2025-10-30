@@ -48,12 +48,16 @@ export interface IVehicleDocumentDocument extends Document {
 }
 
 // Static methods interface
-interface IVehicleDocumentModel extends Model<IVehicleDocumentDocument> {
+export interface IVehicleDocumentModel extends Model<IVehicleDocumentDocument> {
   findByVehicle(vehicleId: string, documentType?: string): Promise<IVehicleDocumentDocument[]>;
   findByVIN(vin: string, documentType?: string): Promise<IVehicleDocumentDocument[]>;
   findByType(documentType: string, limit?: number): Promise<IVehicleDocumentDocument[]>;
   findPendingVerification(limit?: number): Promise<IVehicleDocumentDocument[]>;
   findExpiring(days?: number, limit?: number): Promise<IVehicleDocumentDocument[]>;
+  getStorageStats(): Promise<any>;
+  getVerificationStats(): Promise<any>;
+  findExpired(limit?: number): Promise<IVehicleDocumentDocument[]>;
+  findByTags(tags: string[], limit?: number): Promise<IVehicleDocumentDocument[]>;
 }
 
 const VehicleDocumentSchema = new Schema({

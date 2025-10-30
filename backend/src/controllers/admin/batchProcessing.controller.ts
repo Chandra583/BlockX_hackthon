@@ -12,20 +12,20 @@ export class BatchProcessingController {
    * Get batch processing statistics
    * GET /api/admin/batch-processing/statistics
    */
-  static async getBatchStatistics(req: Request, res: Response): Promise<void> {
+  static async getBatchStatistics(req: Request, res: Response): Promise<Response> {
     try {
       const { deviceID, timeframe = '30d' } = req.query;
       
       const statistics = await BatchProcessingService.getBatchStatistics(deviceID as string);
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: { statistics }
       });
       
     } catch (error) {
       logger.error('❌ Failed to get batch statistics:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Failed to retrieve batch statistics'
       });
@@ -36,7 +36,7 @@ export class BatchProcessingController {
    * Get batch processing dashboard
    * GET /api/admin/batch-processing/dashboard
    */
-  static async getBatchDashboard(req: Request, res: Response): Promise<void> {
+  static async getBatchDashboard(req: Request, res: Response): Promise<Response> {
     try {
       // Get overall statistics
       const overallStats = await BatchProcessingService.getBatchStatistics();
@@ -85,14 +85,14 @@ export class BatchProcessingController {
         }
       };
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: dashboard
       });
       
     } catch (error) {
       logger.error('❌ Failed to get batch dashboard:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Failed to retrieve batch processing dashboard'
       });
@@ -103,7 +103,7 @@ export class BatchProcessingController {
    * Get batch details
    * GET /api/admin/batch-processing/batch/:batchId
    */
-  static async getBatchDetails(req: Request, res: Response): Promise<void> {
+  static async getBatchDetails(req: Request, res: Response): Promise<Response> {
     try {
       const { batchId } = req.params;
       
@@ -118,14 +118,14 @@ export class BatchProcessingController {
         });
       }
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: { batch }
       });
       
     } catch (error) {
       logger.error('❌ Failed to get batch details:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Failed to retrieve batch details'
       });
@@ -136,7 +136,7 @@ export class BatchProcessingController {
    * Manually process pending batches
    * POST /api/admin/batch-processing/process-pending
    */
-  static async processPendingBatches(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async processPendingBatches(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const adminId = req.user?.id;
       if (!adminId) {
@@ -154,14 +154,14 @@ export class BatchProcessingController {
           logger.error('❌ Manual batch processing failed:', error);
         });
       
-      res.status(202).json({
+      return res.status(202).json({
         success: true,
         message: 'Batch processing initiated. Check dashboard for progress.'
       });
       
     } catch (error) {
       logger.error('❌ Failed to initiate batch processing:', error);
-      res.status(error instanceof ApiError ? error.statusCode : 500).json({
+      return res.status(error instanceof ApiError ? error.statusCode : 500).json({
         success: false,
         message: error.message || 'Failed to initiate batch processing'
       });
@@ -172,7 +172,7 @@ export class BatchProcessingController {
    * Retry failed batch submission
    * POST /api/admin/batch-processing/retry/:batchId
    */
-  static async retryBatchSubmission(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async retryBatchSubmission(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { batchId } = req.params;
       const adminId = req.user?.id;
@@ -196,7 +196,7 @@ export class BatchProcessingController {
       
       const result = await BatchProcessingService.submitBatchToBlockchain(batch);
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: result.success ? 'Batch submitted successfully' : 'Batch submission failed',
         data: result
@@ -204,7 +204,7 @@ export class BatchProcessingController {
       
     } catch (error) {
       logger.error('❌ Failed to retry batch submission:', error);
-      res.status(error instanceof ApiError ? error.statusCode : 500).json({
+      return res.status(error instanceof ApiError ? error.statusCode : 500).json({
         success: false,
         message: error.message || 'Failed to retry batch submission'
       });
@@ -215,7 +215,7 @@ export class BatchProcessingController {
    * Get device batch history
    * GET /api/admin/batch-processing/device/:deviceId/history
    */
-  static async getDeviceBatchHistory(req: Request, res: Response): Promise<void> {
+  static async getDeviceBatchHistory(req: Request, res: Response): Promise<Response> {
     try {
       const { deviceId } = req.params;
       const { page = 1, limit = 20, status } = req.query;
@@ -234,7 +234,7 @@ export class BatchProcessingController {
         BatchData.countDocuments(query)
       ]);
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: {
           batches,
@@ -249,7 +249,7 @@ export class BatchProcessingController {
       
     } catch (error) {
       logger.error('❌ Failed to get device batch history:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Failed to retrieve device batch history'
       });
@@ -260,7 +260,7 @@ export class BatchProcessingController {
    * Update batch configuration for device
    * PUT /api/admin/batch-processing/device/:deviceId/config
    */
-  static async updateBatchConfiguration(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async updateBatchConfiguration(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
       const { deviceId } = req.params;
       const { batchType, batchSize, enabled } = req.body;
@@ -283,7 +283,7 @@ export class BatchProcessingController {
         });
       }
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: 'Batch configuration updated successfully',
         data: { device }
@@ -291,7 +291,7 @@ export class BatchProcessingController {
       
     } catch (error) {
       logger.error('❌ Failed to update batch configuration:', error);
-      res.status(error instanceof ApiError ? error.statusCode : 500).json({
+      return res.status(error instanceof ApiError ? error.statusCode : 500).json({
         success: false,
         message: error.message || 'Failed to update batch configuration'
       });
@@ -302,7 +302,7 @@ export class BatchProcessingController {
    * Get batch validation report
    * GET /api/admin/batch-processing/batch/:batchId/validation
    */
-  static async getBatchValidationReport(req: Request, res: Response): Promise<void> {
+  static async getBatchValidationReport(req: Request, res: Response): Promise<Response> {
     try {
       const { batchId } = req.params;
       
@@ -335,14 +335,14 @@ export class BatchProcessingController {
         }
       };
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: { validationReport }
       });
       
     } catch (error) {
       logger.error('❌ Failed to get batch validation report:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Failed to retrieve batch validation report'
       });

@@ -212,7 +212,7 @@ export const startInstallation = async (req: Request, res: Response) => {
     install.deviceId = deviceId?.toString();
     install.initialMileage = initialMileage;
     
-    const anchorResult = await anchorService.anchorInstallEvent(install, vehicle, ownerData, serviceProviderData, ownerWallet);
+    const anchorResult = await anchorService.anchorInstallEvent(install as any, vehicle as any, ownerData, serviceProviderData, ownerWallet);
     
     if (!anchorResult.success) {
       return res.status(500).json({

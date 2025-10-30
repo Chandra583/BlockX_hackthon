@@ -6,7 +6,7 @@ const router = Router();
 
 // All routes require admin authentication
 router.use(authenticate);
-router.use(authorize(['admin']));
+router.use(authorize('admin'));
 
 /**
  * @route POST /api/admin/service-providers/register

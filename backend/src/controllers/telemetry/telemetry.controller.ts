@@ -106,11 +106,12 @@ export class TelemetryController {
       .sort({ 'rawData.receivedAt': -1 });
 
       if (!latestRecord) {
-        return res.json({
+        res.json({
           success: true,
           data: null,
           message: 'No OBD data available'
         });
+        return;
       }
 
       // Transform to OBD validation format
@@ -206,7 +207,7 @@ export class TelemetryController {
           source: record.dataSource || 'unknown',
           verified: !flagged,
           deviceId: record.deviceID,
-          blockchainHash: record.blockchainHash,
+          // blockchain reference omitted (not present on model)
           previousMileage: record.mileageValidation?.previousMileage,
           newMileage: record.mileageValidation?.newMileage,
           delta: record.mileageValidation?.delta,

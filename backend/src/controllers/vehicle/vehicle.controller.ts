@@ -3,13 +3,44 @@ import { Types } from 'mongoose';
 import Vehicle from '../../models/core/Vehicle.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import { AuthenticatedRequest } from '../../types/auth.types';
-import { 
-  VehicleRegistrationData, 
-  VehicleSearchFilters, 
-  VehicleUpdateData,
-  VehicleCondition,
-  VehicleStatus 
-} from '../../types/vehicle.types';
+// Local minimal types for controller payloads
+type VehicleRegistrationData = {
+  vin: string;
+  make: string;
+  model: string;
+  year: number;
+  currentMileage?: number;
+  location?: any;
+  isListed?: boolean;
+};
+
+type VehicleSearchFilters = {
+  make?: string;
+  model?: string;
+  minYear?: number;
+  maxYear?: number;
+  minMileage?: number;
+  maxMileage?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  condition?: string;
+  location?: string;
+  trustScoreMin?: number;
+  sortBy?: 'price' | 'mileage' | 'year' | 'trustScore';
+  sortOrder?: 'asc' | 'desc';
+};
+
+type VehicleUpdateData = Partial<{
+  make: string;
+  vehicleModel: string;
+  year: number;
+  color: string;
+  condition: string;
+  price: number;
+  location: string;
+  isForSale: boolean;
+  description: string;
+}>;
 import { 
   BadRequestError, 
   NotFoundError, 
@@ -46,25 +77,28 @@ export class VehicleController {
       }
 
       // Validate VIN format (basic check)
-      if (!Vehicle.validateVIN(vehicleData.vin)) {
+      if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vehicleData.vin)) {
         throw new ValidationError('Invalid VIN format');
       }
 
       // Create vehicle with owner
       const vehicle = new Vehicle({
-        ...vehicleData,
-        owner: new Types.ObjectId(userId),
+        vin: vehicleData.vin.toUpperCase(),
+        make: vehicleData.make,
+        vehicleModel: vehicleData.model,
+        year: vehicleData.year,
+        ownerId: new Types.ObjectId(userId),
         currentMileage: vehicleData.currentMileage || 0,
         mileageHistory: vehicleData.currentMileage ? [{
           mileage: vehicleData.currentMileage,
           recordedAt: new Date(),
           recordedBy: new Types.ObjectId(userId),
           source: 'owner',
-          isVerified: false
+          verified: false
         }] : [],
         trustScore: 50, // Initial trust score
-        status: 'active',
-        isListed: vehicleData.isListed || false
+        listingStatus: vehicleData.isListed ? 'active' : 'not_listed',
+        isForSale: !!vehicleData.isListed
       });
 
       await vehicle.save();
@@ -77,8 +111,8 @@ export class VehicleController {
           mileage: vehicleData.currentMileage,
           recordedBy: new Types.ObjectId(userId),
           source: 'owner',
-          location: vehicleData.location || 'Unknown',
-          isVerified: false,
+          location: vehicleData.location || undefined,
+          verified: false,
           metadata: {
             registrationSource: 'initial_registration'
           }
@@ -130,13 +164,13 @@ export class VehicleController {
       const limit = parseInt(req.query.limit as string) || 10;
       const skip = (page - 1) * limit;
 
-      const vehicles = await Vehicle.find({ owner: new Types.ObjectId(userId) })
+      const vehicles = await Vehicle.find({ ownerId: new Types.ObjectId(userId) })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('owner', 'firstName lastName email');
+        .populate('ownerId', 'firstName lastName email');
 
-      const totalVehicles = await Vehicle.countDocuments({ owner: new Types.ObjectId(userId) });
+      const totalVehicles = await Vehicle.countDocuments({ ownerId: new Types.ObjectId(userId) });
 
       res.status(200).json({
         status: 'success',
@@ -167,7 +201,7 @@ export class VehicleController {
    */
   async searchVehicles(req: Request, res: Response): Promise<void> {
     try {
-      const filters: VehicleSearchFilters = req.query;
+      const filters: VehicleSearchFilters = req.query as any;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const skip = (page - 1) * limit;
@@ -183,12 +217,12 @@ export class VehicleController {
         searchQuery.make = new RegExp(filters.make, 'i');
       }
       if (filters.model) {
-        searchQuery.model = new RegExp(filters.model, 'i');
+        searchQuery.vehicleModel = new RegExp(filters.model, 'i');
       }
-      if (filters.yearMin || filters.yearMax) {
+      if (filters.minYear || filters.maxYear) {
         searchQuery.year = {};
-        if (filters.yearMin) searchQuery.year.$gte = filters.yearMin;
-        if (filters.yearMax) searchQuery.year.$lte = filters.yearMax;
+        if (filters.minYear) searchQuery.year.$gte = filters.minYear;
+        if (filters.maxYear) searchQuery.year.$lte = filters.maxYear;
       }
       if (filters.minMileage || filters.maxMileage) {
         searchQuery.currentMileage = {};
@@ -206,8 +240,8 @@ export class VehicleController {
       if (filters.location) {
         searchQuery.location = new RegExp(filters.location, 'i');
       }
-      if (filters.minTrustScore) {
-        searchQuery.trustScore = { $gte: filters.minTrustScore };
+      if (filters.trustScoreMin) {
+        searchQuery.trustScore = { $gte: filters.trustScoreMin };
       }
 
       // Sort options
@@ -233,7 +267,7 @@ export class VehicleController {
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)
-        .populate('owner', 'firstName lastName');
+        .populate('ownerId', 'firstName lastName');
 
       const totalVehicles = await Vehicle.countDocuments(searchQuery);
 
@@ -274,7 +308,7 @@ export class VehicleController {
       }
 
       const vehicle = await Vehicle.findById(vehicleId)
-        .populate('owner', 'firstName lastName email phone')
+        .populate('ownerId', 'firstName lastName email phone')
         .populate('mileageHistory.recordedBy', 'firstName lastName');
 
       if (!vehicle) {
@@ -326,7 +360,7 @@ export class VehicleController {
       }
 
       // Check ownership
-      if (vehicle.owner.toString() !== userId) {
+      if (vehicle.ownerId.toString() !== userId) {
         throw new UnauthorizedError('You can only update your own vehicles');
       }
 
@@ -346,7 +380,7 @@ export class VehicleController {
         vehicleId,
         updates,
         { new: true, runValidators: true }
-      ).populate('owner', 'firstName lastName email');
+      ).populate('ownerId', 'firstName lastName email');
 
       logger.info(`Vehicle updated successfully: ${vehicleId} by user ${userId}`);
 
@@ -396,7 +430,7 @@ export class VehicleController {
       }
 
       // Check ownership
-      if (vehicle.owner.toString() !== userId) {
+      if (vehicle.ownerId.toString() !== userId) {
         throw new UnauthorizedError('You can only delete your own vehicles');
       }
 
@@ -446,7 +480,7 @@ export class VehicleController {
       }
 
       // Check VIN format
-      const isValidFormat = Vehicle.validateVIN(vin);
+      const isValidFormat = /^[A-HJ-NPR-Z0-9]{17}$/.test(vin.toUpperCase());
       
       // Check if VIN already exists
       const existingVehicle = await Vehicle.findOne({ vin });

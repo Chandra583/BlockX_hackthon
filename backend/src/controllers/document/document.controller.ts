@@ -6,9 +6,7 @@ import Vehicle from '../../models/core/Vehicle.model';
 import { AuthenticatedRequest } from '../../types/auth.types';
 import { 
   DocumentType, 
-  DocumentStatus, 
-  DocumentVerificationData,
-  DocumentUpdateData 
+  DocumentStatus 
 } from '../../types/vehicle.types';
 import { 
   BadRequestError, 
@@ -17,8 +15,20 @@ import {
   ValidationError 
 } from '../../utils/errors';
 import { logger } from '../../utils/logger';
-import documentService from '../../services/core/document.service';
-import s3Service from '../../services/storage/s3.service';
+import { documentService } from '../../services/core/document.service';
+import { s3Service } from '../../services/storage/s3.service';
+
+// Local types for controller payloads
+type DocumentVerificationData = {
+  verificationNotes?: string;
+  verificationLevel?: string | number;
+};
+
+type DocumentUpdateData = {
+  description?: string;
+  tags?: string[];
+  expiryDate?: string | Date;
+};
 
 // Configure multer for file uploads
 const upload = multer({
@@ -67,9 +77,9 @@ export class DocumentController {
       }
 
       // Validate document type
-      const validDocumentTypes: DocumentType[] = [
-        'title', 'registration', 'insurance', 'inspection', 'maintenance',
-        'warranty', 'accident_report', 'lien_release', 'emissions', 'other'
+      const validDocumentTypes: string[] = [
+        'title', 'registration', 'insurance', 'inspection', 'service_record',
+        'warranty', 'accident_report', 'recall_notice', 'photo', 'other'
       ];
       
       if (!documentType || !validDocumentTypes.includes(documentType)) {
@@ -84,7 +94,7 @@ export class DocumentController {
 
       // Check if user can upload documents (owner or authorized service)
       const userRole = req.user?.role;
-      if (vehicle.owner.toString() !== userId && userRole !== 'service' && userRole !== 'admin') {
+      if (vehicle.ownerId.toString() !== userId && userRole !== 'service' && userRole !== 'admin') {
         throw new UnauthorizedError('You are not authorized to upload documents for this vehicle');
       }
 
@@ -100,17 +110,20 @@ export class DocumentController {
       for (const file of files) {
         try {
           // Upload to S3
-          const uploadResult = await documentService.uploadDocument(
+          const uploadResult = await documentService.uploadDocument({
             vehicleId,
-            file,
-            documentType,
-            {
-              expiryDate: expiryDate ? new Date(expiryDate) : undefined,
-              description,
-              tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : [],
-              uploadedBy: new Types.ObjectId(userId)
-            }
-          );
+            userId,
+            documentType: documentType as DocumentType,
+            title: file.originalname,
+            description,
+            file: {
+              buffer: file.buffer,
+              originalName: file.originalname,
+              mimeType: file.mimetype
+            },
+            expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+            tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : []
+          });
 
           uploadedDocuments.push(uploadResult);
           
@@ -184,12 +197,12 @@ export class DocumentController {
       if (documentType) query.documentType = documentType;
       if (status) query.status = status;
 
-      const documents = await VehicleDocument.find(query)
+      const documents = await (VehicleDocument.find(query)
         .sort({ uploadedAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate('uploadedBy', 'firstName lastName role')
-        .populate('verifiedBy', 'firstName lastName role');
+        .populate('verifiedBy', 'firstName lastName role') as any).exec();
 
       const totalDocuments = await VehicleDocument.countDocuments(query);
 
@@ -381,9 +394,9 @@ export class DocumentController {
 
       // Delete file from S3
       try {
-        await s3Service.deleteFile(document.s3Key);
+        await s3Service.deleteFile(document.filePath || document.fileUrl, document.s3Metadata?.versionId);
       } catch (s3Error) {
-        logger.error(`Failed to delete S3 file: ${document.s3Key}`, s3Error);
+        logger.error(`Failed to delete S3 file: ${document.filePath || document.fileUrl}`, s3Error as any);
         // Continue with database deletion even if S3 deletion fails
       }
 
@@ -448,8 +461,7 @@ export class DocumentController {
       // Mark as verified
       await document.markAsVerified(
         new Types.ObjectId(userId),
-        verificationData.verificationNotes,
-        verificationData.verificationLevel
+        verificationData.verificationNotes
       );
 
       logger.info(`Document verified successfully: ${documentId} by user ${userId}`);
@@ -459,7 +471,7 @@ export class DocumentController {
         message: 'Document verified successfully',
         data: {
           documentId,
-          verifiedAt: document.verifiedAt,
+          verifiedAt: new Date(),
           verifiedBy: userId,
           verificationNotes: verificationData.verificationNotes,
           verificationLevel: verificationData.verificationLevel
@@ -531,7 +543,7 @@ export class DocumentController {
         message: 'Document rejected successfully',
         data: {
           documentId,
-          rejectedAt: document.rejectedAt,
+          rejectedAt: new Date(),
           rejectedBy: userId,
           rejectionReason
         }
@@ -575,11 +587,18 @@ export class DocumentController {
       const limit = parseInt(req.query.limit as string) || 20;
       const skip = (page - 1) * limit;
 
-      const expiringDocuments = await VehicleDocument.findExpiring(daysAhead)
+      const expiringDocuments = await VehicleDocument.find({
+        expiryDate: {
+          $gte: new Date(),
+          $lte: new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000)
+        }
+      })
+        .sort({ expiryDate: 1 })
         .skip(skip)
         .limit(limit)
         .populate('vehicleId', 'vin make vehicleModel year')
-        .populate('uploadedBy', 'firstName lastName email');
+        .populate('uploadedBy', 'firstName lastName email')
+        .exec();
 
       const totalExpiring = await VehicleDocument.countDocuments({
         expiryDate: {
@@ -642,7 +661,7 @@ export class DocumentController {
       const userRole = req.user?.role;
       const vehicle = document.vehicleId as any;
       
-      if (vehicle.owner.toString() !== userId && 
+      if (vehicle.ownerId.toString() !== userId && 
           document.uploadedBy.toString() !== userId && 
           userRole !== 'admin' && 
           userRole !== 'service') {
@@ -650,7 +669,7 @@ export class DocumentController {
       }
 
       // Get signed URL for download
-      const downloadUrl = await documentService.getDownloadUrl(document.s3Key);
+      const downloadUrl = await documentService.getDocumentUrl(documentId, userId, 3600);
 
       // Update download count
       await document.updateDownloadCount();
@@ -663,7 +682,7 @@ export class DocumentController {
         data: {
           documentId,
           downloadUrl,
-          fileName: document.originalName,
+          fileName: document.originalFileName,
           fileSize: document.fileSize,
           mimeType: document.mimeType,
           expiresAt: new Date(Date.now() + 60 * 60 * 1000) // 1 hour expiry
@@ -702,7 +721,7 @@ export class DocumentController {
         throw new UnauthorizedError('Access denied: Admin privileges required');
       }
 
-      const stats = await VehicleDocument.getStorageStats();
+      const stats = await (VehicleDocument as any).getStorageStats();
 
       const statusDistribution = await VehicleDocument.aggregate([
         { $group: { _id: '$status', count: { $sum: 1 } } }
