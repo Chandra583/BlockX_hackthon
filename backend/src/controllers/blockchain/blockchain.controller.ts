@@ -78,7 +78,8 @@ export class BlockchainController {
         res.status(404).json({
           success: false,
           message: 'No blockchain wallet found for user',
-          code: 'WALLET_NOT_FOUND'
+          code: 'WALLET_NOT_FOUND',
+          hint: 'Create a new wallet by calling POST /api/blockchain/wallet/create'
         });
         return;
       }
@@ -98,6 +99,59 @@ export class BlockchainController {
       });
     } catch (error) {
       logger.error('❌ Failed to get wallet information:', error);
+      
+      // If decryption failed, auto-reset and create new wallet
+      if (error instanceof Error && error.message.includes('decrypt')) {
+        try {
+          const userId = req.user?.id;
+          if (userId) {
+            logger.warn(`⚠️ Auto-resetting corrupted wallet for user ${userId}`);
+            
+            // Delete corrupted wallet
+            const User = require('../../models/core/User.model').User;
+            const user = await User.findById(userId);
+            if (user && user.blockchainWallet) {
+              const oldAddress = user.blockchainWallet.walletAddress;
+              user.blockchainWallet = undefined;
+              await user.save();
+              logger.info(`✅ Deleted corrupted wallet ${oldAddress} for user ${userId}`);
+            }
+            
+            // Create new wallet
+            const newWallet = await walletService.createWallet(userId);
+            logger.info(`✅ Auto-created new wallet for user ${userId}: ${newWallet.walletAddress}`);
+            
+            return res.status(200).json({
+              success: true,
+              message: 'Wallet was corrupted and has been automatically recreated',
+              code: 'WALLET_AUTO_RECOVERED',
+              data: {
+                walletAddress: newWallet.walletAddress,
+                balance: newWallet.balance,
+                blockchain: newWallet.blockchain,
+                network: process.env.NODE_ENV === 'production' ? 'mainnet' : 'devnet'
+              },
+              warning: 'Your old wallet was corrupted and has been replaced with a new one.'
+            });
+          }
+        } catch (resetError) {
+          logger.error('❌ Auto-reset failed:', resetError);
+        }
+        
+        // Fallback response if auto-reset fails
+        res.status(500).json({
+          success: false,
+          message: 'Failed to retrieve wallet information',
+          error: error.message,
+          code: 'DECRYPTION_FAILED',
+          recovery: {
+            message: 'Wallet encryption is corrupted. Reset your wallet to create a new one.',
+            endpoint: 'DELETE /api/blockchain/wallet/reset',
+            warning: 'Resetting will permanently delete the old wallet data.'
+          }
+        });
+        return;
+      }
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve wallet information',

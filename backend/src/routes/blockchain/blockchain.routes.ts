@@ -88,6 +88,66 @@ router.get('/wallet',
 );
 
 /**
+ * @route   DELETE /api/blockchain/wallet/reset
+ * @desc    Reset corrupted wallet (delete old wallet data)
+ * @access  Private (any authenticated user)
+ */
+router.delete('/wallet/reset', 
+  authenticate,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      const User = require('../../models/core/User.model').User;
+      const user = await User.findById(userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      if (!user.blockchainWallet) {
+        return res.status(404).json({
+          success: false,
+          message: 'No wallet found to reset'
+        });
+      }
+
+      // Backup info for logs
+      const oldAddress = user.blockchainWallet.walletAddress;
+      require('../../utils/logger').logger.info(`🔄 Resetting wallet for user ${userId}, old address: ${oldAddress}`);
+
+      // Delete wallet
+      user.blockchainWallet = undefined;
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Wallet reset successfully. You can now create a new wallet.',
+        oldWalletAddress: oldAddress,
+        nextStep: 'POST /api/blockchain/wallet/create'
+      });
+
+    } catch (error: any) {
+      require('../../utils/logger').logger.error('❌ Wallet reset failed:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Wallet reset failed',
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
  * @route   POST /api/blockchain/wallet/migrate
  * @desc    Migrate wallet from legacy to new encryption format
  * @access  Private (any authenticated user)
