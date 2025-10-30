@@ -13,8 +13,34 @@ import { config } from './config/environment';
 // Create Express app
 const app = express();
 
-// Quick no-op routes for health and favicon (instant responses)
-app.get('/', (_req, res) => res.status(200).json({ ok: true }));
+// Helper response for info
+const buildInfoPayload = () => ({
+  message: 'Welcome to BlockX Anti-Fraud Vehicle Marketplace API',
+  version: config.APP_VERSION || '1.0.0',
+  environment: config.NODE_ENV || 'production',
+  documentation: '/api/docs',
+  health: '/api/health',
+  info: '/api/info',
+  endpoints: {
+    auth: '/api/auth',
+    health: '/api/health',
+    info: '/api/info'
+  },
+  cors: {
+    frontendUrl: config.FRONTEND_URL,
+    corsOrigin: config.CORS_ORIGIN,
+    allowedOrigins: [] as string[] // placeholder, filled below in route
+  },
+  timestamp: new Date().toISOString()
+});
+
+// Quick routes for browser testing
+app.get('/', (_req, res) => {
+  const payload = buildInfoPayload();
+  // Fill allowed origins dynamically after CORS list is constructed below
+  (payload.cors as any).allowedOrigins = [];
+  res.status(200).json(payload);
+});
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // Trust proxy for rate limiting
@@ -47,6 +73,13 @@ const allowedOrigins = [
 console.log(`🌐 CORS configured for origins:`, allowedOrigins);
 console.log(`🔗 Primary Frontend URL: ${config.FRONTEND_URL}`);
 console.log(`🔗 CORS Origin: ${config.CORS_ORIGIN}`);
+
+// Info route with full details
+app.get('/api/info', (_req, res) => {
+  const payload = buildInfoPayload();
+  (payload.cors as any).allowedOrigins = allowedOrigins;
+  res.status(200).json(payload);
+});
 
 app.use(cors({
   origin: function (origin, callback) {
