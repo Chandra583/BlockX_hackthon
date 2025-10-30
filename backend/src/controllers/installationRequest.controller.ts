@@ -124,8 +124,8 @@ export const getInstallationRequests = async (req: Request, res: Response) => {
       // This is a simplified version - in production you might want to use text search
     }
 
-    // Get installations with pagination
-    const requests = await InstallationRequest.find(query)
+    // Get installations with pagination (for this owner)
+    let requests = await InstallationRequest.find(query)
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -133,6 +133,25 @@ export const getInstallationRequests = async (req: Request, res: Response) => {
       .populate('ownerId', 'firstName lastName email')
       .populate('serviceProviderId', 'firstName lastName email')
       .populate('deviceId', 'deviceID status');
+
+    // Fallback: If a vehicleId is provided and the current owner has no requests,
+    // but the vehicle already has a completed installation (previous owner),
+    // return the latest completed request for that vehicle so the UI can mark as installed.
+    if ((!requests || requests.length === 0) && vehicleId) {
+      const completed = await InstallationRequest.findOne({
+        vehicleId,
+        status: 'completed'
+      })
+        .sort({ installedAt: -1, updatedAt: -1 })
+        .populate('vehicleId', 'vin vehicleNumber make vehicleModel year')
+        .populate('ownerId', 'firstName lastName email')
+        .populate('serviceProviderId', 'firstName lastName email')
+        .populate('deviceId', 'deviceID status');
+
+      if (completed) {
+        requests = [completed];
+      }
+    }
 
     const total = await InstallationRequest.countDocuments(query);
 

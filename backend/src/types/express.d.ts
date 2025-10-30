@@ -6,6 +6,7 @@ declare global {
       user?: IUserInfo;
       sessionId?: string;
       permissions?: string[];
+      activeRole?: string; // Active role from X-Active-Role header for multi-role users
       rateLimit?: {
         limit: number;
         remaining: number;

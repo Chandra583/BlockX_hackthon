@@ -8,9 +8,12 @@ import MileageController from '../../controllers/mileage/mileage.controller';
 import { User } from '../../models/core/User.model';
 import { logger } from '../../utils/logger';
 import { TelemetryBatch } from '../../models/TelemetryBatch.model';
+import { VehicleTelemetry } from '../../models/core/VehicleTelemetry.model';
 import MileageHistory from '../../models/core/MileageHistory.model';
 import uploadRoutes from './upload.routes';
 import reportRoutes from './report.routes';
+import { SaleRecord } from '../../models/SaleRecord.model';
+import { Device } from '../../models/core/Device.model';
 
 const router = Router();
 
@@ -125,7 +128,7 @@ router.get('/stats', async (req: any, res: any) => {
     
     // Get recent activity (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const recentVehicles = vehicles.filter(v => v.createdAt > thirtyDaysAgo).length;
+    const recentVehicles = vehicles.filter(v => (v as any).createdAt > thirtyDaysAgo).length;
     
     res.json({
       success: true,
@@ -254,8 +257,8 @@ router.get('/my-vehicles',
         ownerUserId: vehicle.ownerId === userId ? vehicle.ownerId : null,
         ownerWalletAddress: vehicle.blockchainAddress,
         ownershipHistory: vehicle.ownershipHistory || [],
-        createdAt: vehicle.createdAt,
-        updatedAt: vehicle.updatedAt
+        createdAt: (vehicle as any).createdAt,
+        updatedAt: (vehicle as any).updatedAt
       }));
 
       logger.info(`✅ Retrieved ${transformedVehicles.length} vehicles with ownership history for user ${userId}`);
@@ -455,7 +458,7 @@ router.post('/register',
       // Create MileageHistory record for registration
       try {
         await MileageHistory.create({
-          vehicleId: newVehicle._id,
+          vehicleId: (newVehicle as any)._id,
           vin: newVehicle.vin,
           mileage: parseInt(initialMileage),
           recordedBy: userId,
@@ -484,7 +487,7 @@ router.post('/register',
           type: 'verification',
           priority: 'medium',
           channels: ['in_app'],
-          data: { vehicleId: newVehicle._id.toString() },
+          data: { vehicleId: String((newVehicle as any)._id) },
           actionUrl: `/vehicles`,
           actionLabel: 'View vehicles'
         });
@@ -500,7 +503,7 @@ router.post('/register',
             type: 'update',
             priority: 'high',
             channels: ['in_app'],
-            data: { vehicleId: newVehicle._id.toString() },
+            data: { vehicleId: String((newVehicle as any)._id) },
             actionUrl: `/admin/vehicles?status=pending`,
             actionLabel: 'Review now'
           })));
@@ -514,7 +517,7 @@ router.post('/register',
         message: 'Vehicle registered successfully. Awaiting admin verification before blockchain registration.',
         data: {
           vehicle: {
-            id: newVehicle._id,
+            id: String((newVehicle as any)._id),
             vin: newVehicle.vin,
             vehicleNumber: newVehicle.vehicleNumber,
             make: newVehicle.make,
@@ -523,7 +526,7 @@ router.post('/register',
             color: newVehicle.color,
             currentMileage: newVehicle.currentMileage,
             verificationStatus: newVehicle.verificationStatus,
-            createdAt: newVehicle.createdAt
+            createdAt: (newVehicle as any).createdAt
           }
         }
       });
@@ -570,7 +573,109 @@ router.get('/:vehicleId',
         });
       }
 
-      logger.info(`✅ Retrieved vehicle ${vehicleId} for user ${userId}`);
+      // Avoid caching so frontend sees updated device/telemetry state
+      try {
+        res.set({
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store'
+        });
+      } catch (_e) { /* no-op */ }
+
+      // Check if vehicle has an installed OBD device (Device collection)
+      let deviceStatus: 'installed' | 'requested' | 'none' = 'none';
+      let deviceInfo: any = null;
+      try {
+        logger.info(`🔍 Searching for device linked to vehicle ${vehicle._id}...`);
+        
+        // Try to find device by vehicle reference
+        const linkedDevice = await Device.findOne({ 
+          vehicle: vehicle._id, 
+          status: { $in: ['installed', 'active'] } 
+        }).select('deviceID status vehicle');
+        
+        logger.info(`🔍 Device query result:`, linkedDevice);
+        
+        if (linkedDevice) {
+          deviceStatus = 'installed';
+          deviceInfo = { 
+            deviceID: linkedDevice.deviceID, 
+            status: linkedDevice.status 
+          };
+          logger.info(`✅ Found linked device: ${linkedDevice.deviceID}`);
+        } else {
+          // Fallback: search for any device with this vehicle ID
+          const allDevicesForVehicle = await Device.find({ vehicle: vehicle._id });
+          logger.info(`🔍 All devices for this vehicle (any status):`, allDevicesForVehicle);
+          
+          if (allDevicesForVehicle.length > 0) {
+            const anyDevice = allDevicesForVehicle[0];
+            deviceStatus = anyDevice.status === 'installed' || anyDevice.status === 'active' ? 'installed' : 'none';
+            deviceInfo = { 
+              deviceID: anyDevice.deviceID, 
+              status: anyDevice.status 
+            };
+            logger.info(`⚠️ Found device with different status: ${anyDevice.deviceID} (${anyDevice.status})`);
+          }
+        }
+      } catch (e) {
+        logger.warn('Failed to resolve linked device for vehicle', e);
+      }
+
+      // Merge latest telemetry state (treat telemetry as source-of-truth for live connection)
+      let telemetryMergedStatus: string | null = null;
+      let telemetryDevice: any = null;
+      let currentMileageFromTelemetry: number | undefined;
+      let lastReadingAt: Date | undefined;
+      try {
+        const latestTelemetry = await VehicleTelemetry.findOne({ vehicle: vehicle._id })
+          .sort({ 'rawData.receivedAt': -1 })
+          .select('deviceID status mileageValidation rawData obd validation tamperingDetected');
+
+        if (latestTelemetry) {
+          telemetryMergedStatus = latestTelemetry.status || 'obd_connected';
+          const latestMileage = (latestTelemetry.mileageValidation?.newMileage as any) ?? latestTelemetry.obd?.mileage;
+          currentMileageFromTelemetry = typeof latestMileage === 'number' ? latestMileage : undefined;
+          lastReadingAt = latestTelemetry.rawData?.receivedAt as any;
+
+          telemetryDevice = {
+            deviceID: latestTelemetry.deviceID,
+            status: latestTelemetry.status,
+            validationStatus: latestTelemetry.mileageValidation?.validationStatus || (latestTelemetry as any).validation?.validationStatus,
+            tamperingDetected: latestTelemetry.mileageValidation?.flagged ?? (latestTelemetry as any).validation?.tamperingDetected ?? false,
+            fraudScore: undefined,
+            lastReading: lastReadingAt
+              ? {
+                  mileage: currentMileageFromTelemetry,
+                  recordedAt: lastReadingAt
+                }
+              : undefined
+          };
+        }
+      } catch (e) {
+        logger.warn('Failed to fetch latest telemetry for vehicle', e);
+      }
+
+      logger.info(`✅ Retrieved vehicle ${vehicleId} for user ${userId}, deviceStatus: ${deviceStatus}, device:`, deviceInfo);
+
+      // Build response object (prefer telemetry connection state when available)
+      let responseDeviceStatus: any = deviceStatus;
+      let responseDevice: any = deviceInfo;
+      if (telemetryMergedStatus) {
+        responseDeviceStatus = telemetryMergedStatus; // e.g., 'obd_connected'
+        // Preserve existing device info but add telemetry details
+        responseDevice = {
+          ...(deviceInfo || {}),
+          ...(telemetryDevice || {})
+        };
+      }
+
+      // If telemetry has newer mileage than vehicle.lastMileageUpdate, surface it
+      const vehicleLastUpdate: any = (vehicle as any).lastMileageUpdate;
+      const shouldUseTelemetryMileage =
+        typeof currentMileageFromTelemetry === 'number' &&
+        (!vehicleLastUpdate || (lastReadingAt && (lastReadingAt as any) > vehicleLastUpdate));
 
       res.status(200).json({
         success: true,
@@ -587,11 +692,11 @@ router.get('/:vehicleId',
           fuelType: vehicle.fuelType,
           transmission: vehicle.transmission,
           engineSize: vehicle.engineSize,
-          currentMileage: vehicle.currentMileage,
-          lastMileageUpdate: vehicle.lastMileageUpdate,
+          currentMileage: shouldUseTelemetryMileage ? currentMileageFromTelemetry : vehicle.currentMileage,
+          lastMileageUpdate: shouldUseTelemetryMileage ? lastReadingAt : vehicle.lastMileageUpdate,
           verificationStatus: vehicle.verificationStatus,
-          rejectionReason: vehicle.rejectionReason,
-          rejectedAt: vehicle.rejectedAt,
+          rejectionReason: (vehicle as any).rejectionReason,
+          rejectedAt: (vehicle as any).rejectedAt,
           trustScore: vehicle.trustScore,
           isForSale: vehicle.isForSale,
           listingStatus: vehicle.listingStatus,
@@ -606,7 +711,9 @@ router.get('/:vehicleId',
           accidentHistory: vehicle.accidentHistory,
           serviceHistory: vehicle.serviceHistory,
           createdAt: (vehicle as any).createdAt,
-          updatedAt: vehicle.updatedAt
+          updatedAt: (vehicle as any).updatedAt,
+          deviceStatus: responseDeviceStatus,
+          device: responseDevice
         }
       });
     } catch (error) {
@@ -660,7 +767,7 @@ router.get('/:vehicleId/blockchain-history',
           type: 'vehicle_registration',
           transactionHash: vehicle.blockchainHash || 'pending',
           status: 'confirmed',
-          timestamp: vehicle.createdAt,
+          timestamp: (vehicle as any).createdAt,
           data: {
             vehicleId: vehicle._id,
             vin: vehicle.vin,
@@ -689,6 +796,224 @@ router.get('/:vehicleId/blockchain-history',
     }
   }
 );
+
+/**
+ * GET /api/vehicles/:vehicleId/ownership-history
+ * Returns ordered ownership history newest -> oldest
+ * Access: admin, buyer (read-only), owner (if owner of vehicle)
+ */
+router.get('/:vehicleId/ownership-history', async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    const userRoles: string[] = Array.isArray(req.user?.roles) ? req.user.roles : [req.user?.role].filter(Boolean);
+    const activeRole = req.activeRole || userRoles[0]; // Use active role from middleware
+    const { vehicleId } = req.params;
+
+    if (!vehicleId || !mongoose.Types.ObjectId.isValid(vehicleId)) {
+      return res.status(400).json({ success: false, message: 'Invalid vehicle ID' });
+    }
+
+    const vehicle = await Vehicle.findById(vehicleId).populate({
+      path: 'ownershipHistory.ownerUserId',
+      select: 'firstName lastName fullName email role',
+      model: 'User'
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    }
+
+    // AuthZ: admin always, buyer read-only, owner if currently owns it
+    // Use both userRoles (what user CAN do) and activeRole (what they're DOING now)
+    const isAdmin = userRoles.includes('admin') || activeRole === 'admin';
+    const isBuyer = userRoles.includes('buyer') || activeRole === 'buyer';
+    const isOwnerOfVehicle = userId && vehicle.ownerId?.toString?.() === userId;
+    if (!isAdmin && !isBuyer && !isOwnerOfVehicle) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    let history = (vehicle.ownershipHistory || [])
+      .slice()
+      .sort((a: any, b: any) => new Date(b.fromDate).getTime() - new Date(a.fromDate).getTime())
+      .map((entry: any) => {
+        const u = (entry.ownerUserId as any) || {};
+        const email = u.email || null;
+        const maskedEmail = email ? `${email[0]}***@${email.split('@')[1]}` : 'Not available';
+        return {
+          ownerId: (u._id || entry.ownerUserId || '').toString?.() || '',
+          fullName: u.fullName || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Not available',
+          role: 'owner',
+          from: entry.fromDate,
+          to: entry.toDate || null,
+          txHash: entry.txHash || null,
+          notes: entry.note || '',
+          contactEmail: email ? maskedEmail : undefined
+        };
+      });
+
+    // Enrich with last sale record if no previous entries exist
+    const hasPrevious = history.some(h => h.to !== null);
+    if (!hasPrevious) {
+      try {
+        const lastSale = await SaleRecord.findOne({ vehicleId: vehicle._id }).sort({ createdAt: -1 }).lean();
+        if (lastSale) {
+          const seller = await User.findById(lastSale.sellerId).lean();
+          const sellerName = seller ? (seller as any).fullName || `${(seller as any).firstName || ''} ${(seller as any).lastName || ''}`.trim() : 'Previous owner';
+          const sellerEmail = seller ? (seller as any).email : null;
+          const maskedSellerEmail = sellerEmail ? `${sellerEmail[0]}***@${sellerEmail.split('@')[1]}` : undefined;
+          const transferAt: Date = (lastSale as any).ownershipTransferredAt || new Date(history[0]?.from || Date.now());
+          const prevTo = new Date(transferAt);
+          const prevFrom = new Date(transferAt.getTime() - 1000);
+          history = [
+            ...history,
+            {
+              ownerId: String(lastSale.sellerId),
+              fullName: sellerName,
+              role: 'owner',
+              from: prevFrom,
+              to: prevTo,
+              txHash: (lastSale as any).solanaTxHash || null,
+              notes: 'sold at marketplace',
+              contactEmail: maskedSellerEmail
+            }
+          ].sort((a, b) => new Date(b.from as any).getTime() - new Date(a.from as any).getTime());
+        }
+      } catch (e) {
+        logger.warn('Ownership history enrichment skipped:', e);
+      }
+    }
+
+    return res.status(200).json({ success: true, data: history });
+  } catch (error: any) {
+    logger.error('❌ Failed to get ownership history:', error);
+    return res.status(500).json({ success: false, message: 'Failed to get ownership history' });
+  }
+});
+
+/**
+ * POST /api/vehicles/import
+ * Attach existing vehicle to current user based on vin, regNumber, or deviceId
+ * Access: owner role required
+ */
+router.post('/import', async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    const roles: string[] = Array.isArray(req.user?.roles) ? req.user.roles : [req.user?.role].filter(Boolean);
+    const activeRole = req.activeRole || roles[0]; // Use active role from middleware
+    
+    // Check if user has owner role and is currently acting as owner
+    if (!userId || (!roles.includes('owner') && activeRole !== 'owner')) {
+      return res.status(403).json({ success: false, message: 'Owner role required' });
+    }
+
+    const { vin, regNumber, deviceId } = req.body || {};
+    if (!vin && !regNumber && !deviceId) {
+      return res.status(400).json({ success: false, message: 'Provide vin or regNumber or deviceId' });
+    }
+
+    const query: any = {};
+    if (vin) query.vin = String(vin).toUpperCase();
+    if (regNumber) query.vehicleNumber = String(regNumber).toUpperCase();
+    // deviceId lookup is out of scope here unless linked via other models
+
+    const vehicle = await Vehicle.findOne(query);
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    }
+
+    // If already linked to same user, return success
+    if (vehicle.ownerId?.toString?.() === userId) {
+      return res.status(200).json({ success: true, message: 'Vehicle already linked to this user', data: { vehicleId: vehicle._id } });
+    }
+
+    // Not linked: attach to current user by adding ownershipHistory entry and set previous toDate
+    const now = new Date();
+    if (Array.isArray(vehicle.ownershipHistory) && vehicle.ownershipHistory.length > 0) {
+      // Close previous current owner
+      const currentIdx = vehicle.ownershipHistory.findIndex((e: any) => !e.toDate);
+      if (currentIdx >= 0 && !vehicle.ownershipHistory[currentIdx].toDate) {
+        (vehicle.ownershipHistory[currentIdx] as any).toDate = new Date(now.getTime() - 1);
+      }
+    }
+    // Push new entry
+    (vehicle.ownershipHistory as any) = (vehicle.ownershipHistory || []);
+    (vehicle.ownershipHistory as any).push({
+      ownerUserId: new mongoose.Types.ObjectId(userId),
+      fromDate: now,
+      note: 'Imported to current owner',
+      txHash: null
+    });
+
+    // Also update ownerId to reflect current owner
+    (vehicle as any).ownerId = new mongoose.Types.ObjectId(userId);
+    await vehicle.save();
+
+    return res.status(200).json({ success: true, message: 'Vehicle imported and linked to user', data: { vehicleId: vehicle._id } });
+  } catch (error: any) {
+    logger.error('❌ Vehicle import failed:', error);
+    return res.status(500).json({ success: false, message: 'Failed to import vehicle' });
+  }
+});
+
+/**
+ * POST /api/vehicles/:vehicleId/ownership/transfer
+ * Update ownership on sale: closes previous toDate and appends new entry
+ * Access: admin only (sale flow elsewhere can call this)
+ */
+router.post('/:vehicleId/ownership/transfer', async (req: any, res: any) => {
+  try {
+    const roles: string[] = Array.isArray(req.user?.roles) ? req.user.roles : [req.user?.role].filter(Boolean);
+    const activeRole = req.activeRole || roles[0]; // Use active role from middleware
+    
+    // Admin-only endpoint - check both roles array and active role
+    if (!roles.includes('admin') && activeRole !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin role required' });
+    }
+
+    const { vehicleId } = req.params;
+    const { newOwnerUserId, txHash, note } = req.body || {};
+    if (!mongoose.Types.ObjectId.isValid(vehicleId) || !mongoose.Types.ObjectId.isValid(newOwnerUserId)) {
+      return res.status(400).json({ success: false, message: 'Invalid ids' });
+    }
+
+    const vehicle = await Vehicle.findById(vehicleId);
+    if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+
+    const now = new Date();
+    if (Array.isArray(vehicle.ownershipHistory) && vehicle.ownershipHistory.length > 0) {
+      const currentIdx = vehicle.ownershipHistory.findIndex((e: any) => !e.toDate);
+      if (currentIdx >= 0) {
+        (vehicle.ownershipHistory[currentIdx] as any).toDate = new Date(now.getTime() - 1);
+      }
+    }
+
+    (vehicle.ownershipHistory as any) = (vehicle.ownershipHistory || []);
+    (vehicle.ownershipHistory as any).push({
+      ownerUserId: new mongoose.Types.ObjectId(newOwnerUserId),
+      fromDate: now,
+      txHash: txHash || null,
+      note: note || 'Ownership transferred'
+    });
+    (vehicle as any).ownerId = new mongoose.Types.ObjectId(newOwnerUserId);
+    await vehicle.save();
+
+    // If there is an installed device linked to this vehicle, reassign its owner
+    try {
+      const linkedDevice = await Device.findOne({ vehicle: vehicle._id, status: { $in: ['installed', 'active'] } });
+      if (linkedDevice) {
+        linkedDevice.owner = new mongoose.Types.ObjectId(newOwnerUserId);
+        await linkedDevice.save();
+      }
+    } catch (e) {
+      logger.warn('Ownership transfer: failed to reassign device owner', e);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error('❌ Ownership transfer failed:', error);
+    return res.status(500).json({ success: false, message: 'Ownership transfer failed' });
+  }
+});
 
 /**
  * GET /api/vehicles/:vehicleId/mileage

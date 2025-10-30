@@ -4,6 +4,7 @@ import { useAppSelector } from '../hooks/redux';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import { Layout } from '../components/layout/Layout';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import SelectRole from '../components/auth/SelectRole';
 
 // Lazy load all pages for better performance
 const DashboardHome = lazy(() => import('../pages/DashboardHome'));
@@ -153,6 +154,8 @@ export const AppRouter: React.FC = () => {
           
           {/* Default redirect */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Role selection */}
+          <Route path="/select-role" element={<SelectRole />} />
         </Routes>
       </Suspense>
     </Layout>

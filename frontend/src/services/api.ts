@@ -10,13 +10,20 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor - Add auth token to requests
+// Request interceptor - Add auth token and active role to requests
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Add X-Active-Role header for multi-role support
+    const selectedRole = localStorage.getItem('selectedRole');
+    if (selectedRole && config.headers) {
+      config.headers['X-Active-Role'] = selectedRole;
+    }
+    
     return config;
   },
   (error) => {

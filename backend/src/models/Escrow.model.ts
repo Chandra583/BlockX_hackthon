@@ -58,3 +58,4 @@ EscrowSchema.index({ paymentReference: 1 });
 
 export const Escrow = mongoose.model<IEscrow>('Escrow', EscrowSchema);
 
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,14 +22,32 @@ interface LoginFormProps {
   onRegister?: () => void;
 }
 
+const ROLE_OPTIONS = [
+  { value: 'auto', label: 'Auto (detect from account)' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'owner', label: 'Owner' },
+  { value: 'buyer', label: 'Buyer' },
+  { value: 'service', label: 'Service Provider' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'government', label: 'Government' }
+];
+
 export const LoginForm: React.FC<LoginFormProps> = ({ 
   onSuccess, 
   onForgotPassword, 
   onRegister 
 }) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>('auto');
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('selectedRole');
+      if (saved) setSelectedRole(saved);
+    } catch (_e) { void 0; }
+  }, []);
 
   const {
     register,
@@ -49,23 +67,33 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       dispatch(clearError());
       dispatch(loginStart());
       
-      console.log('Login attempt with data:', data);
-      
+      // Persist role preference BEFORE login
+      let effectiveSelectedRole = selectedRole;
+      try {
+        if (selectedRole && selectedRole !== 'auto') {
+          window.localStorage.setItem('selectedRole', selectedRole);
+          console.log('🎯 Role selected from dropdown:', selectedRole);
+        } else {
+          window.localStorage.removeItem('selectedRole');
+          effectiveSelectedRole = 'auto';
+          console.log('🎯 Auto role selection (will use roles array after login)');
+        }
+      } catch (_e) { void 0; }
+
       const response = await AuthService.login(data);
       
-      console.log('Login response:', response);
-      
+      console.log('✅ Login response received, roles:', (response.user as any).roles);
+      console.log('📍 Selected role in localStorage:', window.localStorage.getItem('selectedRole'));
+
       dispatch(loginSuccess({
         user: response.user,
         token: response.token,
         refreshToken: response.refreshToken,
         rememberMe: data.rememberMe || false,
       }));
-      
-      console.log('Login successful, navigating...');
+
       onSuccess?.();
     } catch (error) {
-      console.error('Login failed:', error);
       const errorMessage = handleApiError(error);
       dispatch(loginFailure(errorMessage));
     }
@@ -118,14 +146,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Email Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-          >
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-              Email Address
-            </label>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.6 }}>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-400" />
@@ -140,22 +162,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               />
             </div>
             {errors.email && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-2 text-sm text-red-400">{errors.email.message}</motion.p>
+              <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-sm text-red-400">{errors.email.message}</motion.p>
             )}
           </motion.div>
 
           {/* Password Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-          >
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-              Password
-            </label>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5, duration: 0.6 }}>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">Password</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -184,90 +197,55 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               </motion.button>
             </div>
             {errors.password && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-2 text-sm text-red-400">{errors.password.message}</motion.p>
+              <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-sm text-red-400">{errors.password.message}</motion.p>
             )}
+          </motion.div>
+
+          {/* Role Selection (Optional) */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.55, duration: 0.6 }}>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-2">Role (optional)</label>
+            <select
+              id="role"
+              value={selectedRole}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedRole(val);
+                try {
+                  if (val === 'auto') window.localStorage.removeItem('selectedRole');
+                  else window.localStorage.setItem('selectedRole', val);
+                } catch (_e) { void 0; }
+              }}
+              className="w-full px-3 py-3 bg-slate-700/50 backdrop-blur-sm border border-slate-600/50 rounded-xl text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+              disabled={isLoading}
+            >
+              {ROLE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-gray-400">If your account has multiple roles, choosing one here sends you directly to that dashboard.</p>
           </motion.div>
 
           {/* Remember Me */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            className="flex items-center"
-          >
-            <input
-              id="rememberMe"
-              type="checkbox"
-              {...register('rememberMe')}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-600 rounded bg-slate-700/50"
-              disabled={isLoading}
-            />
-            <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-300">
-              Remember me for 30 days
-            </label>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6, duration: 0.6 }} className="flex items-center">
+            <input id="rememberMe" type="checkbox" {...register('rememberMe')} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-600 rounded bg-slate-700/50" disabled={isLoading} />
+            <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-300">Remember me for 30 days</label>
           </motion.div>
 
           {/* Submit Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-5 w-5 mr-2" />
-                Sign In
-              </>
-            )}
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+            {isLoading ? (<><Loader2 className="animate-spin h-5 w-5 mr-2" />Signing in...</>) : (<><Sparkles className="h-5 w-5 mr-2" />Sign In</>)}
           </motion.button>
         </form>
 
         {/* Additional Links */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          className="mt-6 text-center space-y-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8, duration: 0.6 }} className="mt-6 text-center space-y-4">
           {onForgotPassword && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              type="button"
-              onClick={onForgotPassword}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
-              disabled={isLoading}
-            >
-              Forgot your password?
-            </motion.button>
+            <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={onForgotPassword} className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors" disabled={isLoading}>Forgot your password?</motion.button>
           )}
-          
           {onRegister && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1, duration: 0.6 }}
-              className="text-sm text-gray-400"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.6 }} className="text-sm text-gray-400">
               Don't have an account?{' '}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                type="button"
-                onClick={onRegister}
-                className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                disabled={isLoading}
-              >
-                Sign up
-              </motion.button>
+              <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={onRegister} className="text-blue-400 hover:text-blue-300 font-medium transition-colors" disabled={isLoading}>Sign up</motion.button>
             </motion.div>
           )}
         </motion.div>

@@ -69,14 +69,36 @@ export class VehicleAPI {
    * Get vehicle ownership history
    * GET /api/vehicles/:vehicleId/ownership-history
    */
-  static async getVehicleOwnershipHistory(vehicleId: string): Promise<{ success: boolean; data: any }> {
+  static async getVehicleOwnershipHistory(vehicleId: string): Promise<{ success: boolean; data: Array<{ ownerId: string; fullName: string; role: string; from: string; to?: string | null; txHash?: string | null; notes?: string; contactEmail?: string }> }> {
     try {
-      const response = await apiService.get<{ success: boolean; data: any }>(
+      const response = await apiService.get<{ success: boolean; data: Array<{ ownerId: string; fullName: string; role: string; from: string; to?: string | null; txHash?: string | null; notes?: string; contactEmail?: string }> }>(
         `/vehicles/${vehicleId}/ownership-history`
       );
       return response;
-    } catch (error) {
-      console.error('Failed to fetch vehicle ownership history:', error);
+    } catch (error: unknown) {
+      console.error('Failed to fetch vehicle ownership history:', error as Error);
+      throw error;
+    }
+  }
+
+  // Alias per spec
+  static async getOwnershipHistory(vehicleId: string): Promise<{ success: boolean; data: Array<{ ownerId: string; fullName: string; role: string; from: string; to?: string | null; txHash?: string | null; notes?: string; contactEmail?: string }> }> {
+    return this.getVehicleOwnershipHistory(vehicleId);
+  }
+
+  /**
+   * Import vehicle by VIN/registration/deviceId
+   * POST /api/vehicles/import
+   */
+  static async importVehicle(params: { vin?: string; regNumber?: string; deviceId?: string }): Promise<{ success: boolean; data?: { vehicleId: string }; message?: string }> {
+    try {
+      const response = await apiService.post<{ success: boolean; data?: { vehicleId: string }; message?: string }>(
+        `/vehicles/import`,
+        params
+      );
+      return response;
+    } catch (error: unknown) {
+      console.error('Failed to import vehicle:', error as Error);
       throw error;
     }
   }

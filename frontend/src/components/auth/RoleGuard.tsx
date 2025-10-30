@@ -47,12 +47,18 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Normalize role for comparison
-  const userRole = (user.role || '').toLowerCase();
+  // Resolve effective role: selectedRole (localStorage) > roles array > user.role
+  const storedSelectedRole = typeof window !== 'undefined' ? window.localStorage.getItem('selectedRole') : null;
+  const userRoles: string[] = (user as any).roles || (user.role ? [user.role] : []);
+  const effectiveRole = (storedSelectedRole || userRoles[0] || user.role || '').toLowerCase();
+  
   const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase());
 
-  // Check if user's role is in allowed roles
-  if (!normalizedAllowedRoles.includes(userRole)) {
+  // Check if effective role OR any user role is in allowed roles
+  const hasAccess = normalizedAllowedRoles.includes(effectiveRole) || 
+                   userRoles.some(role => normalizedAllowedRoles.includes(role.toLowerCase()));
+
+  if (!hasAccess) {
     // If fallback route is provided, redirect there
     if (fallbackRoute) {
       return <Navigate to={fallbackRoute} replace />;
@@ -66,6 +72,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 };
 
 export default RoleGuard;
+
 
 
 

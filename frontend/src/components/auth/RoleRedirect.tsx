@@ -42,7 +42,17 @@ export const RoleRedirect: React.FC<RoleRedirectProps> = ({
     }
   };
 
-  const dashboardRoute = getRoleDashboardRoute(user.role);
+  const storedSelectedRole = typeof window !== 'undefined' ? window.localStorage.getItem('selectedRole') : null;
+  const rolesArray: string[] = (user as any).roles || (user as any).role ? [user.role] : [];
+  const hasMultipleRoles = Array.isArray((user as any).roles) && ((user as any).roles as string[]).length > 1;
+
+  // If user has multiple roles and none selected, route to role select screen
+  if (hasMultipleRoles && !storedSelectedRole) {
+    return <Navigate to="/select-role" state={{ from: location }} replace />;
+  }
+
+  const effectiveRole = (storedSelectedRole || (user as any).selectedRole || user.role) as string;
+  const dashboardRoute = getRoleDashboardRoute(effectiveRole);
   
   // Prevent infinite redirects by checking if we're already on the target route
   if (location.pathname === dashboardRoute) {

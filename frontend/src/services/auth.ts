@@ -12,9 +12,12 @@ import type {
 
 export class AuthService {
   static async login(credentials: LoginFormData): Promise<AuthResponse> {
+    // Attach role preference (for observability on backend; backend may ignore it)
+    const rolePreference = typeof window !== 'undefined' ? (window.localStorage.getItem('selectedRole') || 'auto') : 'auto';
+    const payload: any = { ...credentials, rolePreference };
     const backendResponse = await apiService.post<BackendAuthResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
-      credentials
+      payload
     );
     
     // Map backend response to frontend AuthResponse format
@@ -23,6 +26,8 @@ export class AuthService {
         id: backendResponse.data.user.id,
         email: backendResponse.data.user.email,
         role: backendResponse.data.user.role,
+        // attach roles array if provided by backend
+        ...(backendResponse.data.user as any).roles ? { roles: (backendResponse.data.user as any).roles } : {},
         firstName: backendResponse.data.user.firstName,
         lastName: backendResponse.data.user.lastName,
         isActive: backendResponse.data.user.accountStatus === 'active',
@@ -47,6 +52,7 @@ export class AuthService {
         id: backendResponse.data.user.id,
         email: backendResponse.data.user.email,
         role: backendResponse.data.user.role,
+        ...(backendResponse.data.user as any).roles ? { roles: (backendResponse.data.user as any).roles } : {},
         firstName: backendResponse.data.user.firstName,
         lastName: backendResponse.data.user.lastName,
         isActive: backendResponse.data.user.accountStatus === 'active',

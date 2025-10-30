@@ -40,7 +40,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredPermission,
   fallbackComponent: FallbackComponent = UnauthorizedAccess,
 }) => {
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user, selectedRole } = useAppSelector((state) => state.auth);
   const location = useLocation();
 
   // If not authenticated, redirect to login
@@ -53,15 +53,27 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Resolve effective role: selectedRole from state (which syncs with localStorage)
+  const effectiveRole = selectedRole || user.role;
+  
+  // Get user's available roles
+  const userRoles = user.roles || (user.role ? [user.role] : []);
+
   // Check role-based access
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <FallbackComponent />;
+  if (allowedRoles) {
+    // Check if effectiveRole is in allowedRoles OR if user has any of the allowedRoles
+    const hasAccess = allowedRoles.includes(effectiveRole) || 
+                      allowedRoles.some(role => userRoles.includes(role as any));
+    
+    if (!hasAccess) {
+      return <FallbackComponent />;
+    }
   }
 
   // Check permission-based access
   if (requiredPermission) {
     const hasPermission = PermissionService.hasPermission(
-      user.role,
+      effectiveRole,
       requiredPermission.resource,
       requiredPermission.action
     );
@@ -73,7 +85,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check route-based access
   const { canAccess, redirectTo } = PermissionService.validateRouteAccess(
-    user.role,
+    effectiveRole,
     location.pathname
   );
 

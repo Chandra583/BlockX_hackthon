@@ -55,6 +55,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     //   throw new AuthenticationError('Token has been revoked');
     // }
 
+    // Normalize roles: ensure we have an array
+    const userRoles = Array.isArray((user as any).roles) ? (user as any).roles : [user.role];
+    
     // Attach user and token info to request
     req.user = {
       id: user._id.toString(),
@@ -63,6 +66,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       lastName: user.lastName,
       fullName: user.fullName,
       role: user.role,
+      roles: userRoles,
       accountStatus: user.accountStatus,
       verificationStatus: user.verificationStatus,
       emailVerified: user.emailVerified,
@@ -73,13 +77,27 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       createdAt: user.createdAt
     };
 
+    // Handle X-Active-Role header for multi-role support
+    const activeRoleHeader = req.headers['x-active-role'] as string;
+    if (activeRoleHeader) {
+      // Validate that the requested active role is in user's roles
+      if (!userRoles.includes(activeRoleHeader)) {
+        logger.warn(`User ${user.email} attempted to use unauthorized role: ${activeRoleHeader}`);
+        throw new AuthorizationError(`Active role "${activeRoleHeader}" is not permitted for this user`);
+      }
+      req.activeRole = activeRoleHeader;
+      logger.info(`Authenticated user: ${user.email} with active role: ${activeRoleHeader}`);
+    } else {
+      // Fallback to first role or user.role
+      req.activeRole = userRoles[0] || user.role;
+      logger.info(`Authenticated user: ${user.email} (${req.activeRole})`);
+    }
+
     req.sessionId = decoded.userId; // For session tracking
     
     // Update last activity
     user.lastActivity = new Date();
     await user.save();
-
-    logger.info(`Authenticated user: ${user.email} (${user.role})`);
     
     next();
   } catch (error) {
@@ -134,7 +152,16 @@ export const authorize = (...allowedRoles: UserRole[]) => {
         throw new AuthenticationError('Authentication required');
       }
 
-      if (!allowedRoles.includes(req.user.role)) {
+      // Support roles array during migration while keeping backward compatibility
+      const rolesFromRequest: string[] = Array.isArray((req.user as any).roles)
+        ? ((req.user as any).roles as string[])
+        : [req.user.role].filter(Boolean);
+
+      const permitted = allowedRoles.length === 0
+        ? true
+        : allowedRoles.some(r => rolesFromRequest.includes(r));
+
+      if (!permitted) {
         throw new AuthorizationError(`Access denied. Required roles: ${allowedRoles.join(', ')}`);
       }
 
@@ -248,8 +275,12 @@ export const requireSelfAccess = (req: Request, res: Response, next: NextFunctio
       throw new ApiError(400, 'User ID parameter is required');
     }
 
-    // Admin can access any user's resources
-    if (req.user.role === 'admin') {
+    // Admin can access any user's resources (check both roles array and active role)
+    const userRoles = req.user.roles || (req.user.role ? [req.user.role] : []);
+    const activeRole = req.activeRole || userRoles[0];
+    const isAdmin = userRoles.includes('admin') || activeRole === 'admin';
+    
+    if (isAdmin) {
       return next();
     }
 

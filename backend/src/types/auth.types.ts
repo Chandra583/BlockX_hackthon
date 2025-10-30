@@ -76,6 +76,7 @@ export interface IUserInfo {
   lastName: string;
   fullName: string;
   role: UserRole;
+  roles?: UserRole[];
   accountStatus: string;
   verificationStatus: string;
   emailVerified: boolean;

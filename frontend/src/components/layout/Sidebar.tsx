@@ -40,13 +40,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated, selectedRole } = useAppSelector((state) => state.auth);
   const { activeSidebarItem } = useAppSelector((state) => state.ui);
 
   useEffect(() => {
     // Set active item based on current path with role-based routing
     const path = location.pathname;
-    const role = user?.role?.toLowerCase();
+    // Use selectedRole for multi-role support, fallback to user.role
+    const role = (selectedRole || user?.role)?.toLowerCase();
     
     if (role === 'admin') {
       if (path.includes('/admin/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
@@ -65,6 +66,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (path.includes('/sp/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
       else if (path.includes('/sp/installs')) dispatch(setActiveSidebarItem('installs'));
       else if (path.includes('/sp/devices')) dispatch(setActiveSidebarItem('devices'));
+    } else if (role === 'buyer') {
+      if (path.includes('/buyer/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
+      else if (path.includes('/buyer/marketplace') || path.includes('/marketplace')) dispatch(setActiveSidebarItem('marketplace'));
+      else if (path.includes('/buyer/purchases')) dispatch(setActiveSidebarItem('purchases'));
     } else {
       // Fallback for legacy routes
       if (path.includes('/dashboard')) dispatch(setActiveSidebarItem('dashboard'));
@@ -74,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       else if (path.includes('/history')) dispatch(setActiveSidebarItem('history'));
       else if (path.includes('/marketplace')) dispatch(setActiveSidebarItem('marketplace'));
     }
-  }, [location, dispatch, user?.role]);
+  }, [location, dispatch, user?.role, selectedRole]);
 
   if (!isAuthenticated || !user) return null;
 
@@ -103,11 +108,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const getLinks = () => {
-    const role = user?.role?.toLowerCase();
+    // Use selectedRole for multi-role support, fallback to user.role
+    const role = (selectedRole || user?.role)?.toLowerCase();
     return getNavigationForRole(role) || [];
   };
 
-  const RoleIcon = getRoleIcon(user.role);
+  const activeRole = selectedRole || user.role;
+  const RoleIcon = getRoleIcon(activeRole);
   const fullName = `${user.firstName} ${user.lastName}`;
   const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
 

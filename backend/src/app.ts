@@ -67,8 +67,9 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200,
   // Additional CORS options for production
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'idempotency-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'idempotency-key', 'X-Active-Role'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  exposedHeaders: ['X-Active-Role'], // Allow frontend to read this header in responses
 }));
 
 // Rate limiting

@@ -217,6 +217,8 @@ const UserSchema = new Schema<IUser>({
     enum: ['admin', 'owner', 'buyer', 'service', 'insurance', 'government'], 
     required: true 
   },
+  // Multi-role support (backward compatible)
+  roles: [{ type: String, enum: ['admin', 'owner', 'buyer', 'service', 'insurance', 'government'] }],
   accountStatus: { 
     type: String, 
     enum: ['active', 'pending', 'suspended', 'locked', 'deactivated'], 

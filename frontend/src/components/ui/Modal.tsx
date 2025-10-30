@@ -15,6 +15,7 @@ export interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  theme?: 'light' | 'dark';
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -28,7 +29,8 @@ const Modal: React.FC<ModalProps> = ({
   closeOnEscape = true,
   children,
   footer,
-  className = ''
+  className = '',
+  theme = 'light'
 }) => {
   // Handle escape key
   useEffect(() => {
@@ -63,7 +65,17 @@ const Modal: React.FC<ModalProps> = ({
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
     full: 'max-w-7xl mx-4'
-  };
+  } as const;
+
+  const containerTheme = theme === 'dark'
+    ? 'bg-slate-900 text-slate-100 border border-slate-700'
+    : 'bg-white';
+
+  const headerBorder = theme === 'dark' ? 'border-slate-700' : 'border-gray-200';
+  const footerBorder = headerBorder;
+  const closeButtonClass = theme === 'dark'
+    ? 'text-slate-400 hover:text-white'
+    : 'text-gray-400 hover:text-gray-600';
 
   const handleOverlayClick = (event: React.MouseEvent) => {
     if (closeOnOverlayClick && event.target === event.currentTarget) {
@@ -91,31 +103,30 @@ const Modal: React.FC<ModalProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className={`relative w-full ${sizeClasses[size]} bg-white rounded-lg shadow-xl ${className}`}
+              className={`relative w-full ${sizeClasses[size]} ${containerTheme} rounded-lg shadow-xl ${className}`}
             >
               {/* Header */}
               {(title || showCloseButton) && (
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className={`flex items-center justify-between p-6 border-b ${headerBorder}`}>
                   <div>
                     {title && (
-                      <h2 className="text-lg font-semibold text-gray-900">
+                      <h2 className="text-lg font-semibold">
                         {title}
                       </h2>
                     )}
                     {description && (
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="mt-1 text-sm opacity-80">
                         {description}
                       </p>
                     )}
                   </div>
-                  
                   {showCloseButton && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={onClose}
                       icon={<X className="w-4 h-4" />}
-                      className="text-gray-400 hover:text-gray-600"
+                      className={closeButtonClass}
                     />
                   )}
                 </div>
@@ -128,7 +139,7 @@ const Modal: React.FC<ModalProps> = ({
 
               {/* Footer */}
               {footer && (
-                <div className="flex items-center justify-end space-x-2 p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <div className={`flex items-center justify-end space-x-2 p-6 border-t ${footerBorder} ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'} rounded-b-lg`}>
                   {footer}
                 </div>
               )}
@@ -177,7 +188,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       confirmVariant: 'primary' as const,
       icon: 'ℹ️'
     }
-  };
+  } as const;
 
   const config = variantConfig[variant];
 
@@ -192,7 +203,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <div className="text-4xl mb-4">{config.icon}</div>
         <p className="text-gray-600 mb-6">{message}</p>
       </div>
-      
       <div className="flex space-x-3 justify-end">
         <Button
           variant="outline"

@@ -21,6 +21,7 @@ import { ROLE_LABELS } from '../../types/auth';
 import NotificationService from '../../services/notifications';
 import NotificationDropdown from './NotificationDropdown';
 import ProfileMenu from './ProfileMenu';
+import { RoleSelector } from './RoleSelector';
 
 export const Header: React.FC = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -102,6 +103,9 @@ export const Header: React.FC = () => {
 
           {/* Right side - Desktop */}
           <div className="hidden md:flex md:items-center md:space-x-4">
+            {/* Role Selector (for multi-role users) */}
+            <RoleSelector />
+            
             {/* Theme Toggle */}
             <ThemeToggle />
             

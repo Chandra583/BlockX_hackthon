@@ -489,6 +489,7 @@ export class AuthService {
       lastName: user.lastName,
       fullName: user.fullName,
       role: user.role,
+      roles: Array.isArray(user.roles) ? user.roles : [user.role].filter(Boolean),
       accountStatus: user.accountStatus,
       verificationStatus: user.verificationStatus,
       emailVerified: user.emailVerified,

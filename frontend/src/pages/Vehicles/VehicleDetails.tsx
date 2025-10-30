@@ -25,6 +25,7 @@ import {
   FileText,
   Eye
 } from 'lucide-react';
+import OwnershipHistoryModal from '../../components/vehicle/OwnershipHistoryModal';
 import { VehicleReportModal } from '../../components/Report/VehicleReportModal';
 import { ListForSaleModal } from '../../components/Report/ListForSaleModal';
 import VehicleService from '../../services/vehicle';
@@ -70,6 +71,11 @@ interface Vehicle {
   currentMileage?: number;
   fraudAlerts?: any[];
   mileageHistory?: any[];
+  deviceStatus?: 'installed' | 'requested' | 'none' | 'obd_connected';
+  device?: {
+    deviceID: string;
+    status: string;
+  };
 }
 
 interface InstallationRequest {
@@ -135,13 +141,19 @@ const DeviceStatusCard: React.FC<{
   onRequestInstall: () => void;
   blockchainAddress?: string;
   vehicleId: string;
-}> = ({ installationRequest, onRequestInstall, blockchainAddress, vehicleId }) => {
+  vehicleDeviceStatus?: 'installed' | 'requested' | 'none' | 'obd_connected';
+  vehicleDevice?: { deviceID: string; status: string };
+}> = ({ installationRequest, onRequestInstall, blockchainAddress, vehicleId, vehicleDeviceStatus, vehicleDevice }) => {
   const [loadingTx, setLoadingTx] = useState(false);
   const [installTxHash, setInstallTxHash] = useState<string | null>(null);
   const [installExplorerUrl, setInstallExplorerUrl] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
 
-  const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
+  // Prioritize vehicleDeviceStatus from the vehicle API response
+  const isDeviceInstalled =
+    vehicleDeviceStatus === 'installed' ||
+    vehicleDeviceStatus === 'obd_connected' ||
+    (installationRequest && installationRequest.status === 'completed');
   const hasActiveRequest = installationRequest && 
     (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress');
 
@@ -284,7 +296,10 @@ const DeviceStatusCard: React.FC<{
     );
   }
 
-  if (isDeviceInstalled && installationRequest?.device) {
+  // Show device installed card if vehicleDevice exists OR if there's a completed installation request
+  if (isDeviceInstalled || vehicleDevice) {
+    const deviceID = vehicleDevice?.deviceID || installationRequest?.deviceId || installationRequest?.device?.deviceID;
+    
     return (
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -336,7 +351,7 @@ const DeviceStatusCard: React.FC<{
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Device ID</span>
-                <span className="font-bold text-gray-900">{installationRequest.deviceId || installationRequest.device?.deviceID}</span>
+                <span className="font-bold text-gray-900">{deviceID || 'Unknown'}</span>
               </div>
             </motion.div>
 
@@ -355,7 +370,7 @@ const DeviceStatusCard: React.FC<{
               </div>
             </motion.div>
 
-            {installationRequest.serviceProvider && (
+            {installationRequest?.serviceProvider && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -371,7 +386,7 @@ const DeviceStatusCard: React.FC<{
               </motion.div>
             )}
 
-            {installationRequest.installedAt && (
+            {installationRequest?.installedAt && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -495,6 +510,7 @@ const VehicleDetails: React.FC = () => {
   const [trustScore, setTrustScore] = useState(vehicle?.trustScore || 100);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showListModal, setShowListModal] = useState(false);
+  const [showOwnershipModal, setShowOwnershipModal] = useState(false);
 
   // Socket for real-time updates
   const { socket } = useSocket();
@@ -603,19 +619,16 @@ const VehicleDetails: React.FC = () => {
       setFraudDataLoading(true);
       console.log('🔍 Fetching fraud detection data for vehicle:', vehicleId);
       
-      // Only fetch OBD data if device is installed
-      const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
-      console.log('🔍 Device installed status:', isDeviceInstalled);
-      
+      // Fetch OBD data unconditionally; backend will return null if not available
       const [fraudResponse, obdResponse] = await Promise.all([
         TelemetryService.getFraudAlerts(vehicleId).catch(err => {
           console.error('❌ Fraud alerts API error:', err);
           return { data: [] };
         }),
-        isDeviceInstalled ? TelemetryService.getLatestOBDData(vehicleId).catch(err => {
+        TelemetryService.getLatestOBDData(vehicleId).catch(err => {
           console.error('❌ OBD data API error:', err);
           return { data: null };
-        }) : Promise.resolve({ data: null })
+        })
       ]);
 
       console.log('🔍 Fraud alerts response:', fraudResponse);
@@ -627,7 +640,7 @@ const VehicleDetails: React.FC = () => {
       
       console.log('🔍 Extracted OBD data:', obdData);
       
-      // For testing: Create mock OBD data if none exists but device is installed
+      // If telemetry exists and vehicle shows no device, surface connection state in UI
       if (!obdData && isDeviceInstalled) {
         obdData = {
           deviceID: 'OBD30233',
@@ -704,11 +717,16 @@ const VehicleDetails: React.FC = () => {
         const vehicleData = {
           ...response.data,
           mileage: response.data.mileage || response.data.currentMileage || 0,
-          lastMileageUpdate: response.data.lastMileageUpdate || response.data.lastMileageUpdate
+          lastMileageUpdate: response.data.lastMileageUpdate || response.data.lastMileageUpdate,
+          // Preserve device status and device info
+          deviceStatus: response.data.deviceStatus,
+          device: response.data.device
         };
         
         console.log('🔍 Mapped vehicle data:', vehicleData);
         console.log('🔍 Final mileage value:', vehicleData.mileage);
+        console.log('🔍 Device Status:', vehicleData.deviceStatus);
+        console.log('🔍 Device Info:', vehicleData.device);
         
         setVehicle(vehicleData);
         setTrustScore(vehicleData.trustScore || 100);
@@ -855,8 +873,11 @@ const VehicleDetails: React.FC = () => {
   const hasActiveRequest = installationRequest && 
     (installationRequest.status === 'requested' || installationRequest.status === 'assigned' || installationRequest.status === 'in_progress');
   
-  // Check if device is installed
-  const isDeviceInstalled = installationRequest && installationRequest.status === 'completed';
+  // Check if device is installed/connected - prioritize vehicle.deviceStatus over installationRequest
+  const isDeviceInstalled =
+    vehicle.deviceStatus === 'installed' ||
+    vehicle.deviceStatus === 'obd_connected' ||
+    (installationRequest && installationRequest.status === 'completed');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -894,17 +915,19 @@ const VehicleDetails: React.FC = () => {
             >
               VIN: {vehicle.vin}
             </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mt-2"
-            >
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 backdrop-blur-sm">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Device installed
-              </span>
-            </motion.div>
+            {isDeviceInstalled && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mt-2"
+              >
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 backdrop-blur-sm">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Device installed
+                </span>
+              </motion.div>
+            )}
           </div>
           <div className="flex gap-4">
             <motion.button
@@ -935,6 +958,16 @@ const VehicleDetails: React.FC = () => {
             >
               <Smartphone className="w-5 h-5 mr-2" />
               {hasActiveRequest ? 'Request Pending' : isDeviceInstalled ? 'Device Installed' : 'Request Device Install'}
+            </motion.button>
+          </div>
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowOwnershipModal(true)}
+              className="inline-flex items-center px-3 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 border border-blue-600/30 hover:border-blue-600/50"
+            >
+              <Eye className="w-4 h-4 mr-2" /> View Ownership
             </motion.button>
           </div>
         </motion.div>
@@ -1284,6 +1317,8 @@ const VehicleDetails: React.FC = () => {
               onRequestInstall={handleRequestInstall}
               blockchainAddress={vehicle.blockchainAddress}
               vehicleId={vehicle.id}
+              vehicleDeviceStatus={vehicle.deviceStatus}
+              vehicleDevice={vehicle.device}
             />
 
             {/* Marketplace Status */}
@@ -1492,6 +1527,13 @@ const VehicleDetails: React.FC = () => {
           vehicleNumber: vehicle.vehicleNumber
         }}
         onListingSuccess={handleListingSuccess}
+      />
+
+      {/* Ownership History Modal */}
+      <OwnershipHistoryModal
+        vehicleId={vehicle.id}
+        open={showOwnershipModal}
+        onClose={() => setShowOwnershipModal(false)}
       />
     </div>
   );

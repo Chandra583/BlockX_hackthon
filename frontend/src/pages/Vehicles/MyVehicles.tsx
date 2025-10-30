@@ -44,10 +44,14 @@ import {
   ArrowRight,
   ArrowLeft,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  X
 } from 'lucide-react';
-import { PurchaseAPI, type OwnershipHistory } from '../../api/purchase';
 import { VehicleAPI } from '../../api/vehicle';
+import OwnershipHistoryModal from '../../components/vehicle/OwnershipHistoryModal';
+import ImportVehicleModal from '../../components/vehicle/ImportVehicleModal';
+import type { OwnershipHistory } from '../../api/purchase';
+import { useAppSelector } from '../../hooks/redux';
 import toast from 'react-hot-toast';
 
 interface Vehicle {
@@ -60,7 +64,7 @@ interface Vehicle {
   color: string;
   currentMileage: number;
   trustScore: number;
-  ownerUserId: string;
+  ownerUserId?: string;
   ownerWalletAddress?: string;
   ownershipHistory: Array<{
     ownerUserId: string | {
@@ -83,16 +87,8 @@ interface Vehicle {
   updatedAt: string;
 }
 
-interface OwnerInfo {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  email: string;
-  walletAddress?: string;
-}
-
 export const MyVehicles: React.FC = () => {
+  const { user } = useAppSelector((state) => state.auth);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -103,6 +99,7 @@ export const MyVehicles: React.FC = () => {
   const [sortBy, setSortBy] = useState<'date' | 'trustScore' | 'mileage'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedVehicle, setExpandedVehicle] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     fetchMyVehicles();
@@ -124,8 +121,8 @@ export const MyVehicles: React.FC = () => {
 
   const fetchOwnershipHistory = async (vehicleId: string) => {
     try {
-      const response = await PurchaseAPI.getOwnershipHistory(vehicleId);
-      setOwnershipHistory(response.data);
+      const response = await VehicleAPI.getOwnershipHistory(vehicleId);
+      setOwnershipHistory({ ownershipHistory: response.data } as any);
     } catch (error: any) {
       console.error('Failed to fetch ownership history:', error?.message || String(error));
       toast.error('Failed to load ownership history');
@@ -218,6 +215,17 @@ export const MyVehicles: React.FC = () => {
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </motion.button>
+              {user?.role === 'owner' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowImportModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 hover:text-emerald-300 border border-emerald-600/30 hover:border-emerald-600/50"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Import Vehicle</span>
+                </motion.button>
+              )}
             </div>
           </div>
         </div>
@@ -457,7 +465,7 @@ export const MyVehicles: React.FC = () => {
                                                 <motion.button
                                                   whileHover={{ scale: 1.05 }}
                                                   whileTap={{ scale: 0.95 }}
-                                                  onClick={() => copyToClipboard(record.ownerUserId.walletAddress)}
+                                                  onClick={() => copyToClipboard(typeof record.ownerUserId === 'object' ? record.ownerUserId.walletAddress || '' : '')}
                                                   className="p-1 rounded bg-slate-600/50 hover:bg-slate-500/50 text-slate-400 hover:text-slate-300 transition-colors"
                                                 >
                                                   <Copy className="w-3 h-3" />
@@ -502,7 +510,7 @@ export const MyVehicles: React.FC = () => {
                                         <motion.button
                                           whileHover={{ scale: 1.05 }}
                                           whileTap={{ scale: 0.95 }}
-                                          onClick={() => copyToClipboard(record.txHash)}
+                                          onClick={() => copyToClipboard(record.txHash || '')}
                                           className="p-1 rounded bg-slate-600/50 hover:bg-slate-500/50 text-slate-400 hover:text-slate-300 transition-colors"
                                         >
                                           <Copy className="w-3 h-3" />
@@ -558,199 +566,22 @@ export const MyVehicles: React.FC = () => {
         )}
 
         {/* Ownership History Modal */}
-        <AnimatePresence>
-          {showHistoryModal && selectedVehicle && ownershipHistory && (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-              <div className="flex min-h-full items-center justify-center p-4">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                  onClick={() => setShowHistoryModal(false)}
-                />
+        {showHistoryModal && selectedVehicle && (
+          <OwnershipHistoryModal
+            vehicleId={selectedVehicle._id}
+            open={showHistoryModal}
+            onClose={() => setShowHistoryModal(false)}
+          />
+        )}
 
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="relative w-full max-w-4xl mx-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl border border-slate-700/50"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between p-6 border-b border-slate-700/50">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-600/20 rounded-xl">
-                        <Clock className="w-6 h-6 text-blue-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-white">Ownership History</h2>
-                        <p className="text-sm text-slate-300">
-                          {selectedVehicle.make} {selectedVehicle.vehicleModel} ({selectedVehicle.year})
-                        </p>
-                      </div>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowHistoryModal(false)}
-                      className="p-2 rounded-xl bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </motion.button>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {ownershipHistory.ownershipHistory.map((record, index) => (
-                        <div key={index} className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
-                          <div className="flex items-start space-x-4">
-                            <div className={`p-2 rounded-lg ${index === 0 ? 'bg-green-600/20' : 'bg-slate-600/20'}`}>
-                              {index === 0 ? (
-                                <CheckCircle className="w-5 h-5 text-green-400" />
-                              ) : (
-                                <User className="w-5 h-5 text-slate-400" />
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-semibold text-white">
-                                  {index === 0 ? 'Current Owner' : `Previous Owner ${index}`}
-                                </h4>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${index === 0 ? 'text-green-400 bg-green-400/20' : 'text-slate-400 bg-slate-400/20'}`}>
-                                  {index === 0 ? 'Active' : 'Previous'}
-                                </span>
-                              </div>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div className="space-y-2">
-                                  {/* Owner Details */}
-                                  {record.ownerUserId && typeof record.ownerUserId === 'object' ? (
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-400">Owner Name:</span>
-                                        <span className="text-slate-200 font-semibold">
-                                          {record.ownerUserId.fullName || `${record.ownerUserId.firstName} ${record.ownerUserId.lastName}`}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-400">Email:</span>
-                                        <span className="text-slate-300">{record.ownerUserId.email}</span>
-                                      </div>
-                                      {record.ownerUserId.walletAddress && (
-                                        <div className="flex justify-between">
-                                          <span className="text-slate-400">Wallet:</span>
-                                          <div className="flex items-center space-x-2">
-                                            <span className="text-slate-300 font-mono text-xs">
-                                              {record.ownerUserId.walletAddress.slice(0, 8)}...{record.ownerUserId.walletAddress.slice(-8)}
-                                            </span>
-                                            <motion.button
-                                              whileHover={{ scale: 1.05 }}
-                                              whileTap={{ scale: 0.95 }}
-                                              onClick={() => copyToClipboard(record.ownerUserId.walletAddress)}
-                                              className="p-1 rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-slate-300 transition-colors"
-                                            >
-                                              <Copy className="w-3 h-3" />
-                                            </motion.button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Owner ID:</span>
-                                      <span className="text-slate-300 font-mono text-xs">{record.ownerUserId}</span>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">From Date:</span>
-                                    <span className="text-slate-300">{new Date(record.fromDate).toLocaleString()}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">To Date:</span>
-                                    <span className="text-slate-300">
-                                      {record.toDate ? new Date(record.toDate).toLocaleString() : 'Present'}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  {record.ownerWallet && (
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Wallet:</span>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-slate-300 font-mono text-xs">
-                                          {record.ownerWallet.slice(0, 8)}...{record.ownerWallet.slice(-8)}
-                                        </span>
-                                        <motion.button
-                                          whileHover={{ scale: 1.05 }}
-                                          whileTap={{ scale: 0.95 }}
-                                          onClick={() => copyToClipboard(record.ownerWallet || '')}
-                                          className="p-1 rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-slate-300 transition-colors"
-                                        >
-                                          <Copy className="w-3 h-3" />
-                                        </motion.button>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  {record.txHash && (
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Transaction:</span>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-slate-300 font-mono text-xs">
-                                          {record.txHash.slice(0, 8)}...{record.txHash.slice(-8)}
-                                        </span>
-                                        <motion.button
-                                          whileHover={{ scale: 1.05 }}
-                                          whileTap={{ scale: 0.95 }}
-                                          onClick={() => copyToClipboard(record.txHash || '')}
-                                          className="p-1 rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-slate-300 transition-colors"
-                                        >
-                                          <Copy className="w-3 h-3" />
-                                        </motion.button>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  {record.note && (
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Note:</span>
-                                      <span className="text-slate-300 text-xs">{record.note}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              {record.explorerUrl && (
-                                <div className="mt-3 pt-3 border-t border-slate-700/50">
-                                  <div className="flex items-center space-x-2">
-                                    <ExternalLink className="w-4 h-4 text-slate-400" />
-                                    <span className="text-slate-400 text-sm">View on Explorer:</span>
-                                    <a 
-                                      href={record.explorerUrl} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-blue-400 hover:text-blue-300 text-sm"
-                                    >
-                                      {record.explorerUrl}
-                                    </a>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-          )}
-        </AnimatePresence>
+        {/* Import Vehicle Modal */}
+        {showImportModal && (
+          <ImportVehicleModal
+            open={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            onImported={() => fetchMyVehicles()}
+          />
+        )}
       </div>
     </div>
   );
