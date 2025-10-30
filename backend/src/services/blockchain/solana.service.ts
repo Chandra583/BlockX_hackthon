@@ -75,8 +75,9 @@ export class SolanaService {
     
     logger.info(`🔗 Solana Service initialized - ${this.isDevnet ? 'DEVNET' : 'MAINNET'}`);
     
-    // Test the connection
-    this.testConnection();
+    // Avoid performing any network calls during cold start. Consumers can call
+    // testConnection() on-demand if they need to validate connectivity.
+    // this.testConnection();
   }
 
   /**
