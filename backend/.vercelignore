@@ -1,47 +1,21 @@
+# Ignore build artifacts and logs
+dist/
+build/
+*.log
+logs/
 
-# Node modules
-node_modules
+# Ignore docs and markdown files
+*.md
+docs/
 
-# Build outputs
-dist
-build
-.next
-
-# Tests
+# Ignore test files
 **/*.test.ts
 **/*.spec.ts
-**/__tests__
-coverage
+**/__tests__/
 
-# Backup and temporary files
-**/*.backup.ts
-**/*.fixed.ts
-**/*.new.ts
-**/*.bak
-**/*.tmp
+# Ignore scripts
+scripts/
 
-# Development files
+# Ignore local env
 .env.local
-.env.development
-*.log
-logs
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# Documentation
-*.md
-!README.md
-
-# Scripts
-scripts/**/*.js
-scripts/**/*.sh
-scripts/**/*.ps1
-
-# Build logs
-build-log.txt
-build-log-relaxed.txt
-build-output.txt
+.env.*.local
