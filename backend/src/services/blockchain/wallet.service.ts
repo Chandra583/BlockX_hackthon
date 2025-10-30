@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { logger } from '../../utils/logger';
 import { User } from '../../models/core/User.model';
 import { getSolanaService, SolanaWallet } from './solana.service';
@@ -36,13 +36,13 @@ export class WalletService {
   }
 
   /**
-   * Encrypt sensitive data using AES-256-CBC (simpler and more reliable)
+   * Encrypt sensitive data using AES-256-CBC (with IV)
    */
   private encrypt(text: string): string {
     const algorithm = 'aes-256-cbc';
     const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(algorithm, key);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
     
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -51,7 +51,7 @@ export class WalletService {
   }
 
   /**
-   * Decrypt sensitive data
+   * Decrypt sensitive data (with IV)
    */
   private decrypt(encryptedText: string): string {
     const algorithm = 'aes-256-cbc';
@@ -64,7 +64,7 @@ export class WalletService {
     
     const iv = Buffer.from(textParts[0], 'hex');
     const encrypted = textParts[1];
-    const decipher = crypto.createDecipher(algorithm, key);
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
     
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
