@@ -9,21 +9,32 @@ interface UseSocketReturn {
   off: (event: string, callback?: (...args: any[]) => void) => void;
 }
 
+const resolveSocketBaseUrl = (): string => {
+  const explicit = import.meta.env.VITE_SOCKET_URL as string | undefined;
+  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || (import.meta.env.VITE_API_BASE_URL as string | undefined);
+  const backend = import.meta.env.VITE_BACKEND_URL as string | undefined;
+
+  // Prefer explicit socket URL, else backend URL, else API URL without /api suffix
+  const candidate = explicit || backend || apiUrl || 'https://veridrive-x-hackthon.vercel.app';
+  return candidate.replace(/\/$/, '').replace(/\/api$/, '');
+};
+
 const useSocket = (): UseSocketReturn => {
   const socketRef = useRef<Socket | null>(null);
   const { user } = useAppSelector((state) => state.auth);
   
   useEffect(() => {
-    // Initialize socket connection
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'https://veridrive-x-hackthon.vercel.app';
-    socketRef.current = io(socketUrl);
+    const baseUrl = resolveSocketBaseUrl();
+    socketRef.current = io(baseUrl, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      withCredentials: false,
+    });
     
-    // Join user room
     if (user?.id) {
       socketRef.current.emit('join_user', user.id);
     }
     
-    // Cleanup on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
