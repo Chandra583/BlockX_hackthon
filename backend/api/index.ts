@@ -1,38 +1,55 @@
 import serverless from 'serverless-http';
 import mongoose from 'mongoose';
 
-// Import models to ensure they're registered before app initialization
-import '../src/models/core/User.model';
-import '../src/models/core/Vehicle.model';
-import '../src/models/core/Transaction.model';
-import '../src/models/core/MileageHistory.model';
-import '../src/models/core/VehicleDocument.model';
-import '../src/models/core/Device.model';
-
-// Import app AFTER models
+// Import app WITHOUT models to avoid blocking initialization
 import { app } from '../src/app';
-import { connectDatabase } from '../src/config/database';
 
-// ---- Fault-tolerant DB initialization (non-blocking) ----
+// Lazy model loading function
+let modelsLoaded = false;
+const loadModels = async () => {
+  if (modelsLoaded) return;
+  modelsLoaded = true;
+  // Dynamic imports to avoid blocking
+  await Promise.all([
+    import('../src/models/core/User.model'),
+    import('../src/models/core/Vehicle.model'),
+    import('../src/models/core/Transaction.model'),
+    import('../src/models/core/MileageHistory.model'),
+    import('../src/models/core/VehicleDocument.model'),
+    import('../src/models/core/Device.model')
+  ]);
+};
+
+// ---- Lazy DB initialization (only when needed) ----
 let connecting = false;
-const startConnectNonBlocking = async (): Promise<void> => {
+const connectIfNeeded = async (): Promise<void> => {
   if (connecting || mongoose.connection.readyState === 1) return;
   connecting = true;
   try {
-    // Longer timeout for cold starts (20s) to handle Vercel's serverless initialization
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database connection timeout (20s)')), 20000));
-    await Promise.race([connectDatabase(), timeoutPromise]);
+    // Load models first
+    await loadModels();
+    
+    // Then connect to DB with short timeout
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
+      console.error('❌ MONGODB_URI not set');
+      return;
+    }
+    
+    await mongoose.connect(mongoUri, {
+      maxPoolSize: 1,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      bufferCommands: false
+    });
     console.log('✅ MongoDB connected');
   } catch (err) {
-    console.error('❌ MongoDB connect attempt failed:', (err as any)?.message || err);
-    // Don't throw - allow function to continue without DB for health checks
+    console.error('❌ DB connect failed:', (err as any)?.message || err);
   } finally {
     connecting = false;
   }
 };
-
-// Kick off a background connection attempt on cold start, but DO NOT await
-startConnectNonBlocking().catch((e) => console.error('connect bootstrap error', e));
 
 // Lightweight health routes (instant - no DB required)
 app.get('/health', (_req: any, res: any) => {
@@ -43,20 +60,26 @@ app.get('/api/health', (_req: any, res: any) => {
   res.status(200).json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', ts: new Date().toISOString() });
 });
 
-// Attach dbConnected flag and fail fast with 503 for DB-dependent routes
-app.use((req: any, res: any, next: any) => {
-  req.dbConnected = mongoose.connection.readyState === 1;
+// Middleware to handle DB connection per request
+app.use(async (req: any, res: any, next: any) => {
   const bypass = ['/', '/health', '/api/health', '/api/info', '/favicon.ico'];
-  if (bypass.includes(req.path)) return next();
-  if (!req.dbConnected) {
-    // Trigger a background reconnect attempt and return quickly
-    startConnectNonBlocking().catch(() => {});
+  
+  // Skip DB for health/info endpoints
+  if (bypass.includes(req.path)) {
+    return next();
+  }
+  
+  // For other routes, try to connect
+  if (mongoose.connection.readyState !== 1) {
+    // Trigger connection in background and return 503
+    connectIfNeeded().catch(() => {});
     return res.status(503).json({
       status: 'error',
-      message: 'Database unavailable. Try again later.',
+      message: 'Database connecting. Please retry in a few seconds.',
       timestamp: new Date().toISOString()
     });
   }
+  
   next();
 });
 
