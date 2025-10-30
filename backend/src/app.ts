@@ -158,4 +158,4 @@ app.all('*', (req, res) => {
   });
 });
 
-export { app }; 
+export default app; 
