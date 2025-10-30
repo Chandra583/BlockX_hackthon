@@ -319,8 +319,7 @@ const VehicleSchema = new Schema({
   ownerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Owner is required'],
-    index: true
+    required: [true, 'Owner is required']
   },
   make: {
     type: String,
@@ -411,8 +410,7 @@ const VehicleSchema = new Schema({
   fraudAlerts: [FraudAlertSchema],
   isForSale: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   listingStatus: {
     type: String,
@@ -458,21 +456,17 @@ const VehicleSchema = new Schema({
     default: 0
   },
   blockchainHash: {
-    type: String,
-    index: true
+    type: String
   },
   blockchainAddress: {
-    type: String,
-    index: true
+    type: String
   },
   ownerUserId: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    index: true
+    ref: 'User'
   },
   ownerWalletAddress: {
-    type: String,
-    index: true
+    type: String
   },
   ownershipHistory: [{
     ownerUserId: {
@@ -504,6 +498,10 @@ VehicleSchema.index({ isForSale: 1, listingStatus: 1 });
 VehicleSchema.index({ verificationStatus: 1 });
 VehicleSchema.index({ trustScore: -1 });
 VehicleSchema.index({ createdAt: -1 });
+VehicleSchema.index({ blockchainHash: 1 });
+VehicleSchema.index({ blockchainAddress: 1 });
+VehicleSchema.index({ ownerUserId: 1 });
+VehicleSchema.index({ ownerWalletAddress: 1 });
 
 // Instance Methods
 VehicleSchema.methods.updateMileage = async function(

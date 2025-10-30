@@ -10,7 +10,7 @@ import '../src/models/core/VehicleDocument.model';
 import '../src/models/core/Device.model';
 
 // Import app AFTER models
-import app from '../src/app';
+import { app } from '../src/app';
 import { connectDatabase } from '../src/config/database';
 
 // Initialize database connection for serverless

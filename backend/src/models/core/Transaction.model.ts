@@ -35,52 +35,43 @@ const TransactionSchema = new Schema({
   transactionHash: {
     type: String,
     required: [true, 'Transaction hash is required'],
-    unique: true,
-    index: true
+    unique: true
   },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'User ID is required'],
-    index: true
+    required: [true, 'User ID is required']
   },
   vehicleId: {
     type: Schema.Types.ObjectId,
-    ref: 'Vehicle',
-    index: true
+    ref: 'Vehicle'
   },
   type: {
     type: String,
     enum: ['vehicle_registration', 'mileage_update', 'document_upload', 'fraud_alert', 'service_record'],
-    required: [true, 'Transaction type is required'],
-    index: true
+    required: [true, 'Transaction type is required']
   },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'failed', 'rejected'],
     default: 'pending',
-    required: true,
-    index: true
+    required: true
   },
   blockchain: {
     type: String,
     enum: ['solana', 'ethereum', 'arweave'],
-    required: [true, 'Blockchain is required'],
-    index: true
+    required: [true, 'Blockchain is required']
   },
   network: {
     type: String,
     enum: ['mainnet', 'devnet', 'testnet'],
-    required: [true, 'Network is required'],
-    index: true
+    required: [true, 'Network is required']
   },
   blockNumber: {
-    type: Number,
-    index: true
+    type: Number
   },
   blockTime: {
-    type: Date,
-    index: true
+    type: Date
   },
   gasUsed: {
     type: Number
@@ -90,12 +81,10 @@ const TransactionSchema = new Schema({
   },
   fromAddress: {
     type: String,
-    required: [true, 'From address is required'],
-    index: true
+    required: [true, 'From address is required']
   },
   toAddress: {
-    type: String,
-    index: true
+    type: String
   },
   value: {
     type: Number,
@@ -108,8 +97,7 @@ const TransactionSchema = new Schema({
   metadata: {
     vehicleVin: {
       type: String,
-      uppercase: true,
-      index: true
+      uppercase: true
     },
     mileage: {
       type: Number,
