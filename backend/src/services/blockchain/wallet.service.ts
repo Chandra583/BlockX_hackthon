@@ -56,20 +56,33 @@ export class WalletService {
   private decrypt(encryptedText: string): string {
     const algorithm = 'aes-256-cbc';
     const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
-    const textParts = encryptedText.split(':');
-    
-    if (textParts.length !== 2) {
-      throw new Error('Invalid encrypted data format');
+
+    try {
+      // New format: ivHex:cipherHex
+      const parts = encryptedText.split(':');
+      if (parts.length === 2) {
+        const iv = Buffer.from(parts[0], 'hex');
+        const cipherHex = parts[1];
+        const decipher = crypto.createDecipheriv(algorithm, key, iv);
+        let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+      }
+
+      // Fall through to legacy if format is different
+      throw new Error('Unsupported format');
+    } catch (err) {
+      // Legacy fallback: stored without IV using createCipher/createDecipher
+      try {
+        const decipherLegacy = (crypto as any).createDecipher?.(algorithm, key);
+        if (!decipherLegacy) throw err;
+        let decrypted = decipherLegacy.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipherLegacy.final('utf8');
+        return decrypted;
+      } catch (legacyErr) {
+        throw legacyErr;
+      }
     }
-    
-    const iv = Buffer.from(textParts[0], 'hex');
-    const encrypted = textParts[1];
-    const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
-    return decrypted;
   }
 
   /**
