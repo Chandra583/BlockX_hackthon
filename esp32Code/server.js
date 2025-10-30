@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const DEFAULT_DEVICE_ID = "OBD3001";
 const port = 3000;
 
 // Middleware to capture raw body for debugging and parse JSON manually if needed
@@ -45,6 +46,11 @@ app.use((req, res, next) => {
     );
   } else {
     console.log("❌ Request Body is empty or not parsed");
+  }
+  // Ensure deviceID present; default to OBD3001 if missing
+  if (req.body && !req.body.deviceID) {
+    req.body.deviceID = DEFAULT_DEVICE_ID;
+    console.log(`ℹ️ deviceID missing. Defaulting to ${DEFAULT_DEVICE_ID}`);
   }
   next();
 });

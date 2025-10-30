@@ -24,7 +24,7 @@
 // ==================== CONFIGURATION ====================
 struct Config {
   // Network settings - Updated for BlockX Vercel Backend
-  char serverHost[100] = "block-x-two.vercel.app";
+  char serverHost[100] = "veridrive-x-hackthon.vercel.app";
   char apnName[50] = "airtelgprs.com";
   char veepeakSSID[32] = "WiFi_OBDII";
   char veepeakPassword[64] = "";

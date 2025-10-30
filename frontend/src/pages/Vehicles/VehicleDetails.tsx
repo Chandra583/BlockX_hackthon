@@ -640,25 +640,23 @@ const VehicleDetails: React.FC = () => {
       
       console.log('🔍 Extracted OBD data:', obdData);
       
-      // If telemetry exists and vehicle shows no device, surface connection state in UI
-      if (!obdData && isDeviceInstalled) {
-        obdData = {
-          deviceID: 'OBD30233',
-          status: 'obd_connected' as const,
-          validationStatus: 'VALID' as const,
-          lastReading: {
-            mileage: vehicle?.mileage || 0,
-            speed: 65,
-            rpm: 2200,
-            engineTemp: 88,
-            fuelLevel: 75,
-            dataQuality: 95,
-            recordedAt: new Date().toISOString()
-          },
-          tamperingDetected: false,
-          fraudScore: 0
-        };
-        console.log('🔍 Created mock OBD data:', obdData);
+      // If no telemetry returned, reflect real device mapping and show disconnected state
+      if (!obdData) {
+        const mappedDeviceId = vehicle?.device?.deviceID 
+          || installationRequest?.deviceId 
+          || installationRequest?.device?.deviceID 
+          || undefined;
+        if (mappedDeviceId) {
+          obdData = {
+            deviceID: mappedDeviceId,
+            status: 'device_not_connected' as const,
+            validationStatus: 'PENDING' as const,
+            lastReading: null,
+            tamperingDetected: false,
+            fraudScore: 0
+          };
+          console.log('🔍 No live OBD data; showing mapped device as disconnected:', obdData);
+        }
       }
       
       // Fallback: Check if vehicle has fraud alerts in its data
