@@ -1,9 +1,19 @@
 {
   "version": 2,
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/backend/api/index"
+      "src": "backend/api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "includeFiles": ["backend/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/backend/api/index.ts"
     }
   ],
   "functions": {
@@ -11,6 +21,9 @@
       "memory": 1024,
       "maxDuration": 60
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
 
