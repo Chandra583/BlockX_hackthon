@@ -30,7 +30,7 @@ const initializeDatabase = async () => {
     return connectionPromise;
   }
 
-  // Start new connection
+  // Start new connection with timeout
   connectionPromise = (async () => {
     try {
       // Double-check connection state
@@ -41,7 +41,13 @@ const initializeDatabase = async () => {
       }
 
       console.log('🔗 Establishing new database connection...');
-      await connectDatabase();
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database connection timeout (10s)')), 10000)
+      );
+      
+      await Promise.race([connectDatabase(), timeoutPromise]);
       isConnected = true;
       console.log('✅ Database connected for serverless function');
     } catch (error) {
@@ -49,18 +55,31 @@ const initializeDatabase = async () => {
       isConnected = false;
       connectionPromise = null;
       throw error;
-    } finally {
-      connectionPromise = null;
     }
   })();
 
   return connectionPromise;
 };
 
-// Initialize database connection once at startup (non-blocking)
-initializeDatabase().catch(error => {
-  console.error('❌ Initial database connection failed:', error);
-  console.log('⚠️  Will retry on first request that needs database');
+// Add lightweight health check routes BEFORE other middleware
+// These should respond instantly without DB connection
+app.get('/health', (req: any, res: any) => {
+  console.log('⚡ Health check (no DB)');
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    service: 'veridrive-backend'
+  });
+});
+
+app.get('/api/health', (req: any, res: any) => {
+  console.log('⚡ API Health check (no DB)');
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    service: 'veridrive-backend',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
 });
 
 // Middleware to ensure database is connected before each request
