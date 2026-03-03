@@ -1,8 +1,8 @@
-# VeriDrive - Project Overview
+# Trivexachain - Project Overview
 
 ## 1. Overview
 
-VeriDrive is a blockchain-powered vehicle verification system that prevents odometer fraud through real-time IoT data capture and immutable on-chain records. The platform combines ESP32-based OBD-II hardware, secure Node.js backend infrastructure, and Solana blockchain integration to create a tamper-proof vehicle history ledger. By capturing mileage data directly from vehicle ECUs, hashing it via SHA-256, and anchoring records on Solana with decentralized IPFS/Arweave storage, VeriDrive enables transparent verification of vehicle history for owners, buyers, regulators, and service providers.
+Trivexachain is a blockchain-powered vehicle verification system that prevents odometer fraud through real-time IoT data capture and immutable on-chain records. The platform combines ESP32-based OBD-II hardware, secure Node.js backend infrastructure, and Solana blockchain integration to create a tamper-proof vehicle history ledger. By capturing mileage data directly from vehicle ECUs, hashing it via SHA-256, and anchoring records on Solana with decentralized IPFS/Arweave storage, Trivexachain enables transparent verification of vehicle history for owners, buyers, regulators, and service providers.
 
 ---
 
@@ -283,7 +283,7 @@ VeriDrive is a blockchain-powered vehicle verification system that prevents odom
 
 ## 7. Short Summary
 
-**VeriDrive combines IoT hardware and blockchain to create a tamper-proof vehicle history, giving every car a digital, verifiable identity secured by Solana.**
+**Trivexachain combines IoT hardware and blockchain to create a tamper-proof vehicle history, giving every car a digital, verifiable identity secured by Solana.**
 
 ---
 
@@ -310,6 +310,6 @@ VeriDrive is a blockchain-powered vehicle verification system that prevents odom
 ---
 
 *Last Updated: January 2025*  
-*Team: VeriDrive Development Team*  
-*Contact: dev@veridrive.com*
+*Team: Trivexachain Development Team*  
+*Contact: dev@Trivexachain.com*
 

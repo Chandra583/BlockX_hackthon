@@ -12,7 +12,7 @@ async function main() {
     console.log('Usage: node src/scripts/seed-telemetry-batches.js <vehicleId> <deviceId> <installId>');
     process.exit(1);
   }
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/veridrive';
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Trivexachain';
   await mongoose.connect(uri);
   console.log('Connected to MongoDB');
 

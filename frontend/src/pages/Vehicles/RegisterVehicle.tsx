@@ -552,7 +552,7 @@ const RegisterVehicle: React.FC = () => {
                   {/* Current Mileage */}
                   <div>
                     <label htmlFor="initialMileage" className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Mileage *
+                      Total Kilometers driven*
                     </label>
                     <input
                       {...register('initialMileage', { valueAsNumber: true })}
@@ -819,7 +819,7 @@ const RegisterVehicle: React.FC = () => {
                       <div><span className="font-medium text-gray-900">Registration:</span> <span className="text-gray-700">{getValues().vehicleNumber}</span></div>
                       <div><span className="font-medium text-gray-900">Make/Model:</span> <span className="text-gray-700">{getValues().make} {getValues().model}</span></div>
                       <div><span className="font-medium text-gray-900">Year:</span> <span className="text-gray-700">{getValues().year}</span></div>
-                      <div><span className="font-medium text-gray-900">Mileage:</span> <span className="text-gray-700">{getValues().initialMileage?.toLocaleString()} km</span></div>
+                      <div><span className="font-medium text-gray-900">Initial kilometers driven:</span> <span className="text-gray-700">{getValues().initialMileage?.toLocaleString()} km</span></div>
                     </div>
                   </div>
                   

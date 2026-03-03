@@ -1,14 +1,14 @@
 // Environment Configuration
 export const ENV = {
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://veridrive-x-hackthon.vercel.app/api',
-  API_URL: import.meta.env.VITE_API_URL || 'https://veridrive-x-hackthon.vercel.app/api',
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://Trivexachain-x-hackthon.vercel.app/api',
+  API_URL: import.meta.env.VITE_API_URL || 'https://Trivexachain-x-hackthon.vercel.app/api',
   VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV || 'production',
   VITE_APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
   // Additional environment variables
   VITE_ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS || 'false',
   VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN || '',
   // Backend URL for websockets or direct links
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'https://veridrive-x-hackthon.vercel.app',
+  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'https://Trivexachain-x-hackthon.vercel.app',
 };
 
 // Some parts of the app expect a named export `config`.

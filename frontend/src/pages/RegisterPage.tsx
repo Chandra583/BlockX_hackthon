@@ -66,7 +66,7 @@ const RegisterPage: React.FC = () => {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* VERIDRIVE Logo */}
+        {/* Trivexachain Logo */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -87,7 +87,7 @@ const RegisterPage: React.FC = () => {
             transition={{ delay: 0.4 }}
             className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2"
           >
-            VERIDRIVE
+            Trivexachain
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -119,7 +119,7 @@ const RegisterPage: React.FC = () => {
           className="mt-8 text-center"
         >
           <p className="text-sm text-gray-400">
-            © 2024 VERIDRIVE. All rights reserved.
+            © 2024 Trivexachain. All rights reserved.
           </p>
           <p className="text-xs text-gray-500 mt-2">
             Powered by Blockchain Technology

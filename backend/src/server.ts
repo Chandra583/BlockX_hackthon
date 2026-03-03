@@ -68,7 +68,7 @@ const initializeDatabase = async (): Promise<void> => {
  */
 
 /**
- * Start the VERIDRIVE backend server (for local development)
+ * Start the Trivexachain backend server (for local development)
  */
 const startServer = async (): Promise<void> => {
   try {
@@ -82,7 +82,7 @@ const startServer = async (): Promise<void> => {
     // Start the Express server
     console.log(`🚀 Starting Express server on port ${PORT}...`);
     const server = app.listen(PORT, () => {
-      console.log(`🚀 VERIDRIVE Backend Server running on port ${PORT}`);
+      console.log(`🚀 Trivexachain Backend Server running on port ${PORT}`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📊 API Documentation: http://localhost:${PORT}/api/docs`);
       console.log(`🔐 Health Check: http://localhost:${PORT}/api/health`);

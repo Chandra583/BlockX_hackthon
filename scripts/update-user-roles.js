@@ -1,6 +1,6 @@
 /**
  * Migration script to update user roles
- * Updates buyer@veridrive.com to have both "buyer" and "owner" roles
+ * Updates buyer@Trivexachain.com to have both "buyer" and "owner" roles
  * 
  * Usage: cd backend && node ../scripts/update-user-roles.js
  */
@@ -27,7 +27,7 @@ try {
 
 const mongoose = require('mongoose');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/veridrive';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Trivexachain';
 
 const UserSchema = new mongoose.Schema({
   email: String,
@@ -50,7 +50,7 @@ async function updateUserRoles() {
     console.log('✅ Connected to MongoDB');
 
     const userId = '69011a631b343666ffd406b0';
-    const targetEmail = 'buyer@veridrive.com';
+    const targetEmail = 'buyer@Trivexachain.com';
     const newRoles = ['buyer', 'owner'];
 
     // Find user by ID or email

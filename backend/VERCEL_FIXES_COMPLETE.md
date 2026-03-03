@@ -127,13 +127,13 @@ After pushing these changes, Vercel should:
 ### 2. Test Endpoints
 ```bash
 # Health check (lightweight, no DB)
-curl https://veridrive-x-hackthon.vercel.app/health
+curl https://Trivexachain-x-hackthon.vercel.app/health
 
 # API health (with DB connection)
-curl https://veridrive-x-hackthon.vercel.app/api/health
+curl https://Trivexachain-x-hackthon.vercel.app/api/health
 
 # Vehicle data
-curl https://veridrive-x-hackthon.vercel.app/api/vehicles
+curl https://Trivexachain-x-hackthon.vercel.app/api/vehicles
 ```
 
 ### 3. Monitor Logs

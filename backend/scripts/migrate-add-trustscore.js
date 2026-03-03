@@ -15,7 +15,7 @@ async function migrateAddTrustScore() {
     console.log('🚀 Starting trustScore migration...');
     
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/veridrive', {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/Trivexachain', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

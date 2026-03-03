@@ -26,12 +26,12 @@ const ForgotPasswordPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* VERIDRIVE Logo */}
+        {/* Trivexachain Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-600 rounded-full mb-4">
             <span className="text-white font-bold text-2xl">V</span>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">VERIDRIVE</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Trivexachain</h1>
           <p className="text-lg text-gray-600">Reinventing Vehicle Trust with Blockchain</p>
         </div>
 
@@ -44,7 +44,7 @@ const ForgotPasswordPage: React.FC = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
-            © 2024 VERIDRIVE. All rights reserved.
+            © 2024 Trivexachain. All rights reserved.
           </p>
         </div>
       </div>

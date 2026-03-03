@@ -67,15 +67,15 @@ const AdminVehiclesPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Vehicles</h1>
-          <p className="text-gray-600">Manage verification workflow for submitted vehicles</p>
+          <h1 className="text-2xl font-bold text-white">Admin Vehicles</h1>
+          <p className="text-slate-300">Manage verification workflow for submitted vehicles</p>
         </div>
-        <div className="inline-flex rounded-lg bg-gray-100 p-1">
+        <div className="inline-flex rounded-lg bg-slate-800/80 border border-slate-700/50 p-1">
           {(['pending','verified','rejected'] as const).map((s) => (
             <button
               key={s}
               onClick={() => { updateQuery({ status: s, page: '1' }); setPage(1); }}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${status===s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${status===s ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'}`}
             >
               {s.charAt(0).toUpperCase()+s.slice(1)}
             </button>
@@ -83,10 +83,10 @@ const AdminVehiclesPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex items-center bg-white border rounded-lg p-3 shadow-sm">
-        <Search className="w-4 h-4 text-gray-500 mr-2" />
+      <div className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg p-3 shadow-sm">
+        <Search className="w-4 h-4 text-slate-500 dark:text-slate-400 mr-2 shrink-0" />
         <input
-          className="flex-1 outline-none"
+          className="flex-1 outline-none bg-transparent text-gray-900 dark:text-slate-100 placeholder:text-gray-500 dark:placeholder:text-slate-400"
           placeholder="Search by VIN, number, make, model"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -104,33 +104,33 @@ const AdminVehiclesPage: React.FC = () => {
       {loading ? (
         <div className="grid grid-cols-1 gap-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-100 animate-pulse rounded-lg" />
+            <div key={i} className="h-16 bg-slate-700/50 animate-pulse rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="bg-white border rounded-lg overflow-x-auto shadow-sm">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg overflow-x-auto shadow-sm">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-slate-700/50">
               <tr>
-                <th className="px-4 py-2 text-left">VIN</th>
-                <th className="px-4 py-2 text-left">Number</th>
-                <th className="px-4 py-2 text-left">Vehicle</th>
-                <th className="px-4 py-2 text-left">Owner</th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 text-right">Actions</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-slate-100">VIN</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-slate-100">Number</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-slate-100">Vehicle</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-slate-100">Owner</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-slate-100">Status</th>
+                <th className="px-4 py-2 text-right font-semibold text-gray-900 dark:text-slate-100">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-gray-900 dark:text-slate-200">
               {vehicles.map((v) => (
-                <tr key={v._id} className="border-t hover:bg-gray-50/60 transition-colors">
+                <tr key={v._id} className="border-t border-slate-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                   <td className="px-4 py-2 font-mono text-xs">{v.vin}</td>
                   <td className="px-4 py-2">{v.vehicleNumber}</td>
                   <td className="px-4 py-2">{v.year} {v.make} {v.vehicleModel}</td>
                   <td className="px-4 py-2">{v.ownerId?.firstName} {v.ownerId?.lastName}</td>
                   <td className="px-4 py-2 capitalize">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      v.verificationStatus==='verified' ? 'bg-green-100 text-green-700' :
-                      v.verificationStatus==='rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-800'
+                      v.verificationStatus==='verified' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
+                      v.verificationStatus==='rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
                     }`}>
                       {v.verificationStatus}
                     </span>
@@ -146,7 +146,7 @@ const AdminVehiclesPage: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-gray-500">No actions</span>
+                      <span className="text-gray-500 dark:text-slate-400">No actions</span>
                     )}
                   </td>
                 </tr>
@@ -154,7 +154,7 @@ const AdminVehiclesPage: React.FC = () => {
               {vehicles.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center">
-                    <div className="flex flex-col items-center text-gray-500">
+                    <div className="flex flex-col items-center text-gray-500 dark:text-slate-400">
                       <Search className="w-6 h-6 mb-2" />
                       <p>No vehicles found</p>
                     </div>
@@ -167,9 +167,9 @@ const AdminVehiclesPage: React.FC = () => {
       )}
 
       <div className="flex justify-between items-center">
-        <button disabled={page<=1} onClick={() => { setPage(page-1); updateQuery({ page: String(page-1) }); }} className="btn-secondary disabled:opacity-50">Previous</button>
-        <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
-        <button disabled={page>=totalPages} onClick={() => { setPage(page+1); updateQuery({ page: String(page+1) }); }} className="btn-secondary disabled:opacity-50">Next</button>
+        <button disabled={page<=1} onClick={() => { setPage(page-1); updateQuery({ page: String(page-1) }); }} className="btn-secondary disabled:opacity-50 text-white border-slate-600 bg-slate-700/80 hover:bg-slate-600">Previous</button>
+        <span className="text-sm text-slate-300 font-medium">Page {page} of {totalPages}</span>
+        <button disabled={page>=totalPages} onClick={() => { setPage(page+1); updateQuery({ page: String(page+1) }); }} className="btn-secondary disabled:opacity-50 text-white border-slate-600 bg-slate-700/80 hover:bg-slate-600">Next</button>
       </div>
     </div>
   );

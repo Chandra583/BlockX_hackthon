@@ -81,7 +81,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({ userRole, userName
         return {
           title: `Welcome back, ${userName}!`,
           subtitle: 'System Administrator Dashboard',
-          message: 'Monitor platform activity, manage users, and ensure system security across VERIDRIVE.'
+          message: 'Monitor platform activity, manage users, and ensure system security across Trivexachain.'
         };
       case 'owner':
         return {
@@ -116,7 +116,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({ userRole, userName
       default:
         return {
           title: `Welcome, ${userName}!`,
-          subtitle: 'VERIDRIVE Dashboard',
+          subtitle: 'Trivexachain Dashboard',
           message: 'Access your personalized dashboard to manage your vehicle marketplace activities.'
         };
     }

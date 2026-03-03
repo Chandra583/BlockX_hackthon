@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span className="text-white font-bold text-lg">V</span>
                 </div>
                 <div>
-                  <h1 className="text-xl font-black text-white gradient-text">VERIDRIVE</h1>
+                  <h1 className="text-xl font-black text-white gradient-text">Trivexachain</h1>
                   <p className="text-xs text-gray-400">Blockchain Platform</p>
                 </div>
               </motion.div>

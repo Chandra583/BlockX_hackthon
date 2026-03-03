@@ -56,8 +56,8 @@ async function detailedDebug() {
     
     const token = jwt.sign(payload, jwtSecret, {
       expiresIn: '1h',
-      issuer: 'veridrive',
-      audience: 'veridrive-users'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-users'
     });
     
     console.log('✅ Generated JWT token');

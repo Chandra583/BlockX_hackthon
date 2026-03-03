@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 // Test data for each user role
 const testUsers = [
   {
-    email: 'admin@veridrive.com',
+    email: 'admin@Trivexachain.com',
     password: 'SecurePass123!',
     firstName: 'John',
     lastName: 'Admin',
@@ -20,7 +20,7 @@ const testUsers = [
     }
   },
   {
-    email: 'owner@veridrive.com',
+    email: 'owner@Trivexachain.com',
     password: 'SecurePass123!',
     firstName: 'Jane',
     lastName: 'Smith',
@@ -37,7 +37,7 @@ const testUsers = [
     }
   },
   {
-    email: 'buyer@veridrive.com',
+    email: 'buyer@Trivexachain.com',
     password: 'SecurePass123!',
     firstName: 'Mike',
     lastName: 'Johnson',
@@ -51,7 +51,7 @@ const testUsers = [
     }
   },
   {
-    email: 'service@veridrive.com',
+    email: 'service@Trivexachain.com',
     password: 'SecurePass123!',
     firstName: 'Sarah',
     lastName: 'Wilson',
@@ -70,7 +70,7 @@ const testUsers = [
     }
   },
   {
-    email: 'insurance@veridrive.com',
+    email: 'insurance@Trivexachain.com',
     password: 'SecurePass123!',
     firstName: 'Robert',
     lastName: 'Davis',
@@ -88,7 +88,7 @@ const testUsers = [
     }
   },
   {
-    email: 'government@veridrive.com',
+    email: 'government@Trivexachain.com',
     password: 'SecurePass123!',
     firstName: 'Lisa',
     lastName: 'Anderson',
@@ -155,7 +155,7 @@ async function testUserModels() {
     
     // Test 5: Test email lookup
     logger.info('📧 Test 5: Testing email lookup...');
-    const foundUser = await User.findByEmail('admin@veridrive.com');
+    const foundUser = await User.findByEmail('admin@Trivexachain.com');
     if (foundUser) {
       logger.info(`✅ Found user by email: ${foundUser.fullName}`);
     } else {
@@ -202,7 +202,7 @@ async function testNotificationModel(users: any[]) {
       {
         userId: users[0]._id.toString(),
         userRole: users[0].role,
-        title: 'Welcome to VERIDRIVE',
+        title: 'Welcome to Trivexachain',
         message: 'Your account has been created successfully.',
         type: 'system',
         priority: 'medium',
@@ -286,7 +286,7 @@ async function testNotificationModel(users: any[]) {
 
 async function runAllTests() {
   try {
-    logger.info('🚀 Starting VERIDRIVE Model Tests...');
+    logger.info('🚀 Starting Trivexachain Model Tests...');
     
     // Connect to database
     await connectDatabase();

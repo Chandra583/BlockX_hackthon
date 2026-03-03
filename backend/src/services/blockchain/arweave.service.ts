@@ -158,7 +158,7 @@ export class ArweaveService {
       // Add tags for metadata
       transaction.addTag('Content-Type', options.contentType);
       transaction.addTag('File-Name', options.fileName);
-      transaction.addTag('App-Name', 'VERIDRIVE');
+      transaction.addTag('App-Name', 'Trivexachain');
       transaction.addTag('App-Version', '1.0.0');
       transaction.addTag('Upload-Timestamp', new Date().toISOString());
 
@@ -252,7 +252,7 @@ export class ArweaveService {
         metadata: {
           ...metadata,
           documentCategory: 'vehicle_document',
-          uploadSource: 'veridrive_api'
+          uploadSource: 'Trivexachain_api'
         }
       };
 
@@ -417,7 +417,7 @@ export class ArweaveService {
         expr1: {
           op: 'equals',
           expr1: 'App-Name',
-          expr2: 'VERIDRIVE'
+          expr2: 'Trivexachain'
         },
         expr2: tags.length > 1 ? {
           op: 'and',

@@ -17,7 +17,7 @@ describe('Auth Service', () => {
 
   describe('User Registration', () => {
     const validRegistrationData = {
-      email: 'test@veridrive.com',
+      email: 'test@Trivexachain.com',
       password: 'SecurePass123!',
       confirmPassword: 'SecurePass123!',
       firstName: 'John',
@@ -91,7 +91,7 @@ describe('Auth Service', () => {
       for (const role of roles) {
         const userData = {
           ...validRegistrationData,
-          email: `${role}@veridrive.com`,
+          email: `${role}@Trivexachain.com`,
           role,
           roleSpecificData: {}
         };
@@ -138,7 +138,7 @@ describe('Auth Service', () => {
 
     test('should reject login with invalid email', async () => {
       const result = await AuthService.login({
-        email: 'nonexistent@veridrive.com',
+        email: 'nonexistent@Trivexachain.com',
         password: testUser.password
       });
       
@@ -294,7 +294,7 @@ describe('Auth Service', () => {
     });
 
     test('should reject password reset for non-existent user', async () => {
-      const result = await AuthService.requestPasswordReset('nonexistent@veridrive.com');
+      const result = await AuthService.requestPasswordReset('nonexistent@Trivexachain.com');
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('user not found');
@@ -378,7 +378,7 @@ describe('Auth Service', () => {
     });
 
     test('should reject verification email for non-existent user', async () => {
-      const result = await AuthService.resendVerificationEmail('nonexistent@veridrive.com');
+      const result = await AuthService.resendVerificationEmail('nonexistent@Trivexachain.com');
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('user not found');

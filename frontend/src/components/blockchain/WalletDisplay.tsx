@@ -307,7 +307,7 @@ export const WalletDisplay: React.FC<WalletDisplayProps> = ({
           <AlertCircle className="w-4 h-4 text-blue-600 mr-2 mt-0.5" />
           <div className="text-xs text-gray-600">
             <p className="font-medium mb-1">Secure Custodial Wallet</p>
-            <p>Your wallet is securely managed by VERIDRIVE. Private keys are encrypted and stored safely.</p>
+            <p>Your wallet is securely managed by Trivexachain. Private keys are encrypted and stored safely.</p>
           </div>
         </div>
       </div>

@@ -63,8 +63,8 @@ db.once('open', async () => {
     
     const accessToken = jwt.sign(payload, jwtSecret, {
       expiresIn: '1h',
-      issuer: 'veridrive',
-      audience: 'veridrive-users'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-users'
     });
     
     console.log('\n🔐 Generated JWT Token:');

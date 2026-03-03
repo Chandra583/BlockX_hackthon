@@ -1,7 +1,7 @@
-# render.yaml - VERIDRIVE Backend Deployment Configuration
+# render.yaml - Trivexachain Backend Deployment Configuration
 services:
   - type: web
-    name: veridrive-backend
+    name: Trivexachain-backend
     env: node
     plan: free
     buildCommand: cd backend && npm install && npm run build
@@ -24,11 +24,11 @@ services:
       - key: AWS_REGION
         value: us-east-1
       - key: AWS_S3_BUCKET_NAME
-        value: veridrive-uploads
+        value: Trivexachain-uploads
       - key: CORS_ORIGIN
-        value: https://veridrive-frontend.netlify.app
+        value: https://Trivexachain-frontend.netlify.app
       - key: FRONTEND_URL
-        value: https://veridrive-frontend.netlify.app
+        value: https://Trivexachain-frontend.netlify.app
 
 
 

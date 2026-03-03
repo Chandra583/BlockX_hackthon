@@ -1,4 +1,4 @@
-# 🚀 VERIDRIVE API - CURL EXAMPLES
+# 🚀 Trivexachain API - CURL EXAMPLES
 
 ## 📋 **BASE URL**
 ```bash
@@ -38,7 +38,7 @@ curl -X GET "$BASE_URL/auth/health" \
 curl -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@veridrive.com",
+    "email": "admin@Trivexachain.com",
     "password": "SecurePass123!",
     "confirmPassword": "SecurePass123!",
     "firstName": "John",
@@ -61,7 +61,7 @@ curl -X POST "$BASE_URL/auth/register" \
 curl -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "owner@veridrive.com",
+    "email": "owner@Trivexachain.com",
     "password": "SecurePass123!",
     "confirmPassword": "SecurePass123!",
     "firstName": "Jane",
@@ -86,7 +86,7 @@ curl -X POST "$BASE_URL/auth/register" \
 curl -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "service@veridrive.com",
+    "email": "service@Trivexachain.com",
     "password": "SecurePass123!",
     "confirmPassword": "SecurePass123!",
     "firstName": "Sarah",
@@ -117,7 +117,7 @@ curl -X POST "$BASE_URL/auth/register" \
 curl -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@veridrive.com",
+    "email": "admin@Trivexachain.com",
     "password": "SecurePass123!"
   }'
 ```
@@ -127,7 +127,7 @@ curl -X POST "$BASE_URL/auth/login" \
 curl -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "owner@veridrive.com",
+    "email": "owner@Trivexachain.com",
     "password": "SecurePass123!",
     "rememberMe": true
   }'
@@ -164,7 +164,7 @@ curl -X POST "$BASE_URL/auth/logout" \
 curl -X POST "$BASE_URL/auth/forgot-password" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "buyer@veridrive.com"
+    "email": "buyer@Trivexachain.com"
   }'
 ```
 
@@ -207,12 +207,12 @@ curl http://localhost:3000/api/health
 # 1. Register Admin
 curl -X POST "http://localhost:3000/api/auth/register" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@veridrive.com","password":"SecurePass123!","confirmPassword":"SecurePass123!","firstName":"Test","lastName":"User","role":"admin","termsAccepted":true,"privacyAccepted":true,"roleSpecificData":{"adminLevel":"super","permissions":["user_management"],"departments":["security"],"accessLevel":10}}'
+  -d '{"email":"test@Trivexachain.com","password":"SecurePass123!","confirmPassword":"SecurePass123!","firstName":"Test","lastName":"User","role":"admin","termsAccepted":true,"privacyAccepted":true,"roleSpecificData":{"adminLevel":"super","permissions":["user_management"],"departments":["security"],"accessLevel":10}}'
 
 # 2. Login
 curl -X POST "http://localhost:3000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@veridrive.com","password":"SecurePass123!"}'
+  -d '{"email":"test@Trivexachain.com","password":"SecurePass123!"}'
 ```
 
 ---
@@ -227,7 +227,7 @@ curl -X POST "http://localhost:3000/api/auth/login" \
   "data": {
     "user": {
       "id": "64f8b123c456789012345678",
-      "email": "admin@veridrive.com",
+      "email": "admin@Trivexachain.com",
       "firstName": "John",
       "lastName": "Admin",
       "fullName": "John Admin",
@@ -277,4 +277,4 @@ For protected endpoints, include the Bearer token:
 4. **Login**: Use login curl
 5. **Access Protected Routes**: Include Bearer token
 
-🎉 **Ready to test VERIDRIVE authentication!** 
+🎉 **Ready to test Trivexachain authentication!** 

@@ -4,7 +4,7 @@ require('dotenv').config();
 async function fixTelemetryBatchIndex() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/veridrive');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/Trivexachain');
     console.log('✅ Connected to MongoDB');
 
     const db = mongoose.connection.db;

@@ -28,7 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'success',
-    message: 'VERIDRIVE Backend Server is running',
+    message: 'Trivexachain Backend Server is running',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development'
@@ -38,7 +38,7 @@ app.get('/api/health', (req, res) => {
 // Basic info route
 app.get('/api/info', (req, res) => {
   res.json({
-    name: 'VERIDRIVE Backend API',
+    name: 'Trivexachain Backend API',
     version: '1.0.0',
     description: 'Reinventing Vehicle Trust with Blockchain Backend',
     environment: process.env.NODE_ENV || 'development',
@@ -74,7 +74,7 @@ const startServer = async (): Promise<void> => {
     
     // Start the Express server
     const server = app.listen(PORT, () => {
-      console.log(`🚀 VERIDRIVE Minimal Server running on port ${PORT}`);
+      console.log(`🚀 Trivexachain Minimal Server running on port ${PORT}`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔐 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`📋 Info: http://localhost:${PORT}/api/info`);

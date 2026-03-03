@@ -118,7 +118,7 @@ const LoginPage: React.FC = () => {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* VERIDRIVE Logo with Animation */}
+        {/* Trivexachain Logo with Animation */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -143,7 +143,7 @@ const LoginPage: React.FC = () => {
             transition={{ delay: 0.3, duration: 0.8 }}
             className="text-5xl font-black text-white mb-3 gradient-text"
           >
-            VERIDRIVE
+            Trivexachain
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -208,7 +208,7 @@ const LoginPage: React.FC = () => {
           className="mt-8 text-center"
         >
           <p className="text-sm text-gray-400">
-            © 2024 VERIDRIVE. All rights reserved.
+            © 2024 Trivexachain. All rights reserved.
           </p>
           <p className="text-xs text-gray-500 mt-2">
             Powered by Blockchain Technology

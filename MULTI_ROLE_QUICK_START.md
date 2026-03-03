@@ -13,7 +13,7 @@ All tasks have been completed successfully. The multi-role system is fully funct
 cd backend
 node scripts/update-user-roles.js
 ```
-This updates user `buyer@veridrive.com` to have roles `["buyer", "owner"]`.
+This updates user `buyer@Trivexachain.com` to have roles `["buyer", "owner"]`.
 
 ### Step 2: Start Servers
 ```bash
@@ -28,7 +28,7 @@ npm run dev
 
 ### Step 3: Test in Browser
 1. **Login**: Navigate to `http://localhost:5173/login`
-   - Email: `buyer@veridrive.com`
+   - Email: `buyer@Trivexachain.com`
    - Password: Your password
    
 2. **Check Role Selector**: Look in the header (top-right, before notifications)

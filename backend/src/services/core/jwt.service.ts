@@ -20,8 +20,8 @@ export class JWTService {
 
     return jwt.sign(payload, secret, {
       expiresIn: this.ACCESS_TOKEN_EXPIRY,
-      issuer: 'veridrive',
-      audience: 'veridrive-users'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-users'
     });
   }
 
@@ -44,8 +44,8 @@ export class JWTService {
 
     return jwt.sign(payload, secret, {
       expiresIn: expiry,
-      issuer: 'veridrive',
-      audience: 'veridrive-refresh'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-refresh'
     });
   }
 
@@ -85,8 +85,8 @@ export class JWTService {
 
     try {
       return jwt.verify(token, secret, {
-        issuer: 'veridrive',
-        audience: 'veridrive-users'
+        issuer: 'Trivexachain',
+        audience: 'Trivexachain-users'
       }) as IJWTPayload;
     } catch (error) {
       logger.error('Access token verification failed:', error);
@@ -105,8 +105,8 @@ export class JWTService {
 
     try {
       return jwt.verify(token, secret, {
-        issuer: 'veridrive',
-        audience: 'veridrive-refresh'
+        issuer: 'Trivexachain',
+        audience: 'Trivexachain-refresh'
       });
     } catch (error) {
       logger.error('Refresh token verification failed:', error);
@@ -197,8 +197,8 @@ export class JWTService {
 
     return jwt.sign(payload, secret, {
       expiresIn: '24h',
-      issuer: 'veridrive',
-      audience: 'veridrive-verification'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-verification'
     });
   }
 
@@ -213,8 +213,8 @@ export class JWTService {
 
     try {
       return jwt.verify(token, secret, {
-        issuer: 'veridrive',
-        audience: 'veridrive-verification'
+        issuer: 'Trivexachain',
+        audience: 'Trivexachain-verification'
       });
     } catch (error) {
       logger.error('Email verification token verification failed:', error);
@@ -240,8 +240,8 @@ export class JWTService {
 
     return jwt.sign(payload, secret, {
       expiresIn: '1h',
-      issuer: 'veridrive',
-      audience: 'veridrive-reset'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-reset'
     });
   }
 
@@ -256,8 +256,8 @@ export class JWTService {
 
     try {
       return jwt.verify(token, secret, {
-        issuer: 'veridrive',
-        audience: 'veridrive-reset'
+        issuer: 'Trivexachain',
+        audience: 'Trivexachain-reset'
       });
     } catch (error) {
       logger.error('Password reset token verification failed:', error);
@@ -323,8 +323,8 @@ export class JWTService {
 
     return jwt.sign(payload, secret, {
       expiresIn: '1y',
-      issuer: 'veridrive',
-      audience: 'veridrive-api'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-api'
     });
   }
 
@@ -339,8 +339,8 @@ export class JWTService {
 
     try {
       return jwt.verify(token, secret, {
-        issuer: 'veridrive',
-        audience: 'veridrive-api'
+        issuer: 'Trivexachain',
+        audience: 'Trivexachain-api'
       });
     } catch (error) {
       logger.error('API key token verification failed:', error);

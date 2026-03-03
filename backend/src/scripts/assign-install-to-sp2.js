@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 async function assignInstallToSp2() {
-  console.log('🔍 Assigning installation to service@veridrive2.com...');
+  console.log('🔍 Assigning installation to service@Trivexachain2.com...');
   
   try {
     // Database connection
@@ -25,7 +25,7 @@ async function assignInstallToSp2() {
     // Find the service provider
     const usersCollection = mongoose.connection.db.collection('users');
     const serviceProvider = await usersCollection.findOne({ 
-      email: 'service@veridrive2.com',
+      email: 'service@Trivexachain2.com',
       role: 'service'
     });
     
@@ -60,8 +60,8 @@ async function assignInstallToSp2() {
     
     const adminToken = jwt.sign(adminPayload, jwtSecret, {
       expiresIn: '1h',
-      issuer: 'veridrive',
-      audience: 'veridrive-users'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-users'
     });
     
     console.log('✅ Generated admin JWT token');
@@ -96,7 +96,7 @@ async function assignInstallToSp2() {
       try {
         const createResponse = await axios.post(
           `http://localhost:3000/api/installs/vehicles/${vehicle._id}/request-install`,
-          { notes: 'Test installation for service@veridrive2.com' },
+          { notes: 'Test installation for service@Trivexachain2.com' },
           { headers: { 'Authorization': `Bearer ${adminToken}` } }
         );
         
@@ -135,8 +135,8 @@ async function assignInstallToSp2() {
       
       const spToken = jwt.sign(spPayload, jwtSecret, {
         expiresIn: '1h',
-        issuer: 'veridrive',
-        audience: 'veridrive-users'
+        issuer: 'Trivexachain',
+        audience: 'Trivexachain-users'
       });
       
       console.log('✅ Generated service provider JWT token');

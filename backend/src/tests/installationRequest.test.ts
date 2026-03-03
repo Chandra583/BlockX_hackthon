@@ -56,7 +56,7 @@ describe('Installation Request API', () => {
 
   beforeAll(async () => {
     // Connect to test database
-    await mongoose.connect(process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/veridrive_test');
+    await mongoose.connect(process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/Trivexachain_test');
     
     // Create test user
     const userResponse = await request(app)

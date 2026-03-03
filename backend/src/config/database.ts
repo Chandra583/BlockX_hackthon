@@ -21,7 +21,7 @@ const mongooseOptions = {
  */
 export const connectDatabase = async (): Promise<void> => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/veridrive';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Trivexachain';
     
     console.log('🔧 Debug Info:');
     console.log('🌐 Environment:', process.env.NODE_ENV);

@@ -38,7 +38,7 @@ db.once('open', async () => {
   try {
     // Find the real service provider user
     const usersCollection = mongoose.connection.db.collection('users');
-    const serviceProvider = await usersCollection.findOne({ email: 'service@veridrive.com' });
+    const serviceProvider = await usersCollection.findOne({ email: 'service@Trivexachain.com' });
     
     if (!serviceProvider) {
       console.log('❌ Real service provider user not found');
@@ -63,8 +63,8 @@ db.once('open', async () => {
     
     const accessToken = jwt.sign(payload, jwtSecret, {
       expiresIn: '1h',
-      issuer: 'veridrive',
-      audience: 'veridrive-users'
+      issuer: 'Trivexachain',
+      audience: 'Trivexachain-users'
     });
     
     console.log('\n🔐 Generated JWT Token for real service provider:');

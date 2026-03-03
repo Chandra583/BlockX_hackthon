@@ -1,4 +1,4 @@
-# Vercel Deployment Guide for VERIDRIVE Backend
+# Vercel Deployment Guide for Trivexachain Backend
 
 ## ✅ Backend is Ready for Vercel Serverless Deployment
 

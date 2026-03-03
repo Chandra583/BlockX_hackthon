@@ -6,7 +6,7 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 async function checkSp2() {
-  console.log('🔍 Checking installations for service@veridrive2.com...');
+  console.log('🔍 Checking installations for service@Trivexachain2.com...');
   
   try {
     // Database connection
@@ -28,7 +28,7 @@ async function checkSp2() {
       serviceProviderId: new mongoose.Types.ObjectId(spId)
     }).toArray();
     
-    console.log('All installations for service@veridrive2.com:', allResult.length, 'results');
+    console.log('All installations for service@Trivexachain2.com:', allResult.length, 'results');
     
     if (allResult.length > 0) {
       allResult.forEach((install, index) => {

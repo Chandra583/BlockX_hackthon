@@ -165,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
               <div className="w-8 h-8 bg-gradient-to-r from-primary-600 to-indigo-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">V</span>
               </div>
-              <span className="text-lg font-semibold text-gray-900">VERIDRIVE</span>
+              <span className="text-lg font-semibold text-gray-900">Trivexachain</span>
             </div>
           )}
           

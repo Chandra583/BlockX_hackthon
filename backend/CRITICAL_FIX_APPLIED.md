@@ -202,7 +202,7 @@ Once deployed (in ~3 minutes):
 
 ### 1. Test Health Endpoint
 ```bash
-curl https://veridrive-x-hackthon.vercel.app/api/health
+curl https://Trivexachain-x-hackthon.vercel.app/api/health
 ```
 
 **Expected**:
@@ -222,7 +222,7 @@ curl https://veridrive-x-hackthon.vercel.app/api/health
 
 ### 2. Test Root Endpoint
 ```bash
-curl https://veridrive-x-hackthon.vercel.app/
+curl https://Trivexachain-x-hackthon.vercel.app/
 ```
 
 **Expected**:

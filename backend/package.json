@@ -1,7 +1,7 @@
 {
-  "name": "veridrive-backend",
+  "name": "Trivexachain-backend",
   "version": "1.0.0",
-  "description": "VERIDRIVE - Reinventing Vehicle Trust with Blockchain Backend API",
+  "description": "Trivexachain - Reinventing Vehicle Trust with Blockchain Backend API",
   "main": "api/index.ts",
   "scripts": {
     "build": "echo 'Build skipped - Vercel handles compilation'",
@@ -26,7 +26,7 @@
     "prepare": "husky install"
   },
   "keywords": [
-    "veridrive",
+    "Trivexachain",
     "anti-fraud",
     "vehicle-marketplace",
     "blockchain",
@@ -37,8 +37,8 @@
     "express"
   ],
   "author": {
-    "name": "VERIDRIVE Team",
-    "email": "dev@veridrive.com"
+    "name": "Trivexachain Team",
+    "email": "dev@Trivexachain.com"
   },
   "license": "PROPRIETARY",
   "dependencies": {
@@ -128,12 +128,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/veridrive/veridrive-backend.git"
+    "url": "https://github.com/Trivexachain/Trivexachain-backend.git"
   },
   "bugs": {
-    "url": "https://github.com/veridrive/veridrive-backend/issues"
+    "url": "https://github.com/Trivexachain/Trivexachain-backend/issues"
   },
-  "homepage": "https://github.com/veridrive/veridrive-backend#readme",
+  "homepage": "https://github.com/Trivexachain/Trivexachain-backend#readme",
   "lint-staged": {
     "src/**/*.ts": [
       "eslint --fix",

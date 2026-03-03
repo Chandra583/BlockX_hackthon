@@ -60,7 +60,7 @@ export const clearDatabase = async (): Promise<void> => {
 // Test user data factory
 export const createTestUser = (role: string = 'buyer', overrides: any = {}) => {
   const baseUser = {
-    email: `test-${role}@veridrive.com`,
+    email: `test-${role}@Trivexachain.com`,
     password: 'TestPass123!',
     firstName: 'Test',
     lastName: 'User',
@@ -169,7 +169,7 @@ export const createTestNotification = (userId: string, overrides: any = {}) => {
 };
 
 // JWT Test Helpers
-export const createTestTokens = async (userId: string, email: string = 'test@veridrive.com', role: 'buyer' | 'admin' | 'owner' | 'service' | 'insurance' | 'government' = 'buyer') => {
+export const createTestTokens = async (userId: string, email: string = 'test@Trivexachain.com', role: 'buyer' | 'admin' | 'owner' | 'service' | 'insurance' | 'government' = 'buyer') => {
   const { JWTService } = await import('../services/core/jwt.service');
   
   return {

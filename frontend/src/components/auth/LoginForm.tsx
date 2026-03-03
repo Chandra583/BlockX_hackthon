@@ -129,7 +129,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             transition={{ delay: 0.3, duration: 0.6 }}
             className="text-gray-300"
           >
-            Access your VERIDRIVE account
+            Access your Trivexachain account
           </motion.p>
         </div>
 

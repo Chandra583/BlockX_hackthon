@@ -119,12 +119,12 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
   return {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: parseInt(process.env.PORT || '3000', 10),
-    APP_NAME: process.env.APP_NAME || 'VERIDRIVE',
+    APP_NAME: process.env.APP_NAME || 'Trivexachain',
     APP_VERSION: process.env.APP_VERSION || '1.0.0',
     
     // Database
-    MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/veridrive',
-    MONGODB_TEST_URI: process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/veridrive_test',
+    MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/Trivexachain',
+    MONGODB_TEST_URI: process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/Trivexachain_test',
     
     // JWT
     JWT_SECRET: process.env.JWT_SECRET || 'fallback-secret',
@@ -145,7 +145,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     SMTP_SECURE: process.env.SMTP_SECURE === 'true',
     SMTP_USER: process.env.SMTP_USER || '',
     SMTP_PASS: process.env.SMTP_PASS || '',
-    EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@veridrive.com',
+    EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@Trivexachain.com',
     
     // Frontend
     FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -160,8 +160,8 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || '',
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
     AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-    AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME || 'veridrive-uploads',
-    AWS_S3_BUCKET_URL: process.env.AWS_S3_BUCKET_URL || 'https://veridrive-uploads.s3.amazonaws.com',
+    AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME || 'Trivexachain-uploads',
+    AWS_S3_BUCKET_URL: process.env.AWS_S3_BUCKET_URL || 'https://Trivexachain-uploads.s3.amazonaws.com',
     
     // Image Processing
     IMAGE_QUALITY: parseInt(process.env.IMAGE_QUALITY || '85', 10),
@@ -181,7 +181,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     LOG_FILE_PATH: process.env.LOG_FILE_PATH || 'logs/app.log',
     
     // Development
-    DEBUG: process.env.DEBUG || 'veridrive:*',
+    DEBUG: process.env.DEBUG || 'Trivexachain:*',
     ENABLE_SWAGGER: process.env.ENABLE_SWAGGER === 'true',
     SWAGGER_HOST: process.env.SWAGGER_HOST || 'localhost:3000',
     
@@ -190,7 +190,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     TEST_JWT_SECRET: process.env.TEST_JWT_SECRET || 'test-secret',
     
     // Admin
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@veridrive.com',
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@Trivexachain.com',
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'AdminPassword123!',
     SUPER_ADMIN_TOKEN: process.env.SUPER_ADMIN_TOKEN || 'super-admin-token',
 

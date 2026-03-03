@@ -97,7 +97,7 @@ export const Header: React.FC = () => {
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mr-3 shadow-lg">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
-              <span className="text-2xl font-black text-white gradient-text">VERIDRIVE</span>
+              <span className="text-2xl font-black text-white gradient-text">Trivexachain</span>
             </div>
           </div>
 

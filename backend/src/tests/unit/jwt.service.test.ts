@@ -18,7 +18,7 @@ describe('JWT Service', () => {
     const testPayload = {
       userId: '60f1b2b3c4e5f6a7b8c9d0e1',
       role: 'buyer' as const,
-      email: 'test@veridrive.com'
+      email: 'test@Trivexachain.com'
     };
 
     test('should generate valid access token', () => {
@@ -66,7 +66,7 @@ describe('JWT Service', () => {
     const testPayload = {
       userId: '60f1b2b3c4e5f6a7b8c9d0e1',
       role: 'buyer' as const,
-      email: 'test@veridrive.com'
+      email: 'test@Trivexachain.com'
     };
 
     test('should verify valid access token', () => {
@@ -163,7 +163,7 @@ describe('JWT Service', () => {
     const testPayload = {
       userId: '60f1b2b3c4e5f6a7b8c9d0e1',
       role: 'buyer' as const,
-      email: 'test@veridrive.com'
+      email: 'test@Trivexachain.com'
     };
 
     test('should check if token is expired', () => {
@@ -211,7 +211,7 @@ describe('JWT Service', () => {
     const testPayload = {
       userId: '60f1b2b3c4e5f6a7b8c9d0e1',
       role: 'buyer' as const,
-      email: 'test@veridrive.com'
+      email: 'test@Trivexachain.com'
     };
 
     test('should extract payload from valid token', () => {
@@ -257,7 +257,7 @@ describe('JWT Service', () => {
         JWTService.generateAccessToken({
           userId: '60f1b2b3c4e5f6a7b8c9d0e1',
           role: 'buyer',
-          email: 'test@veridrive.com'
+          email: 'test@Trivexachain.com'
         });
       }).toThrow();
       
