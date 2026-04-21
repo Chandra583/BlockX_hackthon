@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import type { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
@@ -59,16 +60,23 @@ app.use(helmet({
 }));
 
 // CORS configuration - Production safe setup
-const allowedOrigins = [
+const normalizeOrigin = (value: string): string => value.trim().replace(/\/$/, '');
+
+const envOriginList = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([
   config.CORS_ORIGIN,
   config.FRONTEND_URL,
+  ...envOriginList,
   'https://blockx.netlify.app',
   'https://block-x-frontend.netlify.app', // Additional Netlify domain if needed
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5174',
-  // Add any additional domains you need
-].filter(Boolean);
+].filter(Boolean).map(normalizeOrigin)));
 
 console.log(`🌐 CORS configured for origins:`, allowedOrigins);
 console.log(`🔗 Primary Frontend URL: ${config.FRONTEND_URL}`);
@@ -81,22 +89,39 @@ app.get('/api/info', (_req, res) => {
   res.status(200).json(payload);
 });
 
-app.use(cors({
+const isTrustedOrigin = (origin: string): boolean => {
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (allowedOrigins.includes(normalizedOrigin)) return true;
+
+  // Allow trusted preview/static domains
+  try {
+    const host = new URL(normalizedOrigin).hostname.toLowerCase();
+    if (host.endsWith('.netlify.app') || host.endsWith('.vercel.app')) {
+      return true;
+    }
+  } catch (_error) {
+    return false;
+  }
+
+  return false;
+};
+
+const corsOptions: CorsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, postman, etc.)
     if (!origin) return callback(null, true);
-    
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
+
+    // Check if origin is in allowed/trusted list
+    if (isTrustedOrigin(origin)) {
       return callback(null, true);
     }
-    
+
     // In development, be more permissive
     if (config.NODE_ENV === 'development') {
       console.log(`⚠️ CORS: Allowing ${origin} in development mode`);
       return callback(null, true);
     }
-    
+
     console.log(`❌ CORS blocked origin: ${origin}`);
     console.log(`🔍 Allowed origins:`, allowedOrigins);
     return callback(new Error('Not allowed by CORS'), false);
@@ -107,7 +132,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'idempotency-key', 'X-Active-Role'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   exposedHeaders: ['X-Active-Role'], // Allow frontend to read this header in responses
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
