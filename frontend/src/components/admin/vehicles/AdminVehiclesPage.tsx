@@ -71,7 +71,7 @@ const AdminVehiclesPage: React.FC = () => {
           <p className="text-slate-300">Manage verification workflow for submitted vehicles</p>
         </div>
         <div className="inline-flex rounded-lg bg-slate-800/80 border border-slate-700/50 p-1">
-          {(['pending','verified','rejected'] as const).map((s) => (
+          {(['pending','verified','rejected'] as constStatus).map((s) => (
             <button
               key={s}
               onClick={() => { updateQuery({ status: s, page: '1' }); setPage(1); }}
