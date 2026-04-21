@@ -1,6 +1,6 @@
 // Environment Configuration
-const DEFAULT_API_BASE_URL = 'https://Trivexachain-x-hackthon.vercel.app/api';
-const DEFAULT_BACKEND_URL = 'https://Trivexachain-x-hackthon.vercel.app';
+const DEFAULT_API_BASE_URL = 'https://veridrive-x-hackthon.vercel.app/api';
+const DEFAULT_BACKEND_URL = 'https://veridrive-x-hackthon.vercel.app';
 
 const isLocalhostUrl = (value: string): boolean => /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(value);
 

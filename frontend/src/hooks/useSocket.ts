@@ -16,7 +16,7 @@ const resolveSocketBaseUrl = (): string => {
   const backend = config.BACKEND_URL;
 
   // Prefer explicit socket URL, else backend URL, else API URL without /api suffix
-  const candidate = explicit || backend || apiUrl || 'https://Trivexachain-x-hackthon.vercel.app';
+  const candidate = explicit || backend || apiUrl || 'https://veridrive-x-hackthon.vercel.app';
   return candidate.replace(/\/$/, '').replace(/\/api$/, '');
 };
 
