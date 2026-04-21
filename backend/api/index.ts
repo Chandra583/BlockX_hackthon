@@ -24,7 +24,7 @@ async function connectDB() {
   try {
     const mongoUri = process.env.MONGODB_URI;
     if (!mongoUri) {
-      console.error('❌ MONGODB_URI not set');
+      console.error('❌ MONGODB_URI s not set');
       return false;
     }
     
