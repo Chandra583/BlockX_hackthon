@@ -117,7 +117,7 @@ Trivexachain is a blockchain-powered vehicle verification system that prevents o
 - ✅ Real-time WebSocket integration for live updates
 - ✅ Responsive design with mobile support
 - ✅ Toast notifications (react-hot-toast)
-- ✅ Deployment on Netlify: `https://blockx.netlify.app`
+- ✅ Deployment on Netlify: `https://trivexachain.netlify.app`
 
 ### **Testing & DevOps**
 - ✅ Jest + Supertest for backend unit and integration tests
@@ -303,7 +303,7 @@ Trivexachain is a blockchain-powered vehicle verification system that prevents o
 ---
 
 **Project Status**: ✅ **Production-Ready Prototype**  
-**Live Demo**: [https://blockx.netlify.app](https://blockx.netlify.app)  
+**Live Demo**: [https://trivexachain.netlify.app](https://trivexachain.netlify.app)  
 **API Documentation**: [https://block-x-two.vercel.app/api](https://block-x-two.vercel.app/api)  
 **GitHub**: [Repository Link]
 

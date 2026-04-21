@@ -2,7 +2,7 @@
 ## Colosseum Cyberpunk Hackathon Submission
 
 [![Deploy Backend](https://img.shields.io/badge/Deploy-Backend-blue)](https://block-x-two.vercel.app)
-[![Deploy Frontend](https://img.shields.io/badge/Deploy-Frontend-green)](https://blockx.netlify.app)
+[![Deploy Frontend](https://img.shields.io/badge/Deploy-Frontend-green)](https://trivexachain.netlify.app)
 [![Blockchain](https://img.shields.io/badge/Blockchain-Solana-purple)](https://explorer.solana.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -27,7 +27,7 @@
 
 | Service | URL | Status |
 |---------|-----|--------|
-| Frontend | [blockx.netlify.app](https://blockx.netlify.app) | ✅ Live |
+| Frontend | [trivexachain.netlify.app](https://trivexachain.netlify.app) | ✅ Live |
 | Backend API | [block-x-two.vercel.app](https://block-x-two.vercel.app) | ✅ Live |
 | Blockchain | [Solana Explorer](https://explorer.solana.com) | ✅ Live |
 
@@ -244,7 +244,7 @@ BlockX leverages blockchain technology and IoT devices to create an immutable, t
 
 ## 🔗 Links
 
-- [Live Demo](https://blockx.netlify.app)
+- [Live Demo](https://trivexachain.netlify.app)
 - [Backend API](https://block-x-two.vercel.app)
 - [GitHub Repository](https://github.com/yourusername/BlockX-Hackathon)
 - [Hackathon Submission](https://hackathon-link.com)

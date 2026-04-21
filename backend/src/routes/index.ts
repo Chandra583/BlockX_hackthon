@@ -89,8 +89,7 @@ router.get('/test-cors', (req, res) => {
         allowedOrigins: [
           process.env.CORS_ORIGIN,
           process.env.FRONTEND_URL,
-          'https://blockx.netlify.app',
-          'https://block-x-frontend.netlify.app',
+          'https://trivexachain.netlify.app',
           'http://localhost:5173',
           'http://localhost:3000',
           'http://localhost:5174'

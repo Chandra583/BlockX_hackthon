@@ -76,7 +76,7 @@ A decentralized vehicle trust platform combining **IoT hardware**, **blockchain 
   - Wallet Management (Solana wallet creation, transaction history)
   - Admin Panel (user management, fraud monitoring, analytics)
 - **Real-Time:** Socket.IO client for live TrustScore updates, fraud alerts
-- **Deployment:** Netlify with auto-deploy from Git (`https://blockx.netlify.app`)
+- **Deployment:** Netlify with auto-deploy from Git (`https://trivexachain.netlify.app`)
 
 ### Technology Stack Summary
 
@@ -1191,7 +1191,7 @@ Backend Process:
 
 **Public Verification (QR Code):**
 1. Vehicle details page displays QR code
-2. Scan QR → Opens `https://blockx.netlify.app/verify?vin=<VIN>`
+2. Scan QR → Opens `https://trivexachain.netlify.app/verify?vin=<VIN>`
 3. Public verification endpoint (no auth required)
 4. Displays:
    - ✅ Verified on Solana (with explorer link)
@@ -1470,8 +1470,8 @@ vercel login
   JWT_SECRET=...
   JWT_REFRESH_SECRET=...
   NODE_ENV=production
-  FRONTEND_URL=https://blockx.netlify.app
-  CORS_ORIGIN=https://blockx.netlify.app
+  FRONTEND_URL=https://trivexachain.netlify.app
+  CORS_ORIGIN=https://trivexachain.netlify.app
   SOLANA_RPC_URL=https://api.devnet.solana.com
   ```
 
@@ -1522,7 +1522,7 @@ curl https://block-x-two.vercel.app/api/health
 ```bash
 git push origin main
 # Netlify auto-deploys from main branch
-# Output: https://blockx.netlify.app
+# Output: https://trivexachain.netlify.app
 ```
 
 **Step 5: Custom Domain (Optional)**
@@ -1559,8 +1559,7 @@ mongodb+srv://veridrive:<password>@cluster0.abc123.mongodb.net/veridrive?retryWr
 **Backend (app.ts):**
 ```javascript
 const allowedOrigins = [
-  'https://blockx.netlify.app',
-  'https://block-x-frontend.netlify.app',
+  'https://trivexachain.netlify.app',
   'http://localhost:5173',
   'http://localhost:3000'
 ];
@@ -2140,7 +2139,7 @@ describe('Device to Blockchain Integration', () => {
 - **Local Backend:** `http://localhost:5000/api`
 - **Production Backend:** `https://block-x-two.vercel.app/api`
 - **Local Frontend:** `http://localhost:5173`
-- **Production Frontend:** `https://blockx.netlify.app`
+- **Production Frontend:** `https://trivexachain.netlify.app`
 
 ### Database Connection
 - **Local MongoDB:** `mongodb://localhost:27017/veridrive`

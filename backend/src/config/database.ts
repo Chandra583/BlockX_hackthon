@@ -1,4 +1,15 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Use public DNS servers for SRV/TXT lookups so MongoDB Atlas connection
+// does not depend on the local/ISP DNS (fixes `querySrv ECONNREFUSED`).
+// This only affects Node's DNS resolver, not the system DNS.
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4', '1.0.0.1']);
+  console.log('🛰️  DNS resolvers set to:', dns.getServers().join(', '));
+} catch (e) {
+  console.warn('⚠️  Could not override DNS servers:', e);
+}
 
 /**
  * MongoDB connection options optimized for Vercel serverless

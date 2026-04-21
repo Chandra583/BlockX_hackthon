@@ -71,8 +71,7 @@ const allowedOrigins = Array.from(new Set([
   config.CORS_ORIGIN,
   config.FRONTEND_URL,
   ...envOriginList,
-  'https://blockx.netlify.app',
-  'https://block-x-frontend.netlify.app', // Additional Netlify domain if needed
+  'https://trivexachain.netlify.app',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5174',
@@ -190,8 +189,7 @@ app.get('/', (req, res) => {
       allowedOrigins: [
         config.CORS_ORIGIN,
         config.FRONTEND_URL,
-        'https://blockx.netlify.app',
-        'https://block-x-frontend.netlify.app',
+        'https://trivexachain.netlify.app',
         'http://localhost:5173',
         'http://localhost:3000',
         'http://localhost:5174'
