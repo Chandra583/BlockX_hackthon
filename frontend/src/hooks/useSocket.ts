@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { useAppSelector } from './redux';
+import { config } from '../config/env';
 
 interface UseSocketReturn {
   socket: Socket | null;
@@ -11,8 +12,8 @@ interface UseSocketReturn {
 
 const resolveSocketBaseUrl = (): string => {
   const explicit = import.meta.env.VITE_SOCKET_URL as string | undefined;
-  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || (import.meta.env.VITE_API_BASE_URL as string | undefined);
-  const backend = import.meta.env.VITE_BACKEND_URL as string | undefined;
+  const apiUrl = config.API_URL || config.API_BASE_URL;
+  const backend = config.BACKEND_URL;
 
   // Prefer explicit socket URL, else backend URL, else API URL without /api suffix
   const candidate = explicit || backend || apiUrl || 'https://Trivexachain-x-hackthon.vercel.app';

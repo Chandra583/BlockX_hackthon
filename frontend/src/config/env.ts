@@ -1,14 +1,33 @@
 // Environment Configuration
+const DEFAULT_API_BASE_URL = 'https://Trivexachain-x-hackthon.vercel.app/api';
+const DEFAULT_BACKEND_URL = 'https://Trivexachain-x-hackthon.vercel.app';
+
+const isLocalhostUrl = (value: string): boolean => /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(value);
+
+const isRunningOnLocalhost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return ['localhost', '127.0.0.1'].includes(window.location.hostname);
+};
+
+const normalizeForRuntime = (value: string | undefined, fallback: string): string => {
+  const resolved = value || fallback;
+  // Prevent production deployments from calling localhost when env vars are misconfigured.
+  if (!isRunningOnLocalhost() && isLocalhostUrl(resolved)) {
+    return fallback;
+  }
+  return resolved;
+};
+
 export const ENV = {
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://Trivexachain-x-hackthon.vercel.app/api',
-  API_URL: import.meta.env.VITE_API_URL || 'https://Trivexachain-x-hackthon.vercel.app/api',
+  API_BASE_URL: normalizeForRuntime(import.meta.env.VITE_API_BASE_URL, DEFAULT_API_BASE_URL),
+  API_URL: normalizeForRuntime(import.meta.env.VITE_API_URL, DEFAULT_API_BASE_URL),
   VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV || 'production',
   VITE_APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
   // Additional environment variables
   VITE_ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS || 'false',
   VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN || '',
   // Backend URL for websockets or direct links
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'https://Trivexachain-x-hackthon.vercel.app',
+  BACKEND_URL: normalizeForRuntime(import.meta.env.VITE_BACKEND_URL, DEFAULT_BACKEND_URL),
 };
 
 // Some parts of the app expect a named export `config`.
